@@ -1,3 +1,8 @@
+/* ============================================================
+   主题变量 · 浅色（默认）
+   改的 Codex UI：全局配色基底。定义强调色 --dream-accent、画布/表面/侧栏/
+   文字/线条/阴影、首页与任务页"沉浸态"半透明渐变等 CSS 变量，供下方所有规则引用。
+   ============================================================ */
 :root.codex-dream-skin {
   color-scheme: light;
   --dream-accent: oklch(0.66 0.15 18);
@@ -28,6 +33,7 @@
   --dream-task-immersive-far: color-mix(in oklab, var(--dream-surface) 66%, transparent);
 }
 
+/* 主题变量 · 暗色（.dream-theme-dark）。覆盖浅色变量，对应 Codex 暗色外观。 */
 :root.codex-dream-skin.dream-theme-dark {
   color-scheme: dark;
   --dream-canvas: color-mix(in oklab, oklch(0.16 0.012 245) 96%, var(--dream-accent));
@@ -55,12 +61,14 @@
   --dream-task-immersive-far: color-mix(in oklab, var(--dream-surface) 60%, transparent);
 }
 
+/* 全局 body：改 Codex 整窗背景色、文字色、字体族（Segoe UI / 微软雅黑）。 */
 html.codex-dream-skin body {
   background: var(--dream-canvas) !important;
   color: var(--dream-text) !important;
   font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif !important;
 }
 
+/* 左侧导航栏（aside.app-shell-left-panel）：背景、文字、边框、内阴影。 */
 html.codex-dream-skin aside.app-shell-left-panel {
   color: var(--dream-text) !important;
   background: var(--dream-sidebar) !important;
@@ -69,19 +77,23 @@ html.codex-dream-skin aside.app-shell-left-panel {
   backdrop-filter: none !important;
 }
 
+/* 侧栏内 nav 容器：背景透明化，让侧栏渐变背景透出。 */
 html.codex-dream-skin aside.app-shell-left-panel nav {
   background: transparent !important;
 }
 
+/* 侧栏按钮：文字色 + 背景色过渡动画。 */
 html.codex-dream-skin aside.app-shell-left-panel button {
   color: var(--dream-text) !important;
   transition: background-color 180ms cubic-bezier(.22, 1, .36, 1), color 180ms cubic-bezier(.22, 1, .36, 1) !important;
 }
 
+/* 侧栏按钮悬停态：强调色软背景。 */
 html.codex-dream-skin aside.app-shell-left-panel button:hover {
   background: var(--dream-accent-soft) !important;
 }
 
+/* 侧栏"当前页/选中项"（aria-current=page 与列表悬停背景）：高亮背景 + 内描边。 */
 html.codex-dream-skin aside.app-shell-left-panel [class~="bg-token-list-hover-background"],
 html.codex-dream-skin aside.app-shell-left-panel [aria-current="page"] {
   color: var(--dream-text) !important;
@@ -89,11 +101,13 @@ html.codex-dream-skin aside.app-shell-left-panel [aria-current="page"] {
   box-shadow: inset 0 0 0 1px var(--dream-line-soft) !important;
 }
 
+/* 侧栏图标与 token 文字色：跟随 currentColor。 */
 html.codex-dream-skin aside.app-shell-left-panel svg,
 html.codex-dream-skin aside.app-shell-left-panel [class*="text-token"] {
   color: currentColor;
 }
 
+/* 主区域容器（main.main-surface）：定位隔离、背景、边框、内阴影。 */
 html.codex-dream-skin main.main-surface {
   position: relative;
   isolation: isolate;
@@ -104,6 +118,7 @@ html.codex-dream-skin main.main-surface {
   box-shadow: inset 0 1px color-mix(in oklab, var(--dream-surface-raised) 72%, transparent) !important;
 }
 
+/* 顶部固定栏（header.app-header-tint）：文字、半透明背景、模糊、边框。 */
 html.codex-dream-skin main.main-surface > header.app-header-tint {
   /* Preserve Codex's native fixed header geometry and side-panel controls. */
   color: var(--dream-text) !important;
@@ -112,6 +127,8 @@ html.codex-dream-skin main.main-surface > header.app-header-tint {
   backdrop-filter: blur(12px) saturate(1.05) !important;
 }
 
+/* 暗色下的应用菜单顶栏（group/application-menu-top-bar）：宽图会延伸到主区域外的
+   原生菜单栏，单独加一层暗色可读性背景。 */
 /* Wide art also reaches the native application menu, which sits outside the
    main surface and needs its own dark-theme legibility layer. */
 html.codex-dream-skin.dream-theme-dark [class~="group/application-menu-top-bar"] {
@@ -122,21 +139,26 @@ html.codex-dream-skin.dream-theme-dark [class~="group/application-menu-top-bar"]
   backdrop-filter: blur(16px) saturate(.9) !important;
 }
 
+/* 暗色顶栏按钮与图标：文字色 + 文字阴影，保证在背景图上可读。 */
 html.codex-dream-skin.dream-theme-dark [class~="group/application-menu-top-bar"] button,
 html.codex-dream-skin.dream-theme-dark [class~="group/application-menu-top-bar"] svg {
   color: var(--dream-text) !important;
   text-shadow: 0 1px 2px color-mix(in oklab, var(--dream-canvas) 82%, transparent) !important;
 }
 
+/* 装饰层容器 #codex-dream-skin-chrome（注入器创建的覆盖层）。
+   ⚠ 必须保留 pointer-events:none / display:none —— 注入器 verify 会强制检查此项！ */
 #codex-dream-skin-chrome {
   display: none !important;
   pointer-events: none !important;
 }
 
+/* 主内容区 [role=main]：文字色。 */
 html.codex-dream-skin [role="main"] {
   color: var(--dream-text);
 }
 
+/* 任务页路由（.dream-task）：把背景图作为低透明度"氛围层"，宽幅图按原宽显示而非居中裁切。 */
 /* Task routes use the art as a quiet atmospheric layer. Wide banners are shown
    at their natural width instead of being enlarged and center-cropped. */
 html.codex-dream-skin .dream-task {
@@ -146,6 +168,7 @@ html.codex-dream-skin .dream-task {
   background: var(--dream-surface) !important;
 }
 
+/* 任务页背景图层 ::before：低透明度铺图 + 向下渐隐遮罩。 */
 html.codex-dream-skin .dream-task::before {
   content: "";
   position: absolute;
@@ -160,17 +183,20 @@ html.codex-dream-skin .dream-task::before {
   mask-image: linear-gradient(to bottom, oklch(0 0 0) 0, oklch(0 0 0 / .92) 38%, transparent 88%);
 }
 
+/* 宽图模式任务页背景图：位置/尺寸调整。 */
 html.codex-dream-skin.dream-art-wide .dream-task::before {
   background-position: center top;
   background-size: 100% auto;
 }
 
+/* 宽图非 banner 模式任务页背景图：位置/尺寸/遮罩。 */
 html.codex-dream-skin.dream-art-wide:not(.dream-task-banner) .dream-task::before {
   background-position: var(--dream-art-position);
   background-size: cover;
   mask-image: linear-gradient(to bottom, oklch(0 0 0) 0, oklch(0 0 0 / .92) 44%, oklch(0 0 0 / .72) 100%);
 }
 
+/* banner 模式：背景图只在顶部一段高度（46vh/520px）显示。 */
 html.codex-dream-skin.dream-task-banner .dream-task::before {
   bottom: auto;
   height: min(46vh, 520px);
@@ -178,33 +204,40 @@ html.codex-dream-skin.dream-task-banner .dream-task::before {
   mask-image: linear-gradient(to bottom, oklch(0 0 0) 0, oklch(0 0 0 / .9) 52%, transparent 100%);
 }
 
+/* 关闭任务页背景图（.dream-task-off）。 */
 html.codex-dream-skin.dream-task-off .dream-task::before {
   display: none;
 }
 
+/* 任务页直接子元素提到背景层之上（z-index:1）。 */
 html.codex-dream-skin .dream-task > * {
   position: relative;
   z-index: 1;
 }
 
+/* 任务页文章/消息（article / data-message-author-role）文字色。 */
 html.codex-dream-skin .dream-task article,
 html.codex-dream-skin .dream-task [data-message-author-role] {
   color: var(--dream-text);
 }
 
+/* 首页路由（.dream-home）：保持源图表现力，按图片焦点元数据选择语义安全区蒙层。 */
 /* The home route keeps the source image expressive, with a semantic safe-area
    wash selected from image focus metadata. */
+/* 首页 .dream-home：内容最大宽度、横向溢出隐藏、背景。 */
 html.codex-dream-skin .dream-home {
   --thread-content-max-width: min(1180px, calc(100cqw - 56px)) !important;
   overflow-x: hidden !important;
   background: var(--dream-surface) !important;
 }
 
+/* 首页第一层容器：最小高度 + 顶部内边距。 */
 .dream-home > div:first-child {
   min-height: 100% !important;
   padding-top: 24px !important;
 }
 
+/* 首页 hero 区列宽（clamp 390–510px）与最小高度。 */
 .dream-home > div:first-child > div:first-child {
   flex: 0 0 clamp(390px, 42cqw, 510px) !important;
   min-height: 390px !important;
@@ -212,6 +245,7 @@ html.codex-dream-skin .dream-home {
   padding-bottom: 0 !important;
 }
 
+/* 首页 hero 卡片：背景图、1px 边框、20px 圆角、阴影、高度 clamp(230,27cqw,326)。 */
 .dream-home > div:first-child > div:first-child > div:first-child {
   position: relative !important;
   isolation: isolate;
@@ -231,10 +265,12 @@ html.codex-dream-skin .dream-home {
   box-shadow: var(--dream-shadow) !important;
 }
 
+/* 宽图模式 hero 卡片背景尺寸。 */
 html.codex-dream-skin.dream-art-wide .dream-home > div:first-child > div:first-child > div:first-child {
   background-size: cover !important;
 }
 
+/* hero 卡片左侧线性渐变蒙层（保证标题文字可读）。 */
 .dream-home > div:first-child > div:first-child > div:first-child::before {
   content: "";
   position: absolute;
@@ -244,18 +280,22 @@ html.codex-dream-skin.dream-art-wide .dream-home > div:first-child > div:first-c
   background: linear-gradient(90deg, var(--dream-hero-shade) 0 32%, transparent 70%);
 }
 
+/* 安全区在右时：hero 蒙层方向反转为从右到左。 */
 html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child::before {
   background: linear-gradient(270deg, var(--dream-hero-shade) 0 32%, transparent 70%);
 }
 
+/* 安全区居中时：hero 蒙层改为径向渐变。 */
 html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child::before {
   background: radial-gradient(ellipse at center, var(--dream-hero-shade) 0 23%, transparent 72%);
 }
 
+/* 无安全区时：hero 蒙层透明。 */
 html.codex-dream-skin.dream-safe-none .dream-home > div:first-child > div:first-child > div:first-child::before {
   background: transparent;
 }
 
+/* hero 卡片内层：标题/文案定位与内边距。 */
 .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
   position: relative;
   z-index: 1;
@@ -266,34 +306,41 @@ html.codex-dream-skin.dream-safe-none .dream-home > div:first-child > div:first-
   padding: 30px 40px;
 }
 
+/* hero 文案列宽（min(48%,520px)）与对齐。 */
 .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
   width: min(48%, 520px) !important;
   align-items: flex-start !important;
   gap: 0 !important;
 }
 
+/* 安全区在右：hero 文案右对齐。 */
 html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
   justify-content: flex-end !important;
 }
 
+/* 安全区在右：hero 文案列右对齐 + 右对齐文字。 */
 html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
   align-items: flex-end !important;
   text-align: right !important;
 }
 
+/* 安全区居中：hero 文案居中。 */
 html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
   justify-content: center !important;
 }
 
+/* 安全区居中：hero 文案列居中 + 居中文字。 */
 html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
   align-items: center !important;
   text-align: center !important;
 }
 
+/* 隐藏首页原生 home 图标。 */
 .dream-home [data-testid="home-icon"] {
   display: none !important;
 }
 
+/* 首页主标题/项目选择入口（[data-feature=game-source]）：字号、字重、文字阴影。 */
 .dream-home [data-feature="game-source"] {
   display: flex !important;
   flex-direction: column !important;
@@ -310,6 +357,7 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   pointer-events: auto !important;
 }
 
+/* 首页项目选择按钮：胶囊样式（圆角 999px + 边框 + 软背景）。 */
 .dream-home [data-feature="game-source"] button {
   margin: 0 4px;
   padding: 2px 7px;
@@ -320,6 +368,7 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   text-underline-offset: 4px;
 }
 
+/* hero 下方建议卡区定位（左右贴边 + 顶部偏移）。 */
 .dream-home > div:first-child > div:first-child > div:first-child > div:nth-child(2) {
   left: 0 !important;
   right: 0 !important;
@@ -327,10 +376,12 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   margin-top: 16px !important;
 }
 
+/* 首页建议卡容器（group/home-suggestions）：溢出可见。 */
 .dream-home .group\/home-suggestions {
   overflow: visible !important;
 }
 
+/* 首页建议卡：16px 圆角、边框、表面背景、阴影、悬停过渡。 */
 .dream-home .group\/home-suggestions button {
   min-height: 112px !important;
   padding: 16px 14px !important;
@@ -342,12 +393,14 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   transition: transform 180ms cubic-bezier(.22, 1, .36, 1), border-color 180ms cubic-bezier(.22, 1, .36, 1), background-color 180ms cubic-bezier(.22, 1, .36, 1) !important;
 }
 
+/* 建议卡悬停：上移 2px + 边框 + 强调色软背景。 */
 .dream-home .group\/home-suggestions button:hover {
   transform: translateY(-2px) !important;
   border-color: var(--dream-line) !important;
   background: var(--dream-accent-soft) !important;
 }
 
+/* 建议卡图标徽章：38px 圆角方块 + 强调色 + 外发光环。 */
 .dream-home .group\/home-suggestions button > span:first-child > span:first-child {
   width: 38px;
   height: 38px;
@@ -359,12 +412,14 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   box-shadow: 0 0 0 6px var(--dream-accent-soft);
 }
 
+/* 建议卡图标尺寸（20px）。 */
 .dream-home .group\/home-suggestions button svg {
   width: 20px !important;
   height: 20px !important;
   color: currentColor !important;
 }
 
+/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、半透明表面背景、阴影、模糊。 */
 html.codex-dream-skin .composer-surface-chrome {
   color: var(--dream-text) !important;
   border: 1px solid var(--dream-line) !important;
@@ -374,25 +429,31 @@ html.codex-dream-skin .composer-surface-chrome {
   backdrop-filter: blur(14px) saturate(1.06) !important;
 }
 
+/* 输入区编辑器（ProseMirror）：文字色 + 光标色。 */
 html.codex-dream-skin .ProseMirror {
   color: var(--dream-text) !important;
   caret-color: var(--dream-accent) !important;
 }
 
+/* 主按钮（如发送按钮 bg-token-foreground）：强调色背景 + 反色文字。 */
 html.codex-dream-skin button[class~="bg-token-foreground"] {
   color: var(--dream-accent-ink) !important;
   background: var(--dream-accent) !important;
   box-shadow: none !important;
 }
 
+/* 消息/文章（article / data-message-author-role）文字色。 */
 html.codex-dream-skin [data-message-author-role],
 html.codex-dream-skin article {
   color: var(--dream-text);
 }
 
+/* 宽图沉浸态（.dream-art-wide）：16:9 或更宽的图整窗铺一次，侧栏/顶栏/路由表面变成
+   协调的可读性蒙层，而不是在各个面板里重复裁切同一张图。 */
 /* A 16:9 or wider image is painted once on the native window. The sidebar,
    title bar and route surface become coordinated readability layers instead
    of repeating or cropping the image inside individual panels. */
+/* 宽图沉浸态：整窗 body 铺背景图（首页 + 任务页 ambient/banner 模式）。 */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) body,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) body {
   background-color: var(--dream-canvas) !important;
@@ -403,6 +464,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   background-attachment: fixed !important;
 }
 
+/* 宽图沉浸态侧栏：半透明渐变背景，去掉边框/圆角/阴影/模糊。 */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
   aside.app-shell-left-panel,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
@@ -416,6 +478,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   backdrop-filter: none !important;
 }
 
+/* 宽图沉浸态任务页侧栏：更不透明的任务页专用渐变。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
   aside.app-shell-left-panel {
   background: linear-gradient(90deg,
@@ -423,6 +486,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
     var(--dream-task-immersive-edge)) !important;
 }
 
+/* 宽图沉浸态侧栏 ::after：透明，避免侧栏残留原生拖拽区背景。 */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
   aside.app-shell-left-panel::after,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
@@ -430,6 +494,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   background: transparent !important;
 }
 
+/* 宽图沉浸态主区域：半透明渐变背景（首页），去边框/圆角/阴影。 */
 html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(.dream-home-shell) {
   background: linear-gradient(90deg,
@@ -441,6 +506,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   box-shadow: none !important;
 }
 
+/* 宽图沉浸态任务页主区域：任务页专用渐变背景。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(.dream-home-shell) {
   background: linear-gradient(90deg,
     var(--dream-task-immersive-edge),
@@ -448,14 +514,17 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
     var(--dream-task-immersive-far)) !important;
 }
 
+/* 沉浸态任务页 .dream-task 背景透明（图已在 body）。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) .dream-task {
   background: transparent !important;
 }
 
+/* 沉浸态任务页 ::before 移除，避免与 body 背景图重复。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) .dream-task::before {
   content: none !important;
 }
 
+/* 宽图沉浸态顶栏：透明 + 文字阴影，去掉边框/阴影/模糊。 */
 html.codex-dream-skin.dream-art-wide main.main-surface > header.app-header-tint {
   background: transparent !important;
   border-bottom: 0 !important;
@@ -465,14 +534,17 @@ html.codex-dream-skin.dream-art-wide main.main-surface > header.app-header-tint 
     0 0 8px color-mix(in oklab, var(--dream-canvas) 58%, transparent) !important;
 }
 
+/* 宽图沉浸态顶栏图标：drop-shadow 保证可读。 */
 html.codex-dream-skin.dream-art-wide main.main-surface > header.app-header-tint svg {
   filter: drop-shadow(0 1px 2px color-mix(in oklab, var(--dream-canvas) 72%, transparent));
 }
 
+/* 宽图沉浸态主内容区 [role=main]：背景透明。 */
 html.codex-dream-skin.dream-art-wide main.main-surface [role="main"] {
   background: transparent !important;
 }
 
+/* 宽图沉浸态首页 hero 卡片：去边框/圆角/背景/阴影（图在 body）。 */
 html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
   .dream-home > div:first-child > div:first-child > div:first-child {
   border: 0 !important;
@@ -481,11 +553,13 @@ html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
   box-shadow: none !important;
 }
 
+/* 宽图沉浸态首页 hero ::before：移除蒙层。 */
 html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
   .dream-home > div:first-child > div:first-child > div:first-child::before {
   content: none !important;
 }
 
+/* 宽图沉浸态首页建议卡：玻璃感半透明背景 + 内描边 + 模糊。 */
 html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
   .dream-home .group\/home-suggestions button {
   background: color-mix(in oklab, var(--dream-surface-raised) 58%, transparent) !important;
@@ -494,8 +568,10 @@ html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
   backdrop-filter: blur(8px) saturate(1.04) !important;
 }
 
+/* 宽图沉浸态输入框（composer）：沉浸态背景 + 内描边；清掉原生底部渐变避免双层。 */
 /* The composer owns exactly one solid readability surface. Native bottom
    gradients are cleared below so the control never appears double stacked. */
+/* 宽图沉浸态输入框外壳：沉浸态 composer 背景 + 内描边。 */
 html.codex-dream-skin.dream-art-wide .composer-surface-chrome {
   color: var(--dream-text) !important;
   background: var(--dream-immersive-composer) !important;
@@ -505,12 +581,16 @@ html.codex-dream-skin.dream-art-wide .composer-surface-chrome {
   backdrop-filter: none !important;
 }
 
+/* 宽图沉浸态输入框 ::before：移除原生伪元素。 */
 html.codex-dream-skin.dream-art-wide .composer-surface-chrome::before {
   content: none !important;
 }
 
+/* 首页项目选择工具栏（.dream-home-utility）：当前 Codex 把首页项目选择器渲染成独立不透明
+   工具栏，这里把它与输入框拼成一个连续表面（顶部圆角 + 边框）。 */
 /* Current Codex builds render the home project picker in a hashed utility bar.
    Merge it with the composer so the bottom control reads as one surface. */
+/* 首页项目选择工具栏 .dream-home-utility：顶部圆角 + 边框 + 沉浸态背景。 */
 html.codex-dream-skin .dream-home-utility {
   border: 1px solid var(--dream-line) !important;
   border-bottom: 0 !important;
@@ -519,6 +599,7 @@ html.codex-dream-skin .dream-home-utility {
   box-shadow: none !important;
 }
 
+/* 有工具栏时输入框：底部圆角 + 内描边，与上方工具栏拼成一个表面。 */
 html.codex-dream-skin .dream-home:has(.dream-home-utility) .composer-surface-chrome {
   border-radius: 0 0 18px 18px !important;
   box-shadow: 0 10px 30px color-mix(in oklab, var(--dream-canvas) 20%, transparent),
@@ -527,9 +608,12 @@ html.codex-dream-skin .dream-home:has(.dream-home-utility) .composer-surface-chr
     inset 0 -1px var(--dream-immersive-line) !important;
 }
 
+/* 沉浸态任务页置顶搜索/输入条：插件、定时任务、搜索路由有不透明置顶包装，
+   只清整窗/置顶 chrome，保留功能卡片与其悬停态。 */
 /* Plugins, scheduled tasks and search routes ship opaque sticky wrappers.
    Clear only full-window or sticky route chrome, leaving functional cards and
    their hover states intact. */
+/* 沉浸态任务页置顶输入条（div.sticky:has(input)）及其 ::after：透明化。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   main.main-surface:not(.dream-home-shell) div.sticky:has(input[type="text"]),
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
@@ -537,6 +621,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   background: transparent !important;
 }
 
+/* 沉浸态任务页搜索输入框（div.no-drag:has(input)）：沉浸态背景 + 内描边。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   main.main-surface:not(.dream-home-shell) div.no-drag:has(> input[type="text"]) {
   background: var(--dream-immersive-composer) !important;
@@ -545,26 +630,32 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   backdrop-filter: none !important;
 }
 
+/* 沉浸态任务页整窗不透明表面（bg-token-main-surface-primary h-full w-full）：透明化。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   main.main-surface:not(.dream-home-shell)
   [class~="bg-token-main-surface-primary"][class~="h-full"][class~="w-full"] {
   background: transparent !important;
 }
 
+/* 沉浸态主内容框架（app-shell-main-content-frame）：去顶边框。 */
 html.codex-dream-skin.dream-art-wide main.main-surface .app-shell-main-content-frame {
   border-top: 0 !important;
 }
 
+/* 沉浸态顶部渐隐（app-shell-main-content-top-fade）：隐藏。 */
 html.codex-dream-skin.dream-art-wide main.main-surface .app-shell-main-content-top-fade {
   display: none !important;
   background: transparent !important;
 }
 
+/* 沉浸态会话滚动区底部渐变（.bg-gradient-to-t.from-token-main-surface-primary）：透明，
+   避免与输入框形成假双层底栏。 */
 html.codex-dream-skin.dream-art-wide main.main-surface
   .thread-scroll-container .bg-gradient-to-t.from-token-main-surface-primary {
   background: transparent !important;
 }
 
+/* 响应式 · 中等宽度（≤1120px）：首页内容宽度收窄。 */
 @media (max-width: 1120px) {
   html.codex-dream-skin .dream-home {
     --thread-content-max-width: min(940px, calc(100cqw - 36px)) !important;
@@ -575,6 +666,7 @@ html.codex-dream-skin.dream-art-wide main.main-surface
   }
 }
 
+/* 响应式 · 窄宽度（≤900px）：首页 hero/建议卡/标题缩小。 */
 @media (max-width: 900px) {
   .dream-home > div:first-child {
     padding-top: 16px !important;
@@ -610,6 +702,7 @@ html.codex-dream-skin.dream-art-wide main.main-surface
   }
 }
 
+/* 响应式 · 超窄宽度（≤680px）：hero 蒙层加浓、文案居中。 */
 @media (max-width: 680px) {
   .dream-home > div:first-child > div:first-child > div:first-child::before,
   html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child::before,
@@ -632,6 +725,7 @@ html.codex-dream-skin.dream-art-wide main.main-surface
   }
 }
 
+/* 无障碍 · 减弱动效（prefers-reduced-motion）：关闭过渡/动画。 */
 @media (prefers-reduced-motion: reduce) {
   html.codex-dream-skin *,
   html.codex-dream-skin *::before,
