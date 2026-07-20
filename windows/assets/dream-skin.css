@@ -422,12 +422,14 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   color: currentColor !important;
 }
 
-/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、底色用 --dream-composer-bg、阴影、模糊。 */
+/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、底色用 --dream-composer-bg、阴影、模糊。
+   overflow:hidden 防止触底时内部内容产生小幅滚动。 */
 html.codex-dream-skin .composer-surface-chrome {
   color: var(--dream-text) !important;
   border: 1px solid var(--dream-line) !important;
   border-radius: 18px !important;
   background: var(--dream-composer-bg) !important;
+  overflow: hidden !important;
   box-shadow: 0 12px 34px color-mix(in oklab, var(--dream-accent) 8%, transparent) !important;
   backdrop-filter: blur(14px) saturate(1.06) !important;
 }
@@ -438,11 +440,22 @@ html.codex-dream-skin .ProseMirror {
   caret-color: var(--dream-accent) !important;
 }
 
-/* 主按钮（如发送按钮 bg-token-foreground）：强调色背景 + 反色文字。 */
+/* 主按钮（如发送按钮 bg-token-foreground）：强调色背景 + 反色文字 + 发光环，提交按钮更鲜明。 */
 html.codex-dream-skin button[class~="bg-token-foreground"] {
   color: var(--dream-accent-ink) !important;
   background: var(--dream-accent) !important;
-  box-shadow: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--dream-accent) 22%, transparent),
+    0 4px 14px color-mix(in oklab, var(--dream-accent) 35%, transparent) !important;
+}
+
+/* 发送按钮（aria-label 含"发送"）：确保 Codex 当前版本的提交按钮用强调色 + 发光环，颜色鲜明。 */
+html.codex-dream-skin button[aria-label*="发送"] {
+  color: var(--dream-accent-ink) !important;
+  background: var(--dream-accent) !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--dream-accent) 22%, transparent),
+    0 4px 14px color-mix(in oklab, var(--dream-accent) 35%, transparent) !important;
 }
 
 /* 消息/文章（article / data-message-author-role）文字色。 */
