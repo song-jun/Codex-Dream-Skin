@@ -5,6 +5,9 @@
    ============================================================ */
 :root.codex-dream-skin {
   color-scheme: light;
+  /* 输入框（composer）底色 —— Codex 官方深色背景色，集中放成变量方便统一改。
+     只用于 .composer-surface-chrome / .dream-home-utility，不用作整窗底色。 */
+  --dream-composer-bg: #2B2C42;
   --dream-accent: oklch(0.66 0.15 18);
   --dream-accent-ink: oklch(0.98 0.006 20);
   --dream-art-position: 72% 45%;
@@ -419,12 +422,12 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   color: currentColor !important;
 }
 
-/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、半透明表面背景、阴影、模糊。 */
+/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、底色用 --dream-composer-bg、阴影、模糊。 */
 html.codex-dream-skin .composer-surface-chrome {
   color: var(--dream-text) !important;
   border: 1px solid var(--dream-line) !important;
   border-radius: 18px !important;
-  background: color-mix(in oklab, var(--dream-surface-raised) 95%, transparent) !important;
+  background: var(--dream-composer-bg) !important;
   box-shadow: 0 12px 34px color-mix(in oklab, var(--dream-accent) 8%, transparent) !important;
   backdrop-filter: blur(14px) saturate(1.06) !important;
 }
@@ -453,7 +456,7 @@ html.codex-dream-skin article {
 /* A 16:9 or wider image is painted once on the native window. The sidebar,
    title bar and route surface become coordinated readability layers instead
    of repeating or cropping the image inside individual panels. */
-/* 宽图沉浸态：整窗 body 铺背景图（首页 + 任务页 ambient/banner 模式）。 */
+/* 宽图沉浸态：整窗 body 铺背景图，底色用主题画布色（#2B2C42 只作输入框底色，见顶部变量）。 */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) body,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) body {
   background-color: var(--dream-canvas) !important;
@@ -571,10 +574,10 @@ html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
 /* 宽图沉浸态输入框（composer）：沉浸态背景 + 内描边；清掉原生底部渐变避免双层。 */
 /* The composer owns exactly one solid readability surface. Native bottom
    gradients are cleared below so the control never appears double stacked. */
-/* 宽图沉浸态输入框外壳：沉浸态 composer 背景 + 内描边。 */
+/* 宽图沉浸态输入框外壳：底色用 --dream-composer-bg + 内描边。 */
 html.codex-dream-skin.dream-art-wide .composer-surface-chrome {
   color: var(--dream-text) !important;
-  background: var(--dream-immersive-composer) !important;
+  background: var(--dream-composer-bg) !important;
   border: 0 !important;
   box-shadow: 0 10px 30px color-mix(in oklab, var(--dream-canvas) 20%, transparent),
     inset 0 0 0 1px var(--dream-immersive-line) !important;
@@ -595,7 +598,9 @@ html.codex-dream-skin .dream-home-utility {
   border: 1px solid var(--dream-line) !important;
   border-bottom: 0 !important;
   border-radius: 18px 18px 0 0 !important;
-  background: var(--dream-immersive-composer) !important;
+  margin-inline: 0 !important;
+  box-sizing: border-box !important;
+  background: var(--dream-composer-bg) !important;
   box-shadow: none !important;
 }
 
