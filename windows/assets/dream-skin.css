@@ -7,7 +7,7 @@
   color-scheme: light;
   /* 输入框（composer）底色 —— Codex 官方深色背景色，集中放成变量方便统一改。
      只用于 .composer-surface-chrome / .dream-home-utility，不用作整窗底色。 */
-  --dream-composer-bg: #2B2C42;
+  --dream-composer-bg: transparent;
   --dream-accent: oklch(0.66 0.15 18);
   --dream-accent-ink: oklch(0.98 0.006 20);
   --dream-art-position: 72% 45%;
@@ -39,6 +39,7 @@
 /* 主题变量 · 暗色（.dream-theme-dark）。覆盖浅色变量，对应 Codex 暗色外观。 */
 :root.codex-dream-skin.dream-theme-dark {
   color-scheme: dark;
+  --dream-composer-bg: #2B2C42;
   --dream-canvas: color-mix(in oklab, oklch(0.16 0.012 245) 96%, var(--dream-accent));
   --dream-surface: color-mix(in oklab, oklch(0.19 0.012 245) 95%, var(--dream-accent));
   --dream-surface-raised: color-mix(in oklab, oklch(0.23 0.012 245) 95%, var(--dream-accent));
