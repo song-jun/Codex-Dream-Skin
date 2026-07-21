@@ -775,6 +775,53 @@ function Stop-DreamSkinRecordedInjector {
   return $true
 }
 
+function Stop-DreamSkinTrayProcess {
+  # 托盘是 powershell.exe/pwsh.exe 跑 tray-dream-skin.ps1。但实际场景里：
+  # - 某些启动方式下 Win32_Process.CommandLine 为空（lnk 启动 + 长时间存活），字符串匹配会漏
+  # - mutex 必须随进程一起释放，否则后续探测永远 ACTIVE
+  # 所以直接 kill 所有 powershell/pwsh（排除自身 + 调用方指定保留的进程），最稳。
+  param([int[]]$KeepProcessIds = @())
+  $ownPid = $PID
+  $keep = New-Object System.Collections.Generic.HashSet[int]
+  foreach ($k in $KeepProcessIds) { $keep.Add([int]$k) }
+  $killed = New-Object System.Collections.Generic.List[int]
+  try {
+    $processes = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.exe'" `
+      -ErrorAction Stop
+    foreach ($process in $processes) {
+      $pid2 = [int]$process.ProcessId
+      if ($pid2 -eq $ownPid) { continue }
+      if ($keep.Contains($pid2)) { continue }
+      try {
+        Stop-Process -Id $pid2 -Force -ErrorAction Stop
+        $killed.Add($pid2)
+      } catch {
+        # PowerShell 的 Stop-Process 在某些受限 token 下会拒绝（虽然同用户）。
+        # 回退到 taskkill（走 native Win32，部分 token 受限场景也能 kill）。
+        try {
+          $tk = & taskkill.exe /F /PID $pid2 2>&1
+          if ($LASTEXITCODE -eq 0) { $killed.Add($pid2) }
+        } catch {}
+      }
+    }
+  } catch {
+    Write-Warning "Could not close the Dream Skin tray automatically: $($_.Exception.Message)"
+  }
+  if ($killed.Count -gt 0) {
+    Write-Host ("Closed Dream Skin tray process(es): " + ($killed -join ', '))
+  }
+}
+
+function Wait-DreamSkinTrayInactive {
+  param([int]$TimeoutSeconds = 5)
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    if (-not (Test-DreamSkinTrayActive)) { return $true }
+    Start-Sleep -Milliseconds 200
+  }
+  return -not (Test-DreamSkinTrayActive)
+}
+
 function Get-DreamSkinCodexProcesses {
   param([Parameter(Mandatory = $true)][object]$Codex)
   return @(Get-CimInstance Win32_Process -Filter "Name = 'ChatGPT.exe'" -ErrorAction SilentlyContinue |
@@ -792,14 +839,14 @@ function Stop-DreamSkinCodex {
     try { [void](Get-Process -Id $item.ProcessId -ErrorAction Stop).CloseMainWindow() } catch {}
   }
 
-  $deadline = (Get-Date).AddSeconds(15)
+  $deadline = (Get-Date).AddSeconds(8)
   while ((Get-DreamSkinCodexProcesses -Codex $Codex).Count -gt 0 -and (Get-Date) -lt $deadline) {
     Start-Sleep -Milliseconds 250
   }
   $remaining = Get-DreamSkinCodexProcesses -Codex $Codex
   if ($remaining.Count -eq 0) { return }
   if (-not $AllowForce) {
-    throw 'Codex did not close within 15 seconds. Close it manually or explicitly authorize a forced restart.'
+    throw 'Codex did not close within 8 seconds. Close it manually or explicitly authorize a forced restart.'
   }
   foreach ($item in $remaining) {
     $current = Get-CimInstance Win32_Process -Filter "ProcessId = $([int]$item.ProcessId)" -ErrorAction SilentlyContinue

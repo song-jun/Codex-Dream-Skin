@@ -18,6 +18,40 @@ try {
   if ($registeredInstalls.Count -eq 0) {
     throw 'The official OpenAI.Codex Store package is not installed or its identity cannot be validated.'
   }
+  # Auto-close tray + Codex in parallel before install/reinstall.
+  # Tray close is a synchronous powershell kill on this process; Codex close is a separate
+  # heavy operation (15s graceful close + force kill) that we hand off to a background
+  # powershell so the install flow does not block on it.
+  $codexCloseProc = $null
+  try {
+    $codexCloseProc = Start-Process -FilePath (Get-Command powershell.exe -ErrorAction Stop).Source `
+      -ArgumentList @(
+        '-NoProfile','-ExecutionPolicy','RemoteSigned','-File',
+        (Join-Path $PSScriptRoot 'close-codex-background.ps1')
+      ) `
+      -PassThru -WindowStyle Hidden
+  } catch {
+    Write-Warning ("Could not launch background Codex closer, falling back to inline: " + $_.Exception.Message)
+  }
+
+  Stop-DreamSkinTrayProcess -KeepProcessIds @($codexCloseProc.Id)
+  if (-not (Wait-DreamSkinTrayInactive -TimeoutSeconds 2)) {
+    throw 'The Dream Skin tray did not release its mutex within 2 seconds. Right-click the tray icon and choose Quit, then run this script again.'
+  }
+
+  if ($null -ne $codexCloseProc) {
+    # Wait for the background Codex closer; if it does not finish in 10s, continue anyway
+    # (we re-check process state below and abort if Codex is still alive).
+    if (-not $codexCloseProc.WaitForExit(10000)) {
+      try { Stop-Process -Id $codexCloseProc.Id -Force -ErrorAction SilentlyContinue } catch {}
+      Write-Warning 'Background Codex close did not finish within 10 seconds; continuing.'
+    }
+  } else {
+    foreach ($registeredCodex in $registeredInstalls) {
+      Stop-DreamSkinCodex -Codex $registeredCodex -AllowForce
+    }
+  }
+
   foreach ($registeredCodex in $registeredInstalls) {
     if ((Get-DreamSkinCodexProcesses -Codex $registeredCodex).Count -gt 0) {
       throw 'Close Codex before installing Dream Skin so config.toml cannot change during the transaction.'
