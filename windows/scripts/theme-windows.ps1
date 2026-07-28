@@ -385,6 +385,31 @@ function Get-DreamSkinSavedThemes {
   return @($themes | Sort-Object Name)
 }
 
+function Remove-DreamSkinSavedTheme {
+  param(
+    [Parameter(Mandatory = $true)][string]$ThemeDirectory,
+    [string]$StateRoot = (Join-Path $env:LOCALAPPDATA 'CodexDreamSkin')
+  )
+  $paths = Get-DreamSkinThemePaths -StateRoot $StateRoot
+  Ensure-DreamSkinManagedDirectory -Path $paths.Root -Root $paths.Root
+  Ensure-DreamSkinManagedDirectory -Path $paths.Saved -Root $paths.Root
+  $directory = [System.IO.Path]::GetFullPath($ThemeDirectory).TrimEnd('\')
+  $savedRoot = [System.IO.Path]::GetFullPath($paths.Saved).TrimEnd('\')
+  $parent = [System.IO.Path]::GetDirectoryName($directory)
+  if (-not (Test-DreamSkinThemePathWithin -Path $directory -Root $paths.Saved) -or
+      -not $parent -or
+      -not $parent.Equals($savedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Saved theme must be a direct child of the Dream Skin themes folder.'
+  }
+  foreach ($item in Get-ChildItem -LiteralPath $directory -Recurse -Force -ErrorAction Stop) {
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw "Refusing to delete a saved theme containing a junction or symbolic link: $($item.FullName)"
+    }
+  }
+  Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction Stop
+  return $true
+}
+
 function Use-DreamSkinSavedTheme {
   param(
     [Parameter(Mandatory = $true)][string]$ThemeDirectory,

@@ -54,6 +54,117 @@ try {
     )
   }
 
+  function Show-DreamSkinNotification {
+    param(
+      [Parameter(Mandatory = $true)][int]$DurationMs,
+      [Parameter(Mandatory = $true)][string]$Title,
+      [Parameter(Mandatory = $true)][string]$Message,
+      [System.Windows.Forms.ToolTipIcon]$Icon = [System.Windows.Forms.ToolTipIcon]::Info
+    )
+
+    if ($null -ne $script:DreamSkinNotificationForm) {
+      try { $script:DreamSkinNotificationForm.Close() } catch {}
+      try { $script:DreamSkinNotificationForm.Dispose() } catch {}
+      $script:DreamSkinNotificationForm = $null
+    }
+
+    $form = [System.Windows.Forms.Form]::new()
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
+    $form.ShowInTaskbar = $false
+    $form.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual
+    $form.TopMost = $true
+    $form.BackColor = [System.Drawing.Color]::FromArgb(24, 27, 36)
+    $form.ClientSize = [System.Drawing.Size]::new(360, 92)
+    $workingArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+    $form.Location = [System.Drawing.Point]::new(
+      $workingArea.Right - $form.Width - 16,
+      $workingArea.Bottom - $form.Height - 16
+    )
+
+    $trayImage = $null
+    try {
+      $trayImage = $notify.Icon.ToBitmap()
+    } catch {
+      # Windows PowerShell can fail on PNG-compressed ICO frames; decode the embedded PNG directly.
+      $iconBytes = [System.IO.File]::ReadAllBytes($trayIconPath)
+      $pngLength = [BitConverter]::ToInt32($iconBytes, 14)
+      $pngOffset = [BitConverter]::ToInt32($iconBytes, 18)
+      if ($pngOffset -lt 22 -or $pngLength -le 0 -or $pngOffset + $pngLength -gt $iconBytes.Length) {
+        throw 'The Dream Skin tray icon contains an invalid image frame.'
+      }
+      $pngStream = [System.IO.MemoryStream]::new($iconBytes, $pngOffset, $pngLength, $false)
+      $pngSource = $null
+      try {
+        $pngSource = [System.Drawing.Bitmap]::new($pngStream)
+        $trayImage = [System.Drawing.Bitmap]::new($pngSource)
+      } finally {
+        if ($null -ne $pngSource) { $pngSource.Dispose() }
+        $pngStream.Dispose()
+      }
+    }
+    $trayPicture = [System.Windows.Forms.PictureBox]::new()
+    $trayPicture.Location = [System.Drawing.Point]::new(14, 10)
+    $trayPicture.Size = [System.Drawing.Size]::new(22, 22)
+    $trayPicture.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+    $trayPicture.Image = $trayImage
+
+    $titleLabel = [System.Windows.Forms.Label]::new()
+    $titleLabel.AutoSize = $false
+    $titleLabel.Location = [System.Drawing.Point]::new(46, 9)
+    $titleLabel.Size = [System.Drawing.Size]::new(296, 24)
+    $titleLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleLeft
+    $titleLabel.ForeColor = [System.Drawing.Color]::White
+    $titleLabel.Font = [System.Drawing.Font]::new('Segoe UI', 10, [System.Drawing.FontStyle]::Regular)
+    $titleLabel.Text = $Title
+
+    $messageIcon = $null
+    if ($Icon -eq [System.Windows.Forms.ToolTipIcon]::Info) {
+      $messageIcon = [System.Drawing.SystemIcons]::Information.ToBitmap()
+    } elseif ($Icon -eq [System.Windows.Forms.ToolTipIcon]::Warning) {
+      $messageIcon = [System.Drawing.SystemIcons]::Warning.ToBitmap()
+    } elseif ($Icon -eq [System.Windows.Forms.ToolTipIcon]::Error) {
+      $messageIcon = [System.Drawing.SystemIcons]::Error.ToBitmap()
+    }
+    $messagePicture = $null
+    if ($null -ne $messageIcon) {
+      $messagePicture = [System.Windows.Forms.PictureBox]::new()
+      $messagePicture.Location = [System.Drawing.Point]::new(17, 47)
+      $messagePicture.Size = [System.Drawing.Size]::new(18, 18)
+      $messagePicture.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+      $messagePicture.Image = $messageIcon
+    }
+
+    $messageLabel = [System.Windows.Forms.Label]::new()
+    $messageLabel.AutoSize = $false
+    $messageLabel.Location = [System.Drawing.Point]::new(46, 37)
+    $messageLabel.Size = [System.Drawing.Size]::new(296, 38)
+    $messageLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleLeft
+    $messageLabel.ForeColor = [System.Drawing.Color]::FromArgb(230, 234, 242)
+    $messageLabel.Font = [System.Drawing.Font]::new('Segoe UI', 9, [System.Drawing.FontStyle]::Regular)
+    $messageLabel.Text = $Message
+
+    $form.Controls.Add($trayPicture)
+    $form.Controls.Add($titleLabel)
+    if ($null -ne $messagePicture) { $form.Controls.Add($messagePicture) }
+    $form.Controls.Add($messageLabel)
+
+    $timer = [System.Windows.Forms.Timer]::new()
+    $timer.Interval = [Math]::Max(1000, $DurationMs)
+    $timer.add_Tick({
+      $timer.Stop()
+      $timer.Dispose()
+      if (-not $form.IsDisposed) { $form.Close() }
+    }.GetNewClosure())
+    $form.add_FormClosed({
+      if ($script:DreamSkinNotificationForm -eq $form) {
+        $script:DreamSkinNotificationForm = $null
+      }
+    }.GetNewClosure())
+    $script:DreamSkinNotificationForm = $form
+    $form.Show()
+    $timer.Start()
+  }
+
   function Start-DreamSkinPowerShell {
     param([Parameter(Mandatory = $true)][string]$Script, [string[]]$Arguments = @())
     $scriptToken = ConvertTo-DreamSkinProcessArgument -Value $Script
@@ -109,7 +220,8 @@ try {
         $null = Show-DreamSkinOperationUi -Session $session -Phase finish -Token $begin.Token `
           -UiState success -Message '已开始应用皮肤' -TimeoutMs 1500
       }
-      $notify.ShowBalloonTip(1800, 'Codex Dream Skin', '正在应用皮肤…', [System.Windows.Forms.ToolTipIcon]::Info)
+      Show-DreamSkinNotification -DurationMs 1800 -Title 'Codex Dream Skin' `
+        -Message '正在应用皮肤…' -Icon ([System.Windows.Forms.ToolTipIcon]::Info)
     }
     # Match macOS menubar: pause = mark + live remove; resume = clear pause + re-apply.
     if ($paused) {
@@ -126,12 +238,8 @@ try {
           $null = Show-DreamSkinOperationUi -Session $session -Phase finish -Token $begin.Token `
             -UiState success -Message '已开始重新应用皮肤' -TimeoutMs 1500
         }
-        $notify.ShowBalloonTip(
-          1800,
-          'Codex Dream Skin',
-          '正在重新应用皮肤…',
-          [System.Windows.Forms.ToolTipIcon]::Info
-        )
+        Show-DreamSkinNotification -DurationMs 1800 -Title 'Codex Dream Skin' `
+          -Message '正在重新应用皮肤…' -Icon ([System.Windows.Forms.ToolTipIcon]::Info)
       }
     } else {
       $null = Add-DreamSkinTrayItem -Items $menu.Items -Text '暂停皮肤' -Action {
@@ -143,7 +251,8 @@ try {
         } else {
           [System.Windows.Forms.ToolTipIcon]::Warning
         }
-        $notify.ShowBalloonTip(2800, 'Codex Dream Skin', $removal.Message, $icon)
+        Show-DreamSkinNotification -DurationMs 2800 -Title 'Codex Dream Skin' `
+          -Message $removal.Message -Icon $icon
         if (-not $removal.Removed -and $removal.Attempted) {
           Show-DreamSkinTrayError -Message $removal.Message
         }
@@ -158,7 +267,8 @@ try {
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
           $null = Set-DreamSkinActiveTheme -ImagePath $dialog.FileName -Theme $null -StateRoot $StateRoot
           Set-DreamSkinPaused -Paused $false -StateRoot $StateRoot | Out-Null
-          $notify.ShowBalloonTip(1800, 'Codex Dream Skin', '背景图已更新。', [System.Windows.Forms.ToolTipIcon]::Info)
+          Show-DreamSkinNotification -DurationMs 1800 -Title 'Codex Dream Skin' `
+            -Message '背景图已更新。' -Icon ([System.Windows.Forms.ToolTipIcon]::Info)
         }
       } finally {
         $dialog.Dispose()
@@ -168,7 +278,8 @@ try {
       $name = [Microsoft.VisualBasic.Interaction]::InputBox('输入主题名称：', '保存 Codex Dream Skin 主题', '')
       if ($name.Trim()) {
         $saved = Save-DreamSkinCurrentTheme -Name $name -StateRoot $StateRoot
-        $notify.ShowBalloonTip(1800, 'Codex Dream Skin', "已保存：$($saved.Theme.name)", [System.Windows.Forms.ToolTipIcon]::Info)
+        Show-DreamSkinNotification -DurationMs 1800 -Title 'Codex Dream Skin' `
+          -Message "已保存：$($saved.Theme.name)" -Icon ([System.Windows.Forms.ToolTipIcon]::Info)
       }
     }
 
@@ -185,10 +296,32 @@ try {
         $savedAction = {
           $null = Use-DreamSkinSavedTheme -ThemeDirectory $savedPath -StateRoot $StateRoot
           Set-DreamSkinPaused -Paused $false -StateRoot $StateRoot | Out-Null
-          $notify.ShowBalloonTip(1800, 'Codex Dream Skin', "已应用：$savedName", [System.Windows.Forms.ToolTipIcon]::Info)
+          Show-DreamSkinNotification -DurationMs 1800 -Title 'Codex Dream Skin' `
+            -Message "已应用：$savedName" -Icon ([System.Windows.Forms.ToolTipIcon]::Info)
         }.GetNewClosure()
         $null = Add-DreamSkinTrayItem -Items $savedMenu.DropDownItems -Text $savedName -Action $savedAction
       }
+      [void]$savedMenu.DropDownItems.Add([System.Windows.Forms.ToolStripSeparator]::new())
+      $deleteMenu = [System.Windows.Forms.ToolStripMenuItem]::new('删除已保存主题')
+      foreach ($saved in $savedThemes) {
+        $deletePath = $saved.Path
+        $deleteName = $saved.Name
+        $deleteAction = {
+          $confirmation = [System.Windows.Forms.MessageBox]::Show(
+            ('确定删除已保存主题 [' + $deleteName + ']？此操作不可撤销。'),
+            '删除 Codex Dream Skin 主题',
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning,
+            [System.Windows.Forms.MessageBoxDefaultButton]::Button2
+          )
+          if ($confirmation -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+          Remove-DreamSkinSavedTheme -ThemeDirectory $deletePath -StateRoot $StateRoot | Out-Null
+          Show-DreamSkinNotification -DurationMs 1800 -Title 'Codex Dream Skin' `
+            -Message "已删除：${deleteName}" -Icon ([System.Windows.Forms.ToolTipIcon]::Info)
+        }.GetNewClosure()
+        $null = Add-DreamSkinTrayItem -Items $deleteMenu.DropDownItems -Text $deleteName -Action $deleteAction
+      }
+      [void]$savedMenu.DropDownItems.Add($deleteMenu)
     }
     [void]$menu.Items.Add($savedMenu)
 

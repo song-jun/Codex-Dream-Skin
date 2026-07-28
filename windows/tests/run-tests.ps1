@@ -684,6 +684,11 @@ try {
     throw 'Saved theme creation or discovery failed.'
   }
   $null = Use-DreamSkinSavedTheme -ThemeDirectory $savedTheme.Directory -StateRoot $themeStateRoot
+  $deletableTheme = Save-DreamSkinCurrentTheme -Name '待删除主题' -StateRoot $themeStateRoot
+  if (-not (Remove-DreamSkinSavedTheme -ThemeDirectory $deletableTheme.Directory -StateRoot $themeStateRoot) -or
+    (Test-Path -LiteralPath $deletableTheme.Directory)) {
+    throw 'Saved theme deletion did not remove the selected theme directory.'
+  }
 
   $outsideTheme = Join-Path $temporaryRoot 'outside-theme'
   New-Item -ItemType Directory -Path $outsideTheme | Out-Null
@@ -763,6 +768,22 @@ try {
   $traySource = Read-DreamSkinUtf8File -Path (Join-Path $Root 'scripts\tray-dream-skin.ps1')
   foreach ($requiredTrayAction in @('System.Windows.Forms.NotifyIcon', '暂停皮肤', '继续显示皮肤', '更换背景图', '已保存主题', '完全恢复 Codex')) {
     if (-not $traySource.Contains($requiredTrayAction)) { throw "Tray action is missing: $requiredTrayAction" }
+  }
+  foreach ($requiredTrayNotificationToken in @(
+    'function Show-DreamSkinNotification',
+    '$notify.Icon = [System.Drawing.Icon]::new($trayIconPath)',
+    '[BitConverter]::ToInt32($iconBytes, 14)',
+    '[System.Drawing.Bitmap]::new($pngSource)',
+    '[System.Drawing.SystemIcons]::Information.ToBitmap()',
+    '[System.Drawing.Size]::new(18, 18)',
+    '[System.Drawing.ContentAlignment]::MiddleLeft'
+  )) {
+    if (-not $traySource.Contains($requiredTrayNotificationToken)) {
+      throw "Custom tray notification is missing required token: $requiredTrayNotificationToken"
+    }
+  }
+  if ($traySource.Contains('ShowBalloonTip')) {
+    throw 'Tray notifications must not use the native PowerShell balloon host icon.'
   }
   if (-not $traySource.Contains('Invoke-DreamSkinLiveRemove') -or
     -not $traySource.Contains("Set-DreamSkinPaused -Paused `$true") -or
