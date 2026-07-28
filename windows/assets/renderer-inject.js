@@ -409,6 +409,42 @@
     attributes: true,
     attributeFilter: ["class", "data-theme", "data-appearance", "data-color-mode"],
   });
+
+  // 首页聚焦输入框时，Codex 默认会 scrollIntoView 把 body 滚到最底，把标题推出可视区。
+  // 这里在首页路由下拦截 focusin，保留焦点但把所有可能滚动的祖先节点重置到顶部。
+  const resetHomeScroll = () => {
+    if (window.__CODEX_DREAM_SKIN_DISABLED__) return;
+    const home = document.querySelector('[role="main"].dream-home');
+    if (!home) return;
+    const reset = (node) => {
+      if (!node) return;
+      try {
+        if (node.scrollTop !== 0) node.scrollTop = 0;
+      } catch {}
+    };
+    reset(window);
+    reset(document);
+    reset(document.documentElement);
+    reset(document.body);
+    reset(home);
+    for (let el = home.parentElement; el && el !== document.body; el = el.parentElement) {
+      if (el.scrollHeight > el.clientHeight + 1) reset(el);
+    }
+  };
+  document.addEventListener("focusin", (event) => {
+    const home = document.querySelector('[role="main"].dream-home');
+    if (!home) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!home.contains(target)) return;
+    // 持续重置 1.2 秒，压制 Codex 多次 scrollIntoView 调用（rAF 经常抢不过）。
+    let ticks = 0;
+    const intervalId = setInterval(() => {
+      resetHomeScroll();
+      ticks += 1;
+      if (ticks >= 24) clearInterval(intervalId);
+    }, 50);
+  }, true);
   const timer = setInterval(ensure, 5000);
   window[STATE_KEY] = {
     ensure, cleanup, observer, timer, scheduler, artUrl, profile, config, installToken, version: "1.2.0",

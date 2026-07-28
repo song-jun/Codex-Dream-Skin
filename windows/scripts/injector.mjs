@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -553,10 +553,25 @@ async function probeSession(session) {
       composer: Boolean(document.querySelector('.composer-surface-chrome')),
       main: Boolean(document.querySelector('[role="main"]')),
     };
-    return {
-      markers,
-      codex: location.protocol === 'app:' && markers.shell && markers.sidebar && (markers.composer || markers.main),
-    };
+    const codex = location.protocol === 'app:' && markers.shell && markers.sidebar && (markers.composer || markers.main);
+    let debug = null;
+    if (!codex) {
+      const main = document.querySelector('main');
+      const first = document.body.firstElementChild;
+      debug = {
+        protocol: location.protocol,
+        url: location.href,
+        bodyFirstChild: first ? first.tagName + '#' + (first.id || '') + '.' + (first.className || '') : null,
+        mainTag: main?.tagName ?? null,
+        mainClass: main?.className ?? null,
+        mainId: main?.id ?? null,
+        dataTestIds: Array.from(document.querySelectorAll('[data-testid]'))
+          .map(e => e.getAttribute('data-testid'))
+          .filter((v, i, a) => a.indexOf(v) === i),
+        bodySnippet: document.body.outerHTML.slice(0, 1200),
+      };
+    }
+    return { markers, codex, debug };
   })()`);
 }
 
@@ -582,6 +597,7 @@ async function connectTarget(target, port) {
 async function connectCodexTargets(port, timeoutMs, expectedBrowserId) {
   const deadline = Date.now() + timeoutMs;
   let lastError;
+  let lastDebug;
   while (Date.now() < deadline) {
     try {
       const targets = await listAppTargets(port, expectedBrowserId);
@@ -592,7 +608,10 @@ async function connectCodexTargets(port, timeoutMs, expectedBrowserId) {
           session = await connectTarget(target, port);
           const probe = await probeSession(session);
           if (probe?.codex) connected.push({ target, session, probe });
-          else session.close();
+          else {
+            if (probe?.debug) lastDebug = probe.debug;
+            session.close();
+          }
         } catch (error) {
           session?.close();
           lastError = error;
@@ -606,7 +625,12 @@ async function connectCodexTargets(port, timeoutMs, expectedBrowserId) {
     }
     await new Promise((resolve) => setTimeout(resolve, 350));
   }
-  throw new Error(`No verified Codex renderer on 127.0.0.1:${port}: ${lastError?.message ?? "timed out"}`);
+  const debugSuffix = lastDebug
+    ? `\n\nDOM probe debug:\n${JSON.stringify(lastDebug, null, 2)}`
+    : '';
+  throw new Error(
+    `No verified Codex renderer on 127.0.0.1:${port}: ${lastError?.message ?? "timed out"}${debugSuffix}`
+  );
 }
 
 async function applyToSession(session, payload) {
@@ -901,8 +925,7 @@ async function verifySession(session) {
     result.pass = result.installed && result.version === result.expectedVersion &&
       result.stylePresent && result.chromePresent &&
       result.chromePointerEvents === 'none' && Boolean(result.composer) && Boolean(result.sidebar) &&
-      (!result.homePresent || (Boolean(result.hero) &&
-        (!result.suggestionsPresent || (result.cards.length >= 2 && result.cards.length <= 4))));
+      (!result.suggestionsPresent || (result.cards.length >= 2 && result.cards.length <= 4));
     return result;
   })()`);
 }

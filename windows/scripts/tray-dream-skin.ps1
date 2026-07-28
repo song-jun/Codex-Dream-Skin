@@ -2,26 +2,39 @@
 param([int]$Port = 9335)
 
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-Add-Type -AssemblyName Microsoft.VisualBasic
-. (Join-Path $PSScriptRoot 'common-windows.ps1')
-. (Join-Path $PSScriptRoot 'theme-windows.ps1')
-
-Assert-DreamSkinPort -Port $Port
-$SkillRoot = Split-Path -Parent $PSScriptRoot
-$StateRoot = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin'
-$paths = Initialize-DreamSkinThemeStore -SkillRoot $SkillRoot -StateRoot $StateRoot
-$powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
-$startScript = Join-Path $PSScriptRoot 'start-dream-skin.ps1'
-$restoreScript = Join-Path $PSScriptRoot 'restore-dream-skin.ps1'
-
-$sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-$mutex = [System.Threading.Mutex]::new($false, "Local\CodexDreamSkin.$sid.Tray")
-$acquired = $false
 try {
-  try { $acquired = $mutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $acquired = $true }
-  if (-not $acquired) { exit 0 }
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
+  Add-Type -AssemblyName Microsoft.VisualBasic
+  . (Join-Path $PSScriptRoot 'common-windows.ps1')
+  . (Join-Path $PSScriptRoot 'theme-windows.ps1')
+
+  Assert-DreamSkinPort -Port $Port
+  $SkillRoot = Split-Path -Parent $PSScriptRoot
+  $StateRoot = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin'
+  $paths = Initialize-DreamSkinThemeStore -SkillRoot $SkillRoot -StateRoot $StateRoot
+  $powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
+  $startScript = Join-Path $PSScriptRoot 'start-dream-skin.ps1'
+  $restoreScript = Join-Path $PSScriptRoot 'restore-dream-skin.ps1'
+
+  $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  $mutex = [System.Threading.Mutex]::new($false, "Local\CodexDreamSkin.$sid.Tray")
+  $acquired = $false
+  try {
+    try { $acquired = $mutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $acquired = $true }
+    if (-not $acquired) {
+      # Another tray instance is already running (e.g. started by the installer).
+      # Show a modal message box so the user has visible feedback even though the
+      # console window is hidden / flashes briefly.
+      [void][System.Windows.Forms.MessageBox]::Show(
+        'Codex Dream Skin tray is already running.' + [Environment]::NewLine +
+        'Check the system tray area (bottom-right). You may need to expand the overflow area (^).',
+        'Codex Dream Skin',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+      )
+      exit 0
+    }
 
   $notify = [System.Windows.Forms.NotifyIcon]::new()
   $notify.Icon = [System.Drawing.SystemIcons]::Application
@@ -205,8 +218,22 @@ try {
     }
   })
   [System.Windows.Forms.Application]::Run()
-} finally {
-  if ($null -ne $notify) { $notify.Dispose() }
-  if ($acquired) { try { $mutex.ReleaseMutex() } catch {} }
-  $mutex.Dispose()
+  } finally {
+    if ($null -ne $notify) { $notify.Dispose() }
+    if ($acquired) { try { $mutex.ReleaseMutex() } catch {} }
+    $mutex.Dispose()
+  }
+} catch {
+  $logDir = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin'
+  $null = New-Item -ItemType Directory -Path $logDir -Force
+  $logPath = Join-Path $logDir 'tray-error.log'
+  $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+  "[$timestamp] $($_.Exception | Out-String)" | Out-File -FilePath $logPath -Append -Encoding utf8
+  $msg = "Codex Dream Skin tray failed to start.`r`n`r`n$($_.Exception.Message)`r`n`r`nLog: $logPath"
+  [void][System.Windows.Forms.MessageBox]::Show(
+    $msg,
+    'Codex Dream Skin',
+    [System.Windows.Forms.MessageBoxButtons]::OK,
+    [System.Windows.Forms.MessageBoxIcon]::Error
+  )
 }

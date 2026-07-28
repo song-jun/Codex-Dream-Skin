@@ -228,16 +228,17 @@ html.codex-dream-skin .dream-task [data-message-author-role] {
 /* 首页路由（.dream-home）：保持源图表现力，按图片焦点元数据选择语义安全区蒙层。 */
 /* The home route keeps the source image expressive, with a semantic safe-area
    wash selected from image focus metadata. */
-/* 首页 .dream-home：内容最大宽度、横向溢出隐藏、背景。 */
+/* 首页 .dream-home：内容最大宽度、横向溢出隐藏、背景。
+   min-height:0 避免跟 .dream-home > div:first-child 形成循环依赖（100% 解析为 0 导致主区域塌掉）。 */
 html.codex-dream-skin .dream-home {
   --thread-content-max-width: min(1180px, calc(100cqw - 56px)) !important;
-  overflow-x: hidden !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
   background: var(--dream-surface) !important;
 }
 
-/* 首页第一层容器：最小高度 + 顶部内边距。 */
+/* 首页第一层容器：顶部内边距（去掉原来的 min-height: 100%，改走内容自然高度）。 */
 .dream-home > div:first-child {
-  min-height: 100% !important;
   padding-top: 24px !important;
 }
 
@@ -385,16 +386,31 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   overflow: visible !important;
 }
 
-/* 首页建议卡：16px 圆角、边框、表面背景、阴影、悬停过渡。 */
+/* 首页建议卡：16px 圆角、边框、表面背景、阴影、悬停过渡。
+   flex-direction:column + align-items/justify-content:center 让图标徽章与文字整体居中。
+   子元素 align-self:center 防止 Codex 原生 width:100% 把图标顶到左边。 */
 .dream-home .group\/home-suggestions button {
   min-height: 112px !important;
   padding: 16px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  text-align: center !important;
   color: var(--dream-text) !important;
   border: 1px solid var(--dream-line-soft) !important;
   border-radius: 16px !important;
   background: var(--dream-surface-raised) !important;
   box-shadow: 0 8px 24px color-mix(in oklab, var(--dream-accent) 6%, transparent) !important;
   transition: transform 180ms cubic-bezier(.22, 1, .36, 1), border-color 180ms cubic-bezier(.22, 1, .36, 1), background-color 180ms cubic-bezier(.22, 1, .36, 1) !important;
+}
+
+/* 强制每个子项水平居中（覆盖 Codex 原生 align-self:flex-start / width:100%）。 */
+.dream-home .group\/home-suggestions button > * {
+  align-self: center !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 /* 建议卡悬停：上移 2px + 边框 + 强调色软背景。 */
