@@ -130,6 +130,7 @@ function Install-DreamSkinRuntimeEngine {
     'assets\dream-skin.css',
     'assets\renderer-inject.js',
     'assets\theme.json',
+    'assets\dream-skin.ico',
     'presets\preset-gothic-void-crusade\background.jpg',
     'presets\preset-gothic-void-crusade\theme.json',
     'scripts\common-windows.ps1',

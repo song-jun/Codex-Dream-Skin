@@ -16,6 +16,7 @@ try {
   $powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
   $startScript = Join-Path $PSScriptRoot 'start-dream-skin.ps1'
   $restoreScript = Join-Path $PSScriptRoot 'restore-dream-skin.ps1'
+  $trayIconPath = Join-Path $SkillRoot 'assets\dream-skin.ico'
 
   $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
   $mutex = [System.Threading.Mutex]::new($false, "Local\CodexDreamSkin.$sid.Tray")
@@ -37,7 +38,7 @@ try {
     }
 
   $notify = [System.Windows.Forms.NotifyIcon]::new()
-  $notify.Icon = [System.Drawing.SystemIcons]::Application
+  $notify.Icon = [System.Drawing.Icon]::new($trayIconPath)
   $notify.Text = 'Codex Dream Skin'
   $notify.Visible = $true
   $menu = [System.Windows.Forms.ContextMenuStrip]::new()
