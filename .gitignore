@@ -9,6 +9,7 @@ docs/readme-preview.html
 release/
 runtime/
 .workbuddy/
+.codegraph/
 
 # local agent context
 AGENTS.md
