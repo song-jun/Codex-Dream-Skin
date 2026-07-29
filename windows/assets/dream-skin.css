@@ -218,8 +218,8 @@ html.codex-dream-skin.dream-task-off .dream-task::before {
   display: none;
 }
 
-/* 任务页直接子元素提到背景层之上（z-index:1）。 */
-html.codex-dream-skin .dream-task > * {
+/* 任务页内容层提到背景层之上（z-index:1），保留原生固定顶栏的定位。 */
+html.codex-dream-skin .dream-task > *:not(header.app-header-tint) {
   position: relative;
   z-index: 1;
 }
