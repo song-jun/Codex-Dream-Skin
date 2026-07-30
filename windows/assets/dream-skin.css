@@ -156,13 +156,13 @@ html.codex-dream-skin main.main-surface {
   box-shadow: inset 0 1px color-mix(in oklab, var(--dream-surface-raised) 72%, transparent) !important;
 }
 
-/* 顶部固定栏（header.app-header-tint）：文字、半透明背景、模糊、边框。 */
+/* 顶部固定栏（header.app-header-tint）：文字、透明背景、无模糊。 */
 html.codex-dream-skin main.main-surface > header.app-header-tint {
   /* Preserve Codex's native fixed header geometry and side-panel controls. */
   color: var(--dream-text) !important;
-  background: color-mix(in oklab, var(--dream-surface) 70%, transparent) !important;
+  background: transparent !important;
   border-color: var(--dream-line-soft) !important;
-  backdrop-filter: blur(12px) saturate(1.05) !important;
+  backdrop-filter: none !important;
 }
 
 /* 暗色下的应用菜单顶栏（group/application-menu-top-bar）：宽图会延伸到主区域外的
@@ -1162,11 +1162,11 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   display: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell)) body {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell)) body {
   background: transparent !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))::after {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))::after {
   content: "";
   display: block;
   position: fixed;
@@ -1177,7 +1177,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   background-image: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
   aside.app-shell-left-panel {
   background: transparent !important;
   border: 0 !important;
@@ -1187,11 +1187,11 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
   main.main-surface,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
   main.main-surface > header.app-header-tint,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
   [class~="group/application-menu-top-bar"] {
   background: transparent !important;
   border: 0 !important;
@@ -1209,4 +1209,14 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   main.main-surface .thread-scroll-container {
   background: transparent !important;
   box-shadow: none !important;
+}
+
+/* Keep every art-mode header transparent while settings or another route is
+   mounting, before the more specific route surface selectors settle. */
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) .app-header-tint {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
 }
