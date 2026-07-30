@@ -1036,7 +1036,7 @@ html.codex-dream-skin:has(main.main-surface.dream-home-shell)
   background: var(--dream-shell-mask) !important;
   border: 0 !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
+  box-shadow: inset -1px 0 rgba(132, 148, 232, .42) !important;
   backdrop-filter: none !important;
 }
 
@@ -1085,7 +1085,7 @@ html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
   aside.app-shell-left-panel {
   border: 0 !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
+  box-shadow: inset -1px 0 rgba(132, 148, 232, .42) !important;
   backdrop-filter: none !important;
 }
 
