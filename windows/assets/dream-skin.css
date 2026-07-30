@@ -563,7 +563,7 @@ html.codex-dream-skin [class~="px-toolbar"]:has(.composer-surface-chrome) {
 /* 输入区编辑器（ProseMirror）：文字色 + 光标色。 */
 html.codex-dream-skin .ProseMirror {
   color: var(--dream-text) !important;
-  caret-color: var(--dream-accent) !important;
+  caret-color: var(--dream-send-bg) !important;
 }
 
 /* 主按钮（如发送按钮 bg-token-foreground）：强调色背景 + 反色文字 + 发光环，提交按钮更鲜明。 */
