@@ -1029,8 +1029,8 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
   }
 }
 
-/* Route-based surface contract: home uses the standard composition regardless
-   of image ratio, while message routes use the theme-specific mask strength. */
+/* Legacy route defaults; the unified full-window contract below overrides the
+   shell surfaces for both art modes. */
 html.codex-dream-skin:has(main.main-surface.dream-home-shell)
   aside.app-shell-left-panel {
   background: var(--dream-shell-mask) !important;
@@ -1121,4 +1121,92 @@ html.codex-dream-skin main.main-surface,
 html.codex-dream-skin main.main-surface > header.app-header-tint,
 html.codex-dream-skin aside.app-shell-left-panel {
   transition: none !important;
+}
+
+/* Unified art-mode contract: paint the artwork once at the root, keep shell
+   surfaces transparent, and add one full-window mask only on non-home routes. */
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell) body {
+  background: transparent !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
+  aside.app-shell-left-panel {
+  background: transparent !important;
+  border: 0 !important;
+  border-right: 1px solid color-mix(in oklab, var(--color-token-foreground) 25%, transparent) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
+  main.main-surface,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
+  main.main-surface > header.app-header-tint,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
+  [class~="group/application-menu-top-bar"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
+  .dream-home {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)::after {
+  content: none !important;
+  display: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell)) body {
+  background: transparent !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))::after {
+  content: "";
+  display: block;
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background: var(--dream-message-mask) !important;
+  background-image: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+  aside.app-shell-left-panel {
+  background: transparent !important;
+  border: 0 !important;
+  border-right: 1px solid color-mix(in oklab, var(--color-token-foreground) 25%, transparent) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+  main.main-surface,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+  main.main-surface > header.app-header-tint,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-task:not(.dream-home-shell))
+  [class~="group/application-menu-top-bar"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
+  main.main-surface .app-shell-main-content-frame,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
+  main.main-surface .app-shell-main-content-viewport,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
+  main.main-surface [role="main"],
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
+  main.main-surface .thread-scroll-container {
+  background: transparent !important;
+  box-shadow: none !important;
 }
