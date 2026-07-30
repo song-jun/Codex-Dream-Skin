@@ -799,7 +799,10 @@ try {
     'background: rgba(25, 27, 45, .86) !important',
     'dream-art-wide main.main-surface',
     '.dream-task > *:not(header.app-header-tint)',
-    ':is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))'
+    ':is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))',
+    'html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)',
+    'html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))',
+    'html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)::after'
   )) {
     if (-not $css.Contains($requiredCss)) { throw "Windows immersive CSS is missing: $requiredCss" }
   }
