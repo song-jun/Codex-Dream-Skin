@@ -11,6 +11,8 @@
   /* 遮罩强度：浅色和暗色分别控制，0 为透明，1 为原始强度。 */
   --dream-mask-opacity-light: .70;
   --dream-mask-color: oklch(0.98 0.004 35);
+  --dream-shell-mask: color-mix(in oklab, var(--dream-surface) 70%, transparent);
+  --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-light)), transparent);
   --dream-send-bg: #C84F70;
   --dream-composer-border: rgba(190, 103, 131, .82);
   /* 全屏背景图透明度：让图片覆盖整个 Codex，同时保留界面可读性。 */
@@ -49,6 +51,8 @@
   --dream-composer-bg: #2B2C42;
   --dream-mask-opacity-dark: .50;
   --dream-mask-color: #2B2C42;
+  --dream-shell-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-dark)), transparent);
+  --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-dark)), transparent);
   /* 暗色全屏背景提高可见度，面板透明度负责控制文字对比度。 */
   --dream-global-art-opacity: .72;
   --dream-send-bg: #6C7EEB;
@@ -292,7 +296,7 @@ html.codex-dream-skin.dream-art-standard .dream-home {
 
 /* 暗色标准图片保留顶部和侧栏的阅读保护，避免菜单文字融入背景。 */
 html.codex-dream-skin.dream-theme-dark.dream-art-standard main.main-surface > header.app-header-tint {
-  background: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-dark)), transparent) !important;
+  background: var(--dream-shell-mask) !important;
   border-bottom: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
@@ -305,7 +309,7 @@ html.codex-dream-skin.dream-theme-dark.dream-art-standard aside.app-shell-left-p
 
 /* 暗色宽图和标准图统一加深侧栏遮罩，避免背景图穿透导航文字。 */
 html.codex-dream-skin.dream-theme-dark:is(.dream-art-wide, .dream-art-standard) aside.app-shell-left-panel {
-  background: rgba(25, 27, 45, .86) !important;
+  background: var(--dream-shell-mask) !important;
   box-shadow: inset -1px 0 rgba(132, 148, 232, .42) !important;
 }
 
@@ -628,7 +632,14 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 
 /* 宽图沉浸态侧栏：半透明渐变背景，去掉边框/圆角/阴影/模糊。 */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel,
+  aside.app-shell-left-panel {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
   aside.app-shell-left-panel {
   background: linear-gradient(90deg,
@@ -646,6 +657,11 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   background: linear-gradient(90deg,
     var(--dream-task-immersive-sidebar),
     var(--dream-task-immersive-edge)) !important;
+}
+
+/* Dark wide-mode sidebar uses the same light mask as the fixed top bar. */
+html.codex-dream-skin.dream-theme-dark.dream-art-wide aside.app-shell-left-panel {
+  background: var(--dream-shell-mask) !important;
 }
 
 /* 宽图沉浸态侧栏 ::after：透明，避免侧栏残留原生拖拽区背景。 */
@@ -875,7 +891,7 @@ html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface {
 }
 
 html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface > header.app-header-tint {
-  background: rgba(43, 44, 66, .28) !important;
+  background: var(--dream-shell-mask) !important;
   border-bottom: 1px solid rgba(132, 148, 232, .24) !important;
 }
 
@@ -886,10 +902,14 @@ html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface > header
    their hover states intact. */
 /* 沉浸态任务页置顶输入条（div.sticky:has(input)）及其 ::after：透明化。 */
 html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-ambient, .dream-task-banner)
-  main.main-surface:not(.dream-home-shell) div.sticky:has(input[type="text"]),
+  main.main-surface:not(:has(.dream-home)) div.sticky:has(input[type="text"]),
 html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-ambient, .dream-task-banner)
-  main.main-surface:not(.dream-home-shell) div.sticky:has(input[type="text"])::after {
+  main.main-surface:not(:has(.dream-home)) div.sticky:has(input[type="text"])::after {
   background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* 沉浸态任务页搜索输入框（div.no-drag:has(input)）：沉浸态背景 + 内描边。 */
@@ -1007,4 +1027,98 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
   }
+}
+
+/* Route-based surface contract: home uses the standard composition regardless
+   of image ratio, while message routes use the theme-specific mask strength. */
+html.codex-dream-skin:has(main.main-surface.dream-home-shell)
+  aside.app-shell-left-panel {
+  background: var(--dream-shell-mask) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface.dream-home-shell)
+  aside.app-shell-left-panel::after {
+  background: transparent !important;
+}
+
+html.codex-dream-skin:has(main.main-surface.dream-home-shell)
+  main.main-surface {
+  background: var(--dream-message-mask) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface.dream-home-shell)
+  main.main-surface > header.app-header-tint {
+  background: var(--dream-shell-mask) !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface.dream-home-shell) .dream-home {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface.dream-home-shell)
+  [class~="group/application-menu-top-bar"] {
+  background: var(--dream-shell-mask) !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  aside.app-shell-left-panel,
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  main.main-surface,
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  main.main-surface > header.app-header-tint {
+  background: var(--dream-message-mask) !important;
+}
+
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  aside.app-shell-left-panel {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  aside.app-shell-left-panel::after {
+  background: transparent !important;
+}
+
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  main.main-surface {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  main.main-surface > header.app-header-tint {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
+  [class~="group/application-menu-top-bar"] {
+  background: var(--dream-message-mask) !important;
+  backdrop-filter: none !important;
+}
+
+/* Route navigation must switch the shell surface atomically. Native Codex
+   applies transition: all to main, which briefly animates the old shadow when
+   navigating into Plugins or another message route. */
+html.codex-dream-skin main.main-surface,
+html.codex-dream-skin main.main-surface > header.app-header-tint,
+html.codex-dream-skin aside.app-shell-left-panel {
+  transition: none !important;
 }
