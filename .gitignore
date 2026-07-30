@@ -12,5 +12,6 @@ runtime/
 .codegraph/
 
 # local agent context
-AGENTS.md
+**/AGENTS.md
+!AGENTS.md
 TASK_PROGRESS.md
