@@ -27,6 +27,7 @@
     "--dream-skin-focus-x", "--dream-skin-focus-y", "--dream-skin-art-position",
     "--dream-skin-name", "--dream-skin-tagline", "--dream-skin-project-prefix",
     "--dream-skin-project-label",
+    "--dream-mask-opacity", "--dream-mask-opacity-light", "--dream-mask-opacity-dark", "--dream-caret-color",
   ];
   const installToken = {};
   const existingAnalysisCache = window[ANALYSIS_CACHE_KEY];
@@ -346,6 +347,20 @@
     setStyleProperty(root, "--dream-skin-tagline", cssString(THEME.tagline || "Make something wonderful."));
     setStyleProperty(root, "--dream-skin-project-prefix", cssString(THEME.projectPrefix || "选择项目 · "));
     setStyleProperty(root, "--dream-skin-project-label", cssString(THEME.projectLabel || "◉  选择项目"));
+    root.style.removeProperty("--dream-mask-opacity");
+    const legacyMaskOpacity = Number(ART.maskOpacity);
+    const maskOpacityLight = Number(ART.maskOpacityLight);
+    const maskOpacityDark = Number(ART.maskOpacityDark);
+    const fallbackMaskOpacity = Number.isFinite(legacyMaskOpacity) && legacyMaskOpacity >= 0 && legacyMaskOpacity <= 1 ? legacyMaskOpacity : null;
+    const safeLight = Number.isFinite(maskOpacityLight) && maskOpacityLight >= 0 && maskOpacityLight <= 1 ? maskOpacityLight : fallbackMaskOpacity;
+    const safeDark = Number.isFinite(maskOpacityDark) && maskOpacityDark >= 0 && maskOpacityDark <= 1 ? maskOpacityDark : fallbackMaskOpacity;
+    if (safeLight === null) root.style.removeProperty("--dream-mask-opacity-light");
+    else setStyleProperty(root, "--dream-mask-opacity-light", String(safeLight));
+    if (safeDark === null) root.style.removeProperty("--dream-mask-opacity-dark");
+    else setStyleProperty(root, "--dream-mask-opacity-dark", String(safeDark));
+    const caretColor = typeof ART.caretColor === "string" ? ART.caretColor.trim() : "";
+    if (/^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(caretColor)) setStyleProperty(root, "--dream-caret-color", caretColor);
+    else root.style.removeProperty("--dream-caret-color");
   };
 
   const applyArtMetadata = (root) => {

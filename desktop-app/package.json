@@ -1,0 +1,43 @@
+{
+  "name": "codex-dream-skin-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron --import=tsx electron/main.ts\"",
+    "build": "vue-tsc --noEmit && vite build && tsc -p tsconfig.electron.json && node electron/copy-preload.mjs && electron-builder",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "element-plus": "^2.9.11",
+    "vue": "^3.5.17"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@types/node": "^22.15.21",
+    "concurrently": "^9.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6",
+    "vue-tsc": "^2.2.12",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "local.codex.dreamskin.desktop",
+    "productName": "Codex Dream Skin",
+    "asar": true,
+    "files": ["dist", "dist-electron"],
+    "extraResources": [
+      { "from": "../windows", "to": "platform/windows" },
+      { "from": "../macos", "to": "platform/macos" },
+      { "from": "electron/platform", "to": "platform/bridge" }
+    ],
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg" }
+  }
+}

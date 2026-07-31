@@ -10,6 +10,7 @@ release/
 runtime/
 .workbuddy/
 .codegraph/
+desktop-app/node_modules
 
 # local agent context
 **/AGENTS.md

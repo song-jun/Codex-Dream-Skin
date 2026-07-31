@@ -491,11 +491,25 @@ async function loadTheme(themeDir) {
     throw new Error(`${configPath} has an invalid art field`);
   }
   const rawArt = raw.art || {};
+  const opacity = (value, name) => {
+    if (value === null || value === undefined || value === "") return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(`${configPath} has an invalid ${name} field`);
+    }
+    return value;
+  };
+  const requestedCaretColor = typeof rawArt.caretColor === "string" ? rawArt.caretColor.trim() : "";
+  const caretColor = requestedCaretColor && /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(requestedCaretColor)
+    ? requestedCaretColor : null;
+  if (requestedCaretColor && caretColor === null) throw new Error(`${configPath} has an invalid art.caretColor field`);
   const art = {
     focusX: unit(rawArt.focusX, "art.focusX"),
     focusY: unit(rawArt.focusY, "art.focusY"),
     safeArea: choice(rawArt.safeArea, "art.safeArea", ["auto", "left", "right", "center", "none"]),
     taskMode: choice(rawArt.taskMode, "art.taskMode", ["auto", "ambient", "banner", "off"]),
+    maskOpacityLight: opacity(rawArt.maskOpacityLight ?? rawArt.maskOpacity, "art.maskOpacityLight"),
+    maskOpacityDark: opacity(rawArt.maskOpacityDark ?? rawArt.maskOpacity, "art.maskOpacityDark"),
+    caretColor,
   };
   const theme = {
     schemaVersion: 1,

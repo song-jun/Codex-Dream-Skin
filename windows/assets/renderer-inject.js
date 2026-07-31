@@ -27,6 +27,10 @@
     "--dream-accent",
     "--dream-accent-ink",
     "--dream-image-luma",
+    "--dream-mask-opacity",
+    "--dream-mask-opacity-light",
+    "--dream-mask-opacity-dark",
+    "--dream-caret-color",
   ];
   const HOME_UTILITY_CLASS = "dream-home-utility";
   const installToken = {};
@@ -73,11 +77,21 @@
     const taskMode = ["auto", "ambient", "banner", "off"].includes(art.taskMode)
       ? art.taskMode
       : "auto";
+    const legacyMaskOpacity = hasNumber(art.maskOpacity) ? clamp(art.maskOpacity) : null;
+    const maskOpacityLight = hasNumber(art.maskOpacityLight) ? clamp(art.maskOpacityLight) : legacyMaskOpacity;
+    const maskOpacityDark = hasNumber(art.maskOpacityDark) ? clamp(art.maskOpacityDark) : legacyMaskOpacity;
+    const requestedCaretColor = typeof art.caretColor === "string" ? art.caretColor.trim() : "";
+    const safeCaretColor = /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(requestedCaretColor)
+      ? requestedCaretColor
+      : null;
     const metadataRatio = Number(config?.artMetadata?.ratio);
     return {
       appearance,
       safeArea,
       taskMode,
+      maskOpacityLight,
+      maskOpacityDark,
+      caretColor: safeCaretColor,
       focusX: hasNumber(art.focusX) ? clamp(art.focusX) : null,
       focusY: hasNumber(art.focusY) ? clamp(art.focusY) : null,
       accent: safeAccent,
@@ -319,6 +333,13 @@
     root.style.setProperty("--dream-accent", accent);
     root.style.setProperty("--dream-accent-ink", accentInk);
     root.style.setProperty("--dream-image-luma", profile.luma.toFixed(3));
+    root.style.removeProperty("--dream-mask-opacity");
+    if (config.maskOpacityLight === null) root.style.removeProperty("--dream-mask-opacity-light");
+    else root.style.setProperty("--dream-mask-opacity-light", String(config.maskOpacityLight));
+    if (config.maskOpacityDark === null) root.style.removeProperty("--dream-mask-opacity-dark");
+    else root.style.setProperty("--dream-mask-opacity-dark", String(config.maskOpacityDark));
+    if (config.caretColor === null) root.style.removeProperty("--dream-caret-color");
+    else root.style.setProperty("--dream-caret-color", config.caretColor);
   };
 
   const ensure = () => {

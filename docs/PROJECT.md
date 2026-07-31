@@ -147,3 +147,19 @@ Logo 资源：`docs/images/sponsor-passion8.png`（及 svg）。
 ---
 
 *最后更新：随仓库提交维护。有架构变更时优先改本文件与 `platforms.md`。*
+## Desktop control app
+
+The optional `desktop-app/` project is a Vue 3 + Electron + Element Plus
+control surface for the existing platform runtime. It can inspect the managed
+Dream Skin session, switch saved themes through the existing watcher, start or
+restart Codex, pause/resume the skin, save Windows themes, and restore the
+official appearance. Its editor can replace the managed background image and
+update the existing art-mode mask opacity and composer caret color variables in
+real time.  
+Its session page reads Codex's local `session_index.jsonl` metadata and can
+delete a user-confirmed Codex session together with its matching local session
+record file. It does not load message bodies into the UI or replace the native
+Codex renderer.
+
+Run it from the repository with `cd desktop-app`, `npm install`, and `npm run
+dev`. Packaging is opt-in with `npm run build`.

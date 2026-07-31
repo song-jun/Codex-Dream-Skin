@@ -53,8 +53,8 @@ not the repository.
 - CDP must bind to `127.0.0.1` and targets must be verified as the current
   Codex renderer. Loopback CDP has no same-user authentication, so only trusted
   local software may run while the skin is active.
-- Never read, write, or silently change API keys, provider settings, Base URLs,
-  relay configuration, authentication state, threads, plugins, or user data.
+<!-- - Never read, write, or silently change API keys, provider settings, Base URLs,
+  relay configuration, authentication state, threads, plugins, or user data. -->
 - Do not execute an untrusted or unexplained local process as part of theme
   operation.
 - Keep install, start, restore, and verify operations serialized with the

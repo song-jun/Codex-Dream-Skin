@@ -457,6 +457,18 @@ async function loadTheme(themeDir) {
     throw new Error("Theme image cannot escape through a link or junction");
   }
   const art = raw.art && typeof raw.art === "object" && !Array.isArray(raw.art) ? raw.art : {};
+  const normalizedOpacity = (value, name) => {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 0 || number > 1) {
+      throw new Error(`${name} must be null or a number between 0 and 1`);
+    }
+    return number;
+  };
+  const requestedCaretColor = typeof art.caretColor === "string" ? art.caretColor.trim() : "";
+  const normalizedCaretColor = requestedCaretColor && /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(requestedCaretColor)
+    ? requestedCaretColor : null;
+  if (requestedCaretColor && normalizedCaretColor === null) throw new Error("art.caretColor is not a supported CSS color");
   const palette = raw.palette && typeof raw.palette === "object" && !Array.isArray(raw.palette)
     ? raw.palette : {};
   const theme = {
@@ -469,6 +481,9 @@ async function loadTheme(themeDir) {
       focusY: normalizedUnit(art.focusY, "art.focusY"),
       safeArea: normalizedChoice(art.safeArea, "art.safeArea", THEME_CHOICES.safeArea, "auto"),
       taskMode: normalizedChoice(art.taskMode, "art.taskMode", THEME_CHOICES.taskMode, "auto"),
+      maskOpacityLight: normalizedOpacity(art.maskOpacityLight ?? art.maskOpacity, "art.maskOpacityLight"),
+      maskOpacityDark: normalizedOpacity(art.maskOpacityDark ?? art.maskOpacity, "art.maskOpacityDark"),
+      caretColor: normalizedCaretColor,
     },
     palette: {},
   };

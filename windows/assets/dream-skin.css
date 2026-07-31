@@ -10,10 +10,12 @@
   --dream-composer-bg: var(--dream-surface-raised);
   /* 遮罩强度：浅色和暗色分别控制，0 为透明，1 为原始强度。 */
   --dream-mask-opacity-light: .70;
+  --dream-mask-opacity-active: var(--dream-mask-opacity-light);
   --dream-mask-color: oklch(0.98 0.004 35);
-  --dream-shell-mask: color-mix(in oklab, var(--dream-surface) 70%, transparent);
-  --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-light)), transparent);
+  --dream-shell-mask: color-mix(in oklab, var(--dream-surface) calc(70% * var(--dream-mask-opacity-active)), transparent);
+  --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-active)), transparent);
   --dream-send-bg: #C84F70;
+  --dream-caret-color: var(--dream-send-bg);
   --dream-composer-border: rgba(190, 103, 131, .82);
   /* 全屏背景图透明度：让图片覆盖整个 Codex，同时保留界面可读性。 */
   --dream-global-art-opacity: .46;
@@ -30,19 +32,19 @@
   --dream-line-soft: color-mix(in oklab, transparent 76%, var(--dream-accent));
   --dream-accent-soft: color-mix(in oklab, var(--dream-accent) 14%, var(--dream-surface));
   --dream-accent-hover: color-mix(in oklab, var(--dream-accent) 20%, var(--dream-surface));
-  --dream-hero-shade: color-mix(in oklab, var(--dream-mask-color) calc(93% * var(--dream-mask-opacity-light)), transparent);
-  --dream-ambient-opacity: calc(.18 * var(--dream-mask-opacity-light));
+  --dream-hero-shade: color-mix(in oklab, var(--dream-mask-color) calc(93% * var(--dream-mask-opacity-active)), transparent);
+  --dream-ambient-opacity: calc(.18 * var(--dream-mask-opacity-active));
   --dream-shadow: 0 16px 42px color-mix(in oklab, var(--dream-accent) 9%, transparent);
-  --dream-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(46% * var(--dream-mask-opacity-light)), transparent);
-  --dream-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(28% * var(--dream-mask-opacity-light)), transparent);
-  --dream-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(14% * var(--dream-mask-opacity-light)), transparent);
-  --dream-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(50% * var(--dream-mask-opacity-light)), transparent);
-  --dream-task-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(72% * var(--dream-mask-opacity-light)), transparent);
+  --dream-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(46% * var(--dream-mask-opacity-active)), transparent);
+  --dream-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(28% * var(--dream-mask-opacity-active)), transparent);
+  --dream-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(14% * var(--dream-mask-opacity-active)), transparent);
+  --dream-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(50% * var(--dream-mask-opacity-active)), transparent);
+  --dream-task-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(72% * var(--dream-mask-opacity-active)), transparent);
   --dream-immersive-composer: color-mix(in oklab, var(--dream-surface-raised) 76%, var(--dream-accent) 4%);
   --dream-immersive-line: color-mix(in oklab, var(--dream-line) 76%, transparent);
-  --dream-task-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(86% * var(--dream-mask-opacity-light)), transparent);
-  --dream-task-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(78% * var(--dream-mask-opacity-light)), transparent);
-  --dream-task-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(66% * var(--dream-mask-opacity-light)), transparent);
+  --dream-task-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(86% * var(--dream-mask-opacity-active)), transparent);
+  --dream-task-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(78% * var(--dream-mask-opacity-active)), transparent);
+  --dream-task-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(66% * var(--dream-mask-opacity-active)), transparent);
 }
 
 /* 主题变量 · 暗色（.dream-theme-dark）。覆盖浅色变量，对应 Codex 暗色外观。 */
@@ -50,9 +52,10 @@
   color-scheme: dark;
   --dream-composer-bg: #2B2C42;
   --dream-mask-opacity-dark: .50;
+  --dream-mask-opacity-active: var(--dream-mask-opacity-dark);
   --dream-mask-color: #2B2C42;
-  --dream-shell-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-dark)), transparent);
+  --dream-shell-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-active)), transparent);
+  --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-active)), transparent);
   /* 暗色全屏背景提高可见度，面板透明度负责控制文字对比度。 */
   --dream-global-art-opacity: .72;
   --dream-send-bg: #6C7EEB;
@@ -67,20 +70,20 @@
   --dream-line-soft: color-mix(in oklab, transparent 78%, var(--dream-accent));
   --dream-accent-soft: color-mix(in oklab, var(--dream-accent) 18%, var(--dream-surface));
   --dream-accent-hover: color-mix(in oklab, var(--dream-accent) 27%, var(--dream-surface));
-  --dream-hero-shade: color-mix(in oklab, var(--dream-mask-color) calc(91% * var(--dream-mask-opacity-dark)), transparent);
+  --dream-hero-shade: color-mix(in oklab, var(--dream-mask-color) calc(91% * var(--dream-mask-opacity-active)), transparent);
   /* 暗色背景图提高可见度，仍由暗色遮罩强度统一调节。 */
-  --dream-ambient-opacity: calc(.42 * var(--dream-mask-opacity-dark));
+  --dream-ambient-opacity: calc(.42 * var(--dream-mask-opacity-active));
   --dream-shadow: 0 18px 48px color-mix(in oklab, oklch(0.06 0.01 245) 72%, transparent);
-  --dream-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(43% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(27% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(16% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(48% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-task-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(70% * var(--dream-mask-opacity-dark)), transparent);
+  --dream-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(43% * var(--dream-mask-opacity-active)), transparent);
+  --dream-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(27% * var(--dream-mask-opacity-active)), transparent);
+  --dream-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(16% * var(--dream-mask-opacity-active)), transparent);
+  --dream-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(48% * var(--dream-mask-opacity-active)), transparent);
+  --dream-task-immersive-sidebar: color-mix(in oklab, var(--dream-mask-color) calc(70% * var(--dream-mask-opacity-active)), transparent);
   --dream-immersive-composer: color-mix(in oklab, var(--dream-surface-raised) 88%, var(--dream-accent) 5%);
   --dream-immersive-line: color-mix(in oklab, var(--dream-line) 82%, transparent);
-  --dream-task-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(82% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-task-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(74% * var(--dream-mask-opacity-dark)), transparent);
-  --dream-task-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(60% * var(--dream-mask-opacity-dark)), transparent);
+  --dream-task-immersive-edge: color-mix(in oklab, var(--dream-mask-color) calc(82% * var(--dream-mask-opacity-active)), transparent);
+  --dream-task-immersive-mid: color-mix(in oklab, var(--dream-mask-color) calc(74% * var(--dream-mask-opacity-active)), transparent);
+  --dream-task-immersive-far: color-mix(in oklab, var(--dream-mask-color) calc(60% * var(--dream-mask-opacity-active)), transparent);
 }
 
 /* 全局 body：改 Codex 整窗背景色、文字色、字体族（Segoe UI / 微软雅黑）。 */
@@ -563,7 +566,7 @@ html.codex-dream-skin [class~="px-toolbar"]:has(.composer-surface-chrome) {
 /* 输入区编辑器（ProseMirror）：文字色 + 光标色。 */
 html.codex-dream-skin .ProseMirror {
   color: var(--dream-text) !important;
-  caret-color: var(--dream-send-bg) !important;
+  caret-color: var(--dream-caret-color, var(--dream-send-bg)) !important;
 }
 
 /* 主按钮（如发送按钮 bg-token-foreground）：强调色背景 + 反色文字 + 发光环，提交按钮更鲜明。 */

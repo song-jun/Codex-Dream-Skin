@@ -1,6 +1,9 @@
 /* 主题变量·暗色(macOS默认)：--ds-* 全局配色基底(背景/面板/文字/线条/强调色/安全区/hero蒙层/任务页渐变/沉浸态半透明层) */
 :root.codex-dream-skin {
   color-scheme: dark !important;
+  --dream-mask-opacity-light: .70;
+  --dream-mask-opacity-dark: .50;
+  --dream-mask-opacity-active: var(--dream-mask-opacity-dark);
   --ds-bg: #111318;
   --ds-panel: #191c22;
   --ds-panel-2: #20242b;
@@ -42,25 +45,27 @@
     rgb(var(--ds-bg-rgb) / .18) 32%,
     rgb(var(--ds-bg-rgb) / .76) 68%,
     rgb(var(--ds-bg-rgb) / 1) 100%);
-  --ds-immersive-edge: rgb(var(--ds-bg-rgb) / .40);
-  --ds-immersive-mid: rgb(var(--ds-bg-rgb) / .26);
-  --ds-immersive-far: rgb(var(--ds-bg-rgb) / .16);
-  --ds-immersive-sidebar: rgb(var(--ds-panel-rgb) / .46);
-  --ds-task-immersive-sidebar: rgb(var(--ds-panel-rgb) / .70);
-  --ds-immersive-chrome: rgb(var(--ds-panel-rgb) / .28);
-  --ds-immersive-composer: rgb(var(--ds-panel-rgb) / .44);
+  --ds-immersive-edge: rgb(var(--ds-bg-rgb) / calc(.40 * var(--dream-mask-opacity-active)));
+  --ds-immersive-mid: rgb(var(--ds-bg-rgb) / calc(.26 * var(--dream-mask-opacity-active)));
+  --ds-immersive-far: rgb(var(--ds-bg-rgb) / calc(.16 * var(--dream-mask-opacity-active)));
+  --ds-immersive-sidebar: rgb(var(--ds-panel-rgb) / calc(.46 * var(--dream-mask-opacity-active)));
+  --ds-task-immersive-sidebar: rgb(var(--ds-panel-rgb) / calc(.70 * var(--dream-mask-opacity-active)));
+  --ds-immersive-chrome: rgb(var(--ds-panel-rgb) / calc(.28 * var(--dream-mask-opacity-active)));
+  --ds-immersive-composer: rgb(var(--ds-panel-rgb) / calc(.44 * var(--dream-mask-opacity-active)));
   --ds-immersive-composer-solid: color-mix(in srgb,
     rgb(var(--ds-panel-2-rgb)) 88%,
     rgb(var(--ds-muted-rgb)) 12%);
   --ds-immersive-line: rgb(var(--ds-muted-rgb) / .42);
-  --ds-task-immersive-edge: rgb(var(--ds-bg-rgb) / .82);
-  --ds-task-immersive-mid: rgb(var(--ds-bg-rgb) / .74);
-  --ds-task-immersive-far: rgb(var(--ds-bg-rgb) / .60);
+  --ds-task-immersive-edge: rgb(var(--ds-bg-rgb) / calc(.82 * var(--dream-mask-opacity-active)));
+  --ds-task-immersive-mid: rgb(var(--ds-bg-rgb) / calc(.74 * var(--dream-mask-opacity-active)));
+  --ds-task-immersive-far: rgb(var(--ds-bg-rgb) / calc(.60 * var(--dream-mask-opacity-active)));
 }
 
 /* 主题变量·浅色：覆盖暗色变量，对应 Codex 浅色外观 */
 html.codex-dream-skin[data-dream-shell="light"] {
   color-scheme: light !important;
+  --dream-mask-opacity-light: .70;
+  --dream-mask-opacity-active: var(--dream-mask-opacity-light);
   --ds-bg: #f3f5f6;
   --ds-panel: #fafbfb;
   --ds-panel-2: #e9edef;
@@ -90,18 +95,18 @@ html.codex-dream-skin[data-dream-shell="light"] {
     rgb(var(--ds-bg-rgb) / .22) 34%,
     rgb(var(--ds-bg-rgb) / .78) 70%,
     rgb(var(--ds-bg-rgb) / 1) 100%);
-  --ds-immersive-edge: rgb(var(--ds-panel-rgb) / .44);
-  --ds-immersive-mid: rgb(var(--ds-panel-rgb) / .28);
-  --ds-immersive-far: rgb(var(--ds-panel-rgb) / .14);
-  --ds-immersive-sidebar: rgb(var(--ds-panel-rgb) / .48);
-  --ds-task-immersive-sidebar: rgb(var(--ds-panel-rgb) / .72);
-  --ds-immersive-chrome: rgb(var(--ds-panel-rgb) / .34);
-  --ds-immersive-composer: rgb(var(--ds-panel-rgb) / .46);
+  --ds-immersive-edge: rgb(var(--ds-panel-rgb) / calc(.44 * var(--dream-mask-opacity-active)));
+  --ds-immersive-mid: rgb(var(--ds-panel-rgb) / calc(.28 * var(--dream-mask-opacity-active)));
+  --ds-immersive-far: rgb(var(--ds-panel-rgb) / calc(.14 * var(--dream-mask-opacity-active)));
+  --ds-immersive-sidebar: rgb(var(--ds-panel-rgb) / calc(.48 * var(--dream-mask-opacity-active)));
+  --ds-task-immersive-sidebar: rgb(var(--ds-panel-rgb) / calc(.72 * var(--dream-mask-opacity-active)));
+  --ds-immersive-chrome: rgb(var(--ds-panel-rgb) / calc(.34 * var(--dream-mask-opacity-active)));
+  --ds-immersive-composer: rgb(var(--ds-panel-rgb) / calc(.46 * var(--dream-mask-opacity-active)));
   --ds-immersive-composer-solid: rgb(var(--ds-panel-rgb) / .74);
   --ds-immersive-line: rgb(var(--ds-accent-rgb) / .24);
-  --ds-task-immersive-edge: rgb(var(--ds-panel-rgb) / .86);
-  --ds-task-immersive-mid: rgb(var(--ds-panel-rgb) / .78);
-  --ds-task-immersive-far: rgb(var(--ds-panel-rgb) / .66);
+  --ds-task-immersive-edge: rgb(var(--ds-panel-rgb) / calc(.86 * var(--dream-mask-opacity-active)));
+  --ds-task-immersive-mid: rgb(var(--ds-panel-rgb) / calc(.78 * var(--dream-mask-opacity-active)));
+  --ds-task-immersive-far: rgb(var(--ds-panel-rgb) / calc(.66 * var(--dream-mask-opacity-active)));
 }
 
 /* 安全区在左：图定位右侧(100%)，文字留左 */
@@ -309,12 +314,12 @@ html.codex-dream-skin main.main-surface:not(.dream-skin-home-shell)::before {
   background-repeat: no-repeat;
   background-position: center, center, var(--ds-art-position);
   background-size: 100% 100%, 100% 100%, cover;
-  opacity: .78;
+  opacity: calc(.78 * var(--dream-mask-opacity-dark, var(--dream-mask-opacity, 1)));
 }
 
 /* 浅色任务页背景图层透明度 */
 html.codex-dream-skin[data-dream-shell="light"] main.main-surface:not(.dream-skin-home-shell)::before {
-  opacity: .72;
+  opacity: calc(.72 * var(--dream-mask-opacity-light, var(--dream-mask-opacity, 1)));
 }
 
 /* 宽图任务页背景图层定位/尺寸 */
@@ -648,6 +653,12 @@ html.codex-dream-skin .dream-skin-home {
   border-radius: 21px 0 0 21px;
   pointer-events: none;
   background: var(--ds-hero-scrim);
+  opacity: var(--dream-mask-opacity-dark, 1);
+}
+
+html.codex-dream-skin[data-dream-shell="light"]
+  .dream-skin-home > div:first-child > div:first-child > div:first-child::before {
+  opacity: var(--dream-mask-opacity-light, 1);
 }
 
 /* 安全区右：hero蒙层方向反转 */
@@ -1159,7 +1170,7 @@ html.codex-dream-skin[data-dream-art-wide="true"] main.main-surface
 /* 输入区编辑器(ProseMirror)：文字色+光标色 */
 html.codex-dream-skin .ProseMirror {
   color: var(--ds-text) !important;
-  caret-color: var(--ds-accent) !important;
+  caret-color: var(--dream-caret-color, var(--ds-accent)) !important;
 }
 
 /* 主按钮(如发送按钮bg-token-foreground)：强调色背景+反色文字+阴影 */
