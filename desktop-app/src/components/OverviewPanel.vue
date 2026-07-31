@@ -4,7 +4,7 @@
   交互边界：所有修改先写入工作台草稿，只有点击“应用”才调用 Electron。
 -->
 <script setup lang="ts">
-import { Check, Delete, EditPen, Moon, Picture, Refresh, RefreshRight, Setting, SwitchButton, VideoPause, VideoPlay } from "@element-plus/icons-vue";
+import { Check, Delete, EditPen, Lock, Moon, Picture, Refresh, RefreshRight, Setting, SwitchButton, VideoPause, VideoPlay } from "@element-plus/icons-vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
 
 const {
@@ -13,6 +13,7 @@ const {
   themes,
   codexSessions,
   installationMissing,
+  themeUnavailable,
   canPause,
   canResume,
   managementImageUrl,
@@ -44,6 +45,7 @@ const {
   resetThemeSettings,
   applyThemeSettings,
   chooseTheme,
+  notifyThemeStart,
   renameTheme,
   deleteTheme,
   previewStyle,
@@ -63,7 +65,7 @@ const {
       <el-button v-if="installationMissing" type="primary" :icon="Setting" @click="installDreamSkin">安装 Dream Skin 运行时</el-button>
       <el-button v-else type="primary" :icon="RefreshRight" @click="runAction('start', [], 'Codex Dream Skin 已启动或重启。')">启动 / 重启</el-button>
       <el-button v-if="canPause" class="warning-button" :icon="VideoPause" @click="runAction('pause', [], '皮肤已暂停，Codex 保持运行。')">暂停皮肤</el-button>
-      <el-button v-else-if="canResume" type="primary" plain :icon="VideoPlay" @click="runAction('resume', [], '皮肤已恢复。')">恢复皮肤</el-button>
+      <el-button v-else-if="canResume" class="resume-button" type="primary" plain :icon="VideoPlay" @click="runAction('resume', [], '皮肤已恢复。')">恢复皮肤</el-button>
       <el-button v-if="!installationMissing" class="danger-button" :icon="SwitchButton" @click="restoreSkin">恢复官方外观</el-button>
     </div>
   </section>
@@ -92,9 +94,10 @@ const {
     <div class="panel inspector-panel">
       <div class="panel-head">
         <div><div class="eyebrow">主题信息</div><h3>外观参数</h3></div>
-        <div class="inspector-actions"><el-button v-if="snapshot?.platform !== 'darwin'" class="text-button" :icon="Setting" @click="saveCurrentTheme">保存当前主题</el-button></div>
+        <div class="inspector-actions"><el-button v-if="snapshot?.platform !== 'darwin'" class="text-button" :icon="Setting" :disabled="themeUnavailable" @click="saveCurrentTheme">保存当前主题</el-button></div>
       </div>
-      <div class="variable-controls">
+      <div class="theme-settings-wrap" :class="{ 'is-locked': themeUnavailable }" :aria-disabled="themeUnavailable">
+        <div class="variable-controls">
         <div class="variable-control background-variable-control">
           <div class="variable-label"><span>背景图片</span><code>{{ pendingImagePath ? "待应用" : "当前主题" }}</code></div>
           <div class="variable-input background-input"><el-button class="text-button" :icon="Picture" @click="chooseBackgroundImage">选择图片</el-button><span class="background-name">{{ pendingImageName || themeValue(activeTheme, "image", "未选择背景图片") }}</span></div>
@@ -130,10 +133,16 @@ const {
           <div class="variable-input"><el-slider v-model="editingImageLuma" :min="0" :max="1" :step="0.01" /><strong>{{ Math.round(editingImageLuma * 100) }}%</strong><el-button class="text-button variable-reset" :icon="RefreshRight" @click="clearThemeSetting('imageLuma')">跟随背景图</el-button></div>
           <small>控制写入当前主题的背景图片亮度值。</small>
         </div>
-      </div>
-      <div class="inspector-footer">
-        <div class="inspector-dirty-state"><span class="status-dot" :class="settingsDirty ? 'is-paused' : 'is-online'" />{{ settingsDirty ? "有未应用修改" : "参数已应用" }}</div>
-        <div class="inspector-footer-actions"><el-button class="secondary-button" :icon="Refresh" :disabled="!themeDefaults" @click="resetThemeSettings">重置当前主题</el-button><el-button type="primary" :icon="Check" :disabled="!settingsDirty" @click="applyThemeSettings()">应用</el-button></div>
+        </div>
+        <div class="inspector-footer">
+          <div class="inspector-dirty-state"><span class="status-dot" :class="settingsDirty ? 'is-paused' : 'is-online'" />{{ settingsDirty ? "有未应用修改" : "参数已应用" }}</div>
+          <div class="inspector-footer-actions"><el-button class="secondary-button" :icon="Refresh" :disabled="!themeDefaults" @click="resetThemeSettings">重置当前主题</el-button><el-button type="primary" :icon="Check" :disabled="!settingsDirty" @click="applyThemeSettings()">应用</el-button></div>
+        </div>
+        <button v-if="themeUnavailable" class="theme-lock-overlay" type="button" @click="notifyThemeStart">
+          <span class="theme-lock-icon"><Lock /></span>
+          <strong>{{ snapshot?.session === "paused" ? "主题已暂停" : "主题尚未启动" }}</strong>
+          <small>{{ snapshot?.session === "paused" ? "请先点击上方“恢复皮肤”" : "请先点击上方“启动 / 重启”" }}</small>
+        </button>
       </div>
     </div>
   </section>
@@ -141,7 +150,7 @@ const {
   <section class="theme-library">
     <div class="section-head"><div><div class="eyebrow">已保存主题 / {{ themes.length }}</div><h3>主题库</h3></div><span class="section-rule" /></div>
     <div class="theme-grid">
-      <article v-for="theme in themes" :key="theme.id" class="theme-card" :class="{ selected: theme.id === activeTheme?.id, switching: switchingThemeId === theme.id }" @click="chooseTheme(theme)">
+      <article v-for="theme in themes" :key="theme.id" class="theme-card" :class="{ selected: theme.id === activeTheme?.id, switching: switchingThemeId === theme.id, 'is-locked': themeUnavailable }" :aria-disabled="themeUnavailable" @click="chooseTheme(theme)">
         <div class="theme-art" :style="previewStyle(theme)"><span v-if="theme.id === activeTheme?.id" class="live-label">当前使用</span></div>
         <div class="theme-card-body">
           <strong>{{ theme.name }}</strong>

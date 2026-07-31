@@ -228,6 +228,24 @@ function enrichTheme(record: unknown): ThemeRecord | null {
   return { id: String(value.id ?? ''), name: String(value.name ?? value.id ?? '未命名主题'), imagePath: value.imagePath, theme: value.theme, preview: imagePreview(value.imagePath) }
 }
 
+function enrichWindowsSnapshot(raw: BridgeResult): BridgeResult {
+  const managedState = readManagedState()
+  const active = enrichTheme(raw.active)
+  const themes = Array.isArray(raw.themes) ? raw.themes.map(enrichTheme).filter(Boolean) : []
+  const connection = managedState && (raw.session === 'active' || raw.session === 'paused')
+    ? connectionFromState(managedState)
+    : null
+  return {
+    ...raw,
+    installation: 'installed',
+    active,
+    themes,
+    connection,
+    variables: readDreamArtVariables(),
+    codexSessions: readCodexSessions(),
+  }
+}
+
 function directoryNames(directory: string): string[] {
   try { return readdirSync(directory, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.isSymbolicLink()).map((entry) => entry.name) } catch { return [] }
 }
@@ -373,12 +391,8 @@ async function snapshot(): Promise<BridgeResult> {
     }
   }
   const raw = await runBridge('status')
-  const managedState = readManagedState()
-  const connection = managedState && (raw.session === 'active' || raw.session === 'paused') ? connectionFromState(managedState) : null
   if (isWindows) {
-    const active = enrichTheme(raw.active)
-    const themes = Array.isArray(raw.themes) ? raw.themes.map(enrichTheme).filter(Boolean) : []
-    return { ...raw, installation: 'installed', active, themes, connection, variables: readDreamArtVariables(), codexSessions }
+    return enrichWindowsSnapshot(raw)
   }
   const activePath = path.join(stateRoot(), 'theme', 'theme.json')
   let active: ThemeRecord | null = null
@@ -416,7 +430,11 @@ app.whenReady().then(async () => {
     if (action === 'delete-codex-session') { deleteCodexSession(values[0]); return snapshot() }
     const result = await runBridge(action, values)
     const refreshActions = ['use-theme', 'save-theme', 'set-image', 'update-theme', 'start', 'pause', 'resume', 'restore']
-    return refreshActions.includes(action) ? snapshot() : result
+    if (!refreshActions.includes(action)) return result
+    if (isWindows && result.snapshot && typeof result.snapshot === 'object' && !Array.isArray(result.snapshot)) {
+      return enrichWindowsSnapshot(result.snapshot as BridgeResult)
+    }
+    return snapshot()
   })
   ipcMain.handle('choose-image', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: '主题图片', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })

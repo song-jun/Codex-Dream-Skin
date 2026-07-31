@@ -90,13 +90,19 @@ try {
 
   $backup = Join-Path $StateRoot 'config.before-dream-skin.toml'
   $config = Join-Path $HOME '.codex\config.toml'
+  $restoreBaseThemeAvailable = $false
   if ($RecoverConfigBackup) {
     if (-not (Test-Path -LiteralPath $backup)) { throw 'No pre-install config backup is available.' }
+    $restoreBaseThemeAvailable = $true
     $null = Read-DreamSkinUtf8File -Path $backup
   } elseif ($RestoreBaseTheme) {
-    if (-not (Test-Path -LiteralPath $backup)) { throw 'No pre-install config backup is available.' }
-    $null = Read-DreamSkinUtf8File -Path $backup
-    $null = Read-DreamSkinUtf8File -Path $config
+    if (Test-Path -LiteralPath $backup) {
+      $restoreBaseThemeAvailable = $true
+      $null = Read-DreamSkinUtf8File -Path $backup
+      $null = Read-DreamSkinUtf8File -Path $config
+    } else {
+      Write-Warning 'No pre-install config backup is available; skipping config restoration.'
+    }
   }
 
   $restoreError = $null
@@ -125,10 +131,10 @@ try {
       $recoveryBackup = Join-Path $StateRoot "config.before-recovery-$stamp.toml"
       Restore-DreamSkinConfigBackup -ConfigPath $config -BackupPath $backup -RecoveryBackupPath $recoveryBackup
       Write-Host "Recovered the exact pre-install config; previous current config saved at $recoveryBackup"
-    } elseif ($RestoreBaseTheme) {
+    } elseif ($RestoreBaseTheme -and $restoreBaseThemeAvailable) {
       Restore-DreamSkinBaseTheme -ConfigPath $config -BackupPath $backup
     }
-    if ($RecoverConfigBackup -or $RestoreBaseTheme) {
+    if ($RecoverConfigBackup -or ($RestoreBaseTheme -and $restoreBaseThemeAvailable)) {
       $archiveStamp = (Get-Date).ToString('yyyyMMdd-HHmmss-fff') + '-' + [guid]::NewGuid().ToString('N')
       $archivePath = Join-Path $StateRoot "config.restored-$archiveStamp.toml"
       Archive-DreamSkinConfigBackup -BackupPath $backup -ArchivePath $archivePath

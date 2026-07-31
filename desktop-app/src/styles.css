@@ -113,6 +113,8 @@ h3 { margin-top: 8px; font-size: 19px; font-weight: 700; }
 .hero-actions .el-button, .session-actions .el-button { min-height: 40px; }
 .warning-button { color: var(--amber); border-color: #e8c983; background: var(--amber-soft); }
 .warning-button:hover { color: var(--amber); border-color: var(--amber); background: #ffefc8; }
+.resume-button.el-button--primary.is-plain { color: var(--primary); border-color: color-mix(in oklab, var(--primary) 36%, var(--line)); background: var(--primary-soft); }
+.resume-button.el-button--primary.is-plain:hover { color: var(--primary-dark); border-color: var(--primary); background: color-mix(in oklab, var(--primary-soft) 72%, #ffffff); }
 .danger-button { color: var(--danger); border-color: #efc5c9; background: var(--danger-soft); }
 .danger-button:hover { color: var(--danger); border-color: var(--danger); background: #ffe4e6; }
 
@@ -165,6 +167,14 @@ code { color: var(--primary-dark); font-family: "Segoe UI", Arial, sans-serif; f
 .background-input .text-button { flex: 0 0 auto; margin-left: -8px; }
 .background-name { min-width: 0; overflow: hidden; color: var(--ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .background-variable-control small { color: var(--muted); }
+.theme-settings-wrap { position: relative; }
+.theme-settings-wrap.is-locked > .variable-controls, .theme-settings-wrap.is-locked > .inspector-footer { opacity: .42; pointer-events: none; filter: saturate(.55); }
+.theme-lock-overlay { position: absolute; inset: 0; z-index: 2; display: grid; justify-items: center; align-content: center; gap: 7px; width: 100%; min-height: 100%; padding: 24px; color: var(--ink); border: 0; background: color-mix(in oklab, var(--surface) 84%, transparent); cursor: pointer; }
+.theme-lock-overlay:hover { background: color-mix(in oklab, var(--primary-soft) 72%, var(--surface)); }
+.theme-lock-icon { display: grid; width: 40px; height: 40px; place-items: center; color: var(--primary); border-radius: 12px; background: var(--primary-soft); }
+.theme-lock-icon svg { width: 19px; height: 19px; }
+.theme-lock-overlay strong { font-size: 15px; }
+.theme-lock-overlay small { color: var(--muted); font-size: 12px; }
 .inspector-footer { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px 22px 20px; border-top: 1px solid var(--line); }
 .inspector-dirty-state { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
 .inspector-footer-actions { display: flex; gap: 8px; align-items: center; }
@@ -177,6 +187,8 @@ code { color: var(--primary-dark); font-family: "Segoe UI", Arial, sans-serif; f
 .theme-card { display: block; width: 100%; min-width: 0; padding: 0; overflow: hidden; color: var(--ink); text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease; }
 .theme-card:hover { border-color: var(--primary); box-shadow: 0 5px 16px color-mix(in oklab, var(--primary) 10%, transparent); transform: translateY(-2px); }
 .theme-card:disabled { cursor: wait; }
+.theme-card.is-locked { cursor: not-allowed; }
+.theme-card.is-locked:hover { border-color: var(--line); box-shadow: none; transform: none; }
 .theme-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px #dbe5ff; }
 .theme-card.switching { border-color: var(--primary); }
 .theme-art { position: relative; width: 100%; height: 138px; overflow: hidden; background-color: #e9edf4; background-position: center; background-size: cover; }
@@ -280,7 +292,8 @@ code { color: var(--primary-dark); font-family: "Segoe UI", Arial, sans-serif; f
 .restore-dialog-content .eyebrow { margin: 1px 0 6px; color: var(--danger); font-weight: 600; }
 .restore-dialog-content h3 { margin: 0; font-size: 20px; line-height: 1.35; }
 .restore-dialog-content p { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.65; }
-.restore-dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.restore-dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.restore-dialog-actions .el-button { display: inline-flex; height: 40px; min-height: 40px; margin: 0; align-items: center; line-height: 1; }
 
 @media (max-width: 520px) {
   .restore-dialog { grid-template-columns: 1fr; padding: 24px 20px 20px; }

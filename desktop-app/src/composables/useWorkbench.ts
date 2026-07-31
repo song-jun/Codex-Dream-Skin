@@ -56,6 +56,7 @@ export type WorkbenchContext = {
   codexSessionGroups: ComputedRef<CodexSessionGroup[]>;
   art: ComputedRef<Record<string, unknown>>;
   installationMissing: ComputedRef<boolean>;
+  themeUnavailable: ComputedRef<boolean>;
   statusLabel: ComputedRef<string>;
   statusTone: ComputedRef<string>;
   currentConnection: ComputedRef<RendererConnection | null>;
@@ -93,6 +94,7 @@ export type WorkbenchContext = {
   openStateFolder: () => Promise<void>;
   restoreSkin: () => Promise<void>;
   confirmRestore: () => Promise<void>;
+  notifyThemeStart: () => void;
   chooseTheme: (theme: ThemeRecord) => Promise<void>;
   chooseBackgroundImage: () => Promise<void>;
   applyThemeSettings: (message?: string) => Promise<void>;
@@ -170,6 +172,9 @@ export function createWorkbench(): WorkbenchContext {
   const codexSessions = computed(() => snapshot.value?.codexSessions ?? []);
   const installationMissing = computed(
     () => snapshot.value?.installation === "missing",
+  );
+  const themeUnavailable = computed(
+    () => snapshot.value?.session !== "active",
   );
   const codexSessionGroups = computed<CodexSessionGroup[]>(() => {
     const groups = new Map<string, CodexSessionGroup>();
@@ -417,6 +422,13 @@ export function createWorkbench(): WorkbenchContext {
   function selectView(key: string) {
     if (key === "overview" || key === "sessions") activeView.value = key;
   }
+  function notifyThemeStart() {
+    ElMessage.warning(
+      snapshot.value?.session === "paused"
+        ? "请先恢复 Dream Skin 主题，再修改外观参数或切换主题。"
+        : "请先启动 Dream Skin 主题，再修改外观参数或切换主题。",
+    );
+  }
   function formatDate(value?: string | null): string {
     if (!value) return "未知时间";
     const date = new Date(value);
@@ -548,7 +560,12 @@ export function createWorkbench(): WorkbenchContext {
     }
   }
   async function chooseTheme(theme: ThemeRecord) {
-    if (loading.value || theme.id === activeTheme.value?.id) return;
+    if (loading.value) return;
+    if (themeUnavailable.value) {
+      notifyThemeStart();
+      return;
+    }
+    if (theme.id === activeTheme.value?.id) return;
     if (settingsDirty.value) {
       try {
         await ElMessageBox.confirm(
@@ -583,10 +600,18 @@ export function createWorkbench(): WorkbenchContext {
     settingsDirty.value = true;
   }
   function clearThemeSetting(key: ThemeSettingKey) {
+    if (themeUnavailable.value) {
+      notifyThemeStart();
+      return;
+    }
     themeSettings[key] = null;
     scheduleThemeSettings();
   }
   async function applyThemeSettings(message = "外观参数和背景图片已应用。") {
+    if (themeUnavailable.value) {
+      notifyThemeStart();
+      return;
+    }
     if (!settingsDirty.value || !ensureBridge() || loading.value) return;
     loading.value = true;
     currentAction.value = "apply-theme";
@@ -624,6 +649,10 @@ export function createWorkbench(): WorkbenchContext {
     }
   }
   async function resetThemeSettings() {
+    if (themeUnavailable.value) {
+      notifyThemeStart();
+      return;
+    }
     if (!ensureBridge() || loading.value) return;
     const defaults = themeDefaults.value ?? activeTheme.value;
     if (!defaults) return;
@@ -668,6 +697,10 @@ export function createWorkbench(): WorkbenchContext {
     await applyThemeSettings("当前主题已重置为默认参数和背景图片。");
   }
   async function chooseBackgroundImage() {
+    if (themeUnavailable.value) {
+      notifyThemeStart();
+      return;
+    }
     if (!ensureBridge() || loading.value) return;
     loading.value = true;
     currentAction.value = "choose-image";
@@ -831,6 +864,7 @@ export function createWorkbench(): WorkbenchContext {
     codexSessions,
     codexSessionGroups,
     installationMissing,
+    themeUnavailable,
     statusLabel,
     statusTone,
     currentConnection,
@@ -865,6 +899,7 @@ export function createWorkbench(): WorkbenchContext {
     openStateFolder,
     restoreSkin,
     confirmRestore,
+    notifyThemeStart,
     chooseTheme,
     chooseBackgroundImage,
     applyThemeSettings,

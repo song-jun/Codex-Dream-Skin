@@ -76,6 +76,13 @@ function Get-Snapshot {
   }
 }
 
+function Test-DreamSkinInjectorAlive {
+  $statePath = Join-Path $stateRoot 'state.json'
+  try { $state = Read-DreamSkinState -Path $statePath } catch { return $false }
+  if ($null -eq $state -or -not $state.injectorPid) { return $false }
+  return $null -ne (Get-Process -Id ([int]$state.injectorPid) -ErrorAction SilentlyContinue)
+}
+
 switch ($Action) {
   'status' {
     $result = Get-Snapshot
@@ -165,12 +172,13 @@ switch ($Action) {
   }
   'pause' {
     $null = Set-DreamSkinPaused -Paused $true -StateRoot $stateRoot
-    $removal = Invoke-DreamSkinLiveRemove -StateRoot $stateRoot
-    $result = [pscustomobject]@{ ok = [bool]$removal.Removed; action = $Action; message = "$($removal.Message)"; snapshot = Get-Snapshot }
+    $result = [pscustomobject]@{ ok = $true; action = $Action; message = 'Pause recorded; Codex will remove the skin immediately.'; snapshot = Get-Snapshot }
   }
   'resume' {
     $null = Set-DreamSkinPaused -Paused $false -StateRoot $stateRoot
-    & (Join-Path $ScriptsRoot 'start-dream-skin.ps1') -RestartExisting | Out-Null
+    if (-not (Test-DreamSkinInjectorAlive)) {
+      & (Join-Path $ScriptsRoot 'start-dream-skin.ps1') -RestartExisting | Out-Null
+    }
     $result = [pscustomobject]@{ ok = $true; action = $Action; snapshot = Get-Snapshot }
   }
   'restore' {
