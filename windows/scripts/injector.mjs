@@ -476,6 +476,9 @@ async function loadTheme(themeDir) {
   const legacyCaretColor = normalizeCaretColor(art.caretColor, "art.caretColor");
   const caretColorLight = normalizeCaretColor(art.caretColorLight, "art.caretColorLight") ?? legacyCaretColor;
   const caretColorDark = normalizeCaretColor(art.caretColorDark, "art.caretColorDark") ?? legacyCaretColor;
+  const accent = normalizeCaretColor(art.accent, "art.accent");
+  const accentInk = normalizeCaretColor(art.accentInk, "art.accentInk");
+  const imageLuma = normalizedOpacity(art.imageLuma, "art.imageLuma");
   const palette = raw.palette && typeof raw.palette === "object" && !Array.isArray(raw.palette)
     ? raw.palette : {};
   const theme = {
@@ -493,6 +496,9 @@ async function loadTheme(themeDir) {
       caretColor: legacyCaretColor,
       caretColorLight,
       caretColorDark,
+      accent,
+      accentInk,
+      imageLuma,
     },
     palette: {},
   };

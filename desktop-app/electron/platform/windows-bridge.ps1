@@ -107,6 +107,7 @@ switch ($Action) {
     $active = Read-DreamSkinTheme -ThemeDirectory $paths.Active -SkipImageMetadata
     $theme = $active.Theme | ConvertTo-Json -Depth 12 | ConvertFrom-Json
     if (-not $theme.art) { $theme | Add-Member -NotePropertyName art -NotePropertyValue ([pscustomobject]@{}) -Force }
+    $artPropertyNames = @($patch.art.PSObject.Properties.Name)
     if ($null -ne $patch.art.maskOpacity) {
       $opacity = 0.0
       if (-not [double]::TryParse("$($patch.art.maskOpacity)", [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$opacity) -or $opacity -lt 0 -or $opacity -gt 1) { throw 'Mask opacity must be between 0 and 1.' }
@@ -133,6 +134,26 @@ switch ($Action) {
         $caretColor = "$value".Trim()
         if ($caretColor -notmatch '^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$') { throw 'Caret color is invalid.' }
         $theme.art | Add-Member -NotePropertyName $property -NotePropertyValue $caretColor -Force
+      }
+    }
+    foreach ($property in @('accent', 'accentInk')) {
+      if ($artPropertyNames -notcontains $property) { continue }
+      $value = $patch.art.$property
+      if ($null -eq $value) {
+        $theme.art.PSObject.Properties.Remove($property)
+        continue
+      }
+      $color = "$value".Trim()
+      if ($color -notmatch '^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$') { throw 'Theme color is invalid.' }
+      $theme.art | Add-Member -NotePropertyName $property -NotePropertyValue $color -Force
+    }
+    if ($artPropertyNames -contains 'imageLuma') {
+      if ($null -eq $patch.art.imageLuma) {
+        $theme.art.PSObject.Properties.Remove('imageLuma')
+      } else {
+        $imageLuma = 0.0
+        if (-not [double]::TryParse("$($patch.art.imageLuma)", [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$imageLuma) -or $imageLuma -lt 0 -or $imageLuma -gt 1) { throw 'Image luma must be between 0 and 1.' }
+        $theme.art | Add-Member -NotePropertyName imageLuma -NotePropertyValue $imageLuma -Force
       }
     }
     Write-DreamSkinTheme -ThemeDirectory $paths.Active -Theme $theme

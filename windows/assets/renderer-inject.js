@@ -63,12 +63,21 @@
     const hasNumber = (candidate) =>
       (typeof candidate === "number" || (typeof candidate === "string" && candidate.trim() !== "")) &&
       Number.isFinite(Number(candidate));
-    const requestedAccent = typeof config?.palette?.accent === "string"
-      ? config.palette.accent.trim()
-      : "";
+    const requestedAccent = typeof art.accent === "string"
+      ? art.accent.trim()
+      : typeof config?.palette?.accent === "string"
+        ? config.palette.accent.trim()
+        : "";
     const safeAccent = /^(?:#[\da-f]{3,8}|(?:rgb|hsl|oklch|oklab)\([^;{}]{1,96}\))$/i.test(requestedAccent)
       ? requestedAccent
       : null;
+    const safeColor = (value) => typeof value === "string" && /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(value.trim())
+      ? value.trim()
+      : null;
+    const safeAccentInk = safeColor(art.accentInk);
+    const imageLuma = art.imageLuma === null || art.imageLuma === undefined
+      ? null
+      : hasNumber(art.imageLuma) ? clamp(art.imageLuma) : null;
     const appearance = ["auto", "light", "dark"].includes(config.appearance)
       ? config.appearance
       : "auto";
@@ -100,6 +109,8 @@
       focusX: hasNumber(art.focusX) ? clamp(art.focusX) : null,
       focusY: hasNumber(art.focusY) ? clamp(art.focusY) : null,
       accent: safeAccent,
+      accentInk: safeAccentInk,
+      imageLuma,
       initialAspect: Number.isFinite(metadataRatio) && metadataRatio > 0 ? metadataRatio : null,
     };
   };
@@ -318,7 +329,9 @@
       ? profile.aspect >= 2.25 ? "banner" : "ambient"
       : config.taskMode;
     const accent = config.accent || `rgb(${profile.accent.join(" ")})`;
-    const accentInk = luminance(...profile.accent) > .42 ? "rgb(26 24 28)" : "rgb(250 248 251)";
+    const computedAccentInk = luminance(...profile.accent) > .42 ? "rgb(26 24 28)" : "rgb(250 248 251)";
+    const accentInk = config.accentInk || computedAccentInk;
+    const imageLuma = config.imageLuma ?? profile.luma;
     root.classList.toggle("dream-theme-light", appearance === "light");
     root.classList.toggle("dream-theme-dark", appearance === "dark");
     root.classList.toggle("dream-art-wide", profile.aspect >= 1.75);
@@ -338,7 +351,7 @@
     root.style.setProperty("--dream-focus-y", String(focusY));
     root.style.setProperty("--dream-accent", accent);
     root.style.setProperty("--dream-accent-ink", accentInk);
-    root.style.setProperty("--dream-image-luma", profile.luma.toFixed(3));
+    root.style.setProperty("--dream-image-luma", imageLuma.toFixed(3));
     root.style.removeProperty("--dream-mask-opacity");
     if (config.maskOpacityLight === null) root.style.removeProperty("--dream-mask-opacity-light");
     else root.style.setProperty("--dream-mask-opacity-light", String(config.maskOpacityLight));

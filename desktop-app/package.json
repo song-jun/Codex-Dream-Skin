@@ -31,13 +31,13 @@
     "appId": "local.codex.dreamskin.desktop",
     "productName": "Codex Dream Skin",
     "asar": true,
-    "files": ["dist", "dist-electron"],
+    "files": ["dist", "dist-electron", "assets"],
     "extraResources": [
       { "from": "../windows", "to": "platform/windows" },
       { "from": "../macos", "to": "platform/macos" },
       { "from": "electron/platform", "to": "platform/bridge" }
     ],
-    "win": { "target": "nsis" },
+    "win": { "target": "nsis", "icon": "assets/dream-skin.ico" },
     "mac": { "target": "dmg" }
   }
 }

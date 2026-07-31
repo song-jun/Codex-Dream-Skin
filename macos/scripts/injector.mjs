@@ -509,6 +509,9 @@ async function loadTheme(themeDir) {
   const caretColor = normalizeCaretColor(rawArt.caretColor, "art.caretColor");
   const caretColorLight = normalizeCaretColor(rawArt.caretColorLight, "art.caretColorLight") ?? caretColor;
   const caretColorDark = normalizeCaretColor(rawArt.caretColorDark, "art.caretColorDark") ?? caretColor;
+  const accent = normalizeCaretColor(rawArt.accent, "art.accent");
+  const accentInk = normalizeCaretColor(rawArt.accentInk, "art.accentInk");
+  const imageLuma = opacity(rawArt.imageLuma, "art.imageLuma");
   const art = {
     focusX: unit(rawArt.focusX, "art.focusX"),
     focusY: unit(rawArt.focusY, "art.focusY"),
@@ -519,6 +522,9 @@ async function loadTheme(themeDir) {
     caretColor,
     caretColorLight,
     caretColorDark,
+    accent,
+    accentInk,
+    imageLuma,
   };
   const theme = {
     schemaVersion: 1,

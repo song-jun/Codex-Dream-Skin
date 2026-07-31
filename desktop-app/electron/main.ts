@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { execFile } from 'node:child_process'
-import { existsSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,7 +15,7 @@ const previewCache = new Map<string, { stamp: string; value: string | null }>()
 
 type BridgeResult = Record<string, unknown>
 type ThemeRecord = { id: string; name: string; imagePath?: string; theme?: Record<string, unknown>; preview?: string | null }
-type CodexSessionRecord = { id: string; title: string; updatedAt: string | null }
+type CodexSessionRecord = { id: string; title: string; updatedAt: string | null; project: string | null; projectPath?: string | null }
 
 function stateRoot(): string {
   return isWindows
@@ -31,6 +31,28 @@ function scriptsRoot(): string {
   if (!app.isPackaged) return path.join(platformRoot(), 'scripts')
   const installed = isWindows ? path.join(stateRoot(), 'engine', 'scripts') : path.join(process.env.HOME ?? '', '.codex', 'codex-dream-skin-studio', 'scripts')
   return existsSync(path.join(installed, isWindows ? 'common-windows.ps1' : 'common-macos.sh')) ? installed : path.join(platformRoot(), 'scripts')
+}
+
+function installedRuntimeScript(): string {
+  return isWindows
+    ? path.join(stateRoot(), 'engine', 'scripts', 'common-windows.ps1')
+    : path.join(process.env.HOME ?? '', '.codex', 'codex-dream-skin-studio', 'scripts', 'common-macos.sh')
+}
+
+function isRuntimeInstalled(): boolean { return existsSync(installedRuntimeScript()) }
+
+function installerPath(): string {
+  return path.join(platformRoot(), 'scripts', isWindows ? 'install-dream-skin.ps1' : 'install-dream-skin-macos.sh')
+}
+
+async function installRuntime(): Promise<void> {
+  const script = installerPath()
+  if (!existsSync(script)) throw new Error(`找不到 Dream Skin 安装脚本：${script}`)
+  if (isWindows) {
+    await execute('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'RemoteSigned', '-File', script, '-NoShortcuts'])
+  } else {
+    await execute('/bin/bash', [script, '--no-launchers', '--no-launch'])
+  }
 }
 
 function readManagedState(): Record<string, unknown> | null {
@@ -105,6 +127,25 @@ function normalizeThemePatch(value: string): string {
     if (typeof value !== 'string' || !allowedColor.test(value.trim())) throw new Error('光标颜色格式无效。')
     target[key] = value.trim()
   }
+  for (const key of ['accent', 'accentInk'] as const) {
+    if (!(key in source)) continue
+    const value = source[key]
+    if (value === null) {
+      target[key] = null
+      continue
+    }
+    if (typeof value !== 'string' || !allowedColor.test(value.trim())) throw new Error('主题颜色格式无效。')
+    target[key] = value.trim()
+  }
+  if ('imageLuma' in source) {
+    const value = source.imageLuma
+    if (value === null) target.imageLuma = null
+    else {
+      const number = Number(value)
+      if (!Number.isFinite(number) || number < 0 || number > 1) throw new Error('图片亮度必须在 0 到 1 之间。')
+      target.imageLuma = number
+    }
+  }
   if (!Object.keys(target).length) throw new Error('没有可更新的主题参数。')
   return JSON.stringify({ art: target })
 }
@@ -115,6 +156,13 @@ function validateImagePath(value: string): string {
   const stats = statSync(full)
   if (!stats.isFile() || stats.size < 1 || stats.size > 16 * 1024 * 1024) throw new Error('图片必须是有效文件且不超过 16 MB。')
   return full
+}
+
+function imageDataUrl(imagePath: string): string {
+  const full = validateImagePath(imagePath)
+  const extension = path.extname(full).toLowerCase()
+  const mime = extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg'
+  return `data:${mime};base64,${readFileSync(full).toString('base64')}`
 }
 
 function execute(file: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
@@ -196,6 +244,34 @@ function localMacThemes(): ThemeRecord[] {
 function codexHome(): string { return isWindows ? process.env.USERPROFILE ?? process.env.HOME ?? '' : process.env.HOME ?? '' }
 function codexSessionIndexPath(): string { return path.join(codexHome(), '.codex', 'session_index.jsonl') }
 
+function readSessionHeader(file: string): Record<string, unknown> | null {
+  let handle: number | null = null
+  try {
+    handle = openSync(file, 'r')
+    const buffer = Buffer.alloc(64 * 1024)
+    const bytes = readSync(handle, buffer, 0, buffer.length, 0)
+    const firstLine = buffer.toString('utf8', 0, bytes).split(/\r?\n/, 1)[0]
+    const value = JSON.parse(firstLine) as Record<string, unknown>
+    return value && typeof value === 'object' ? value : null
+  } catch { return null }
+  finally { if (handle !== null) closeSync(handle) }
+}
+
+function readSessionProject(id: string): { name: string; path: string } | null {
+  const codexRoot = path.join(codexHome(), '.codex')
+  const file = [path.join(codexRoot, 'sessions'), path.join(codexRoot, 'archived_sessions')]
+    .flatMap((root) => findSessionFiles(root, id))[0]
+  if (!file) return null
+  const header = readSessionHeader(file)
+  const payload = header?.payload
+  const cwd = payload && typeof payload === 'object' && typeof (payload as Record<string, unknown>).cwd === 'string'
+    ? String((payload as Record<string, unknown>).cwd).trim()
+    : ''
+  if (!cwd) return null
+  const normalized = cwd.replace(/[\\/]+$/, '')
+  return { name: path.basename(normalized) || normalized, path: normalized }
+}
+
 function readCodexSessions(): CodexSessionRecord[] {
   const index = codexSessionIndexPath()
   if (!existsSync(index)) return []
@@ -205,7 +281,10 @@ function readCodexSessions(): CodexSessionRecord[] {
     try {
       const value = JSON.parse(line) as Record<string, unknown>
       const id = typeof value.id === 'string' ? value.id : ''
-      if (allowedSessionId.test(id)) records.push({ id, title: typeof value.thread_name === 'string' && value.thread_name.trim() ? value.thread_name.trim() : '未命名会话', updatedAt: typeof value.updated_at === 'string' ? value.updated_at : null })
+      if (allowedSessionId.test(id)) {
+        const project = readSessionProject(id)
+        records.push({ id, title: typeof value.thread_name === 'string' && value.thread_name.trim() ? value.thread_name.trim() : '未命名会话', updatedAt: typeof value.updated_at === 'string' ? value.updated_at : null, project: project?.name ?? null, projectPath: project?.path ?? null })
+      }
     } catch { /* ignore one malformed index line */ }
   }
   return records.sort((left, right) => (right.updatedAt ?? '').localeCompare(left.updatedAt ?? ''))
@@ -266,14 +345,30 @@ function renameSavedTheme(id: string, name: string): void { const directory = sa
 function deleteSavedTheme(id: string): void { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); rmSync(directory, { recursive: true, force: false }) }
 
 async function snapshot(): Promise<BridgeResult> {
+  const codexSessions = readCodexSessions()
+  if (!isRuntimeInstalled()) {
+    return {
+      platform: isMac ? 'darwin' : 'windows',
+      session: 'uninstalled',
+      installation: 'missing',
+      codexRunning: false,
+      injectorAlive: false,
+      port: isWindows ? 9335 : 9341,
+      active: null,
+      themes: [],
+      stateUpdatedAt: null,
+      connection: null,
+      variables: readDreamArtVariables(),
+      codexSessions,
+    }
+  }
   const raw = await runBridge('status')
   const managedState = readManagedState()
   const connection = managedState && (raw.session === 'active' || raw.session === 'paused') ? connectionFromState(managedState) : null
-  const codexSessions = readCodexSessions()
   if (isWindows) {
     const active = enrichTheme(raw.active)
     const themes = Array.isArray(raw.themes) ? raw.themes.map(enrichTheme).filter(Boolean) : []
-    return { ...raw, active, themes, connection, variables: readDreamArtVariables(), codexSessions }
+    return { ...raw, installation: 'installed', active, themes, connection, variables: readDreamArtVariables(), codexSessions }
   }
   const activePath = path.join(stateRoot(), 'theme', 'theme.json')
   let active: ThemeRecord | null = null
@@ -282,11 +377,12 @@ async function snapshot(): Promise<BridgeResult> {
     const image = typeof theme.image === 'string' ? path.resolve(path.dirname(activePath), theme.image) : ''
     active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) }
   } catch { /* no active theme yet */ }
-  return { ...raw, active, themes: localMacThemes(), connection, variables: readDreamArtVariables(), codexSessions }
+  return { ...raw, installation: 'installed', active, themes: localMacThemes(), connection, variables: readDreamArtVariables(), codexSessions }
 }
 
 async function createWindow(): Promise<void> {
-  const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: 'Codex Dream Skin', webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } })
+  const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico')
+  const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: 'Codex Dream Skin', ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } })
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL)
   else await window.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
 }
@@ -294,8 +390,10 @@ async function createWindow(): Promise<void> {
 app.whenReady().then(async () => {
   ipcMain.handle('snapshot', snapshot)
   ipcMain.handle('action', async (_event, action: string, values: string[] = []) => {
-    const supported = ['use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore']
+    const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore']
     if (!supported.includes(action)) throw new Error('不支持的操作。')
+    if (action === 'install') { await installRuntime(); return snapshot() }
+    if (!isRuntimeInstalled() && action !== 'delete-codex-session') throw new Error('Dream Skin 运行时尚未安装，请先安装后再执行此操作。')
     if (action === 'use-theme' && (!values[0] || !allowedThemeId.test(values[0]))) throw new Error('主题 ID 无效。')
     if (action === 'save-theme' && (!values[0] || !allowedThemeName.test(values[0]))) throw new Error('主题名称无效。')
     if ((action === 'rename-theme' || action === 'delete-theme') && (!values[0] || !allowedThemeId.test(values[0]))) throw new Error('主题 ID 无效。')
@@ -313,6 +411,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('choose-image', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: '主题图片', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })
     return result.canceled ? null : result.filePaths[0] ?? null
+  })
+  ipcMain.handle('preview-image', async (_event, value: unknown) => {
+    if (typeof value !== 'string') throw new Error('Image path is invalid.')
+    return imageDataUrl(value)
   })
   ipcMain.handle('open-state-folder', async () => { await shell.openPath(stateRoot()); return true })
   ipcMain.handle('confirm-restore', async () => {

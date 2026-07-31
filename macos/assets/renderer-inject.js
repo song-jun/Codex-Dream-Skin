@@ -29,6 +29,7 @@
     "--dream-skin-name", "--dream-skin-tagline", "--dream-skin-project-prefix",
     "--dream-skin-project-label",
     "--dream-mask-opacity", "--dream-mask-opacity-light", "--dream-mask-opacity-dark", "--dream-caret-color",
+    "--dream-accent", "--dream-accent-ink", "--dream-image-luma",
   ];
   const installToken = {};
   const existingAnalysisCache = window[ANALYSIS_CACHE_KEY];
@@ -310,13 +311,19 @@
       const allowExplicit = explicit.has(name) && !(legacyLight && structural.has(name));
       return allowExplicit && typeof colors[name] === "string" ? colors[name] : adaptive[name];
     };
-    const accent = pick("accent");
+    const accent = typeof ART.accent === "string" && ART.accent.trim() ? ART.accent.trim() : pick("accent");
+    const accentRgb = parseRgb(accent);
+    const computedAccentInk = accentRgb && luminance(accentRgb) > .42 ? "rgb(26 24 28)" : "rgb(250 248 251)";
+    const accentInk = typeof ART.accentInk === "string" && ART.accentInk.trim()
+      ? ART.accentInk.trim() : computedAccentInk;
+    const imageLuma = Number(ART.imageLuma);
     const accentAlt = explicit.has("accentAlt") ? pick("accentAlt") : (explicit.has("accent") ? accent : adaptive.accentAlt);
     const variables = {
       "--ds-bg": pick("background"),
       "--ds-panel": pick("panel"),
       "--ds-panel-2": pick("panelAlt"),
       "--ds-green": accent,
+      "--ds-on-accent": accentInk,
       "--ds-lime": accentAlt,
       "--ds-cyan": pick("secondary"),
       "--ds-purple": pick("highlight"),
@@ -328,6 +335,10 @@
     for (const [name, value] of Object.entries(variables)) {
       if (typeof value === "string" && value) setStyleProperty(root, name, value);
     }
+    setStyleProperty(root, "--dream-accent", accent);
+    setStyleProperty(root, "--dream-accent-ink", accentInk);
+    setStyleProperty(root, "--dream-image-luma", Number.isFinite(imageLuma) && imageLuma >= 0 && imageLuma <= 1
+      ? imageLuma.toFixed(3) : (artAnalysis?.luma ?? 0.32).toFixed(3));
     const rgbVariables = {
       "--ds-bg-rgb": variables["--ds-bg"],
       "--ds-panel-rgb": variables["--ds-panel"],

@@ -1,4 +1,6 @@
-export type SessionState = 'active' | 'paused' | 'off' | 'stale' | 'unknown'
+export type SessionState = 'active' | 'paused' | 'off' | 'stale' | 'unknown' | 'uninstalled'
+
+export type InstallationState = 'installed' | 'missing'
 
 export type ThemeRecord = {
   id: string
@@ -28,11 +30,14 @@ export type CodexSessionRecord = {
   id: string
   title: string
   updatedAt: string | null
+  project: string | null
+  projectPath?: string | null
 }
 
 export type Snapshot = {
   platform: 'windows' | 'darwin'
   session: SessionState
+  installation: InstallationState
   codexRunning: boolean
   injectorAlive: boolean
   port: number

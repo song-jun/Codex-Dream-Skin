@@ -40,6 +40,25 @@ for (const key of ["caretColorLight", "caretColorDark"]) {
   if (!/^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(color)) throw new Error("Caret color is invalid.");
   theme.art[key] = color;
 }
+for (const key of ["accent", "accentInk"]) {
+  if (patch.art[key] === undefined) continue;
+  if (patch.art[key] === null) {
+    delete theme.art[key];
+    continue;
+  }
+  const color = String(patch.art[key]).trim();
+  if (!/^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(color)) throw new Error("Theme color is invalid.");
+  theme.art[key] = color;
+}
+if (patch.art.imageLuma !== undefined) {
+  if (patch.art.imageLuma === null) {
+    delete theme.art.imageLuma;
+  } else {
+    const imageLuma = Number(patch.art.imageLuma);
+    if (!Number.isFinite(imageLuma) || imageLuma < 0 || imageLuma > 1) throw new Error("Image luma must be between 0 and 1.");
+    theme.art.imageLuma = imageLuma;
+  }
+}
 const temporary = `${file}.${process.pid}.tmp`;
 try {
   fs.writeFileSync(temporary, `${JSON.stringify(theme, null, 2)}\n`, { mode: 0o600, flag: "wx" });
