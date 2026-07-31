@@ -104,15 +104,20 @@ try {
     Stop-DreamSkinTrayProcess
     if ($shouldCloseCodex) {
       Stop-DreamSkinCodex -Codex $codex -AllowForce:$forceAuthorized
-      if ($portOwnedByCodex -and -not (Wait-DreamSkinPortAvailable -Port $Port -TimeoutSeconds 5)) {
+      $recordedInjectorStopped = Stop-DreamSkinRecordedInjector -State $state
+      if (-not $recordedInjectorStopped) {
+        $staleStatePath = Archive-DreamSkinStateFile -Path $StatePath
+        Write-Warning "Archived stale Dream Skin state at $staleStatePath"
+      }
+      if ($portOwnedByCodex -and -not (Wait-DreamSkinPortAvailable -Port $Port -TimeoutSeconds 20)) {
         throw "Port $Port is still listening after Codex closed; state was preserved for inspection."
       }
-    }
-
-    $recordedInjectorStopped = Stop-DreamSkinRecordedInjector -State $state
-    if (-not $recordedInjectorStopped) {
-      $staleStatePath = Archive-DreamSkinStateFile -Path $StatePath
-      Write-Warning "Archived stale Dream Skin state at $staleStatePath"
+    } else {
+      $recordedInjectorStopped = Stop-DreamSkinRecordedInjector -State $state
+      if (-not $recordedInjectorStopped) {
+        $staleStatePath = Archive-DreamSkinStateFile -Path $StatePath
+        Write-Warning "Archived stale Dream Skin state at $staleStatePath"
+      }
     }
 
     if ($RecoverConfigBackup) {

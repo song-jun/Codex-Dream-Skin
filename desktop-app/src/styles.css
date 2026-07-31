@@ -269,3 +269,22 @@ code { color: var(--primary-dark); font-family: "Segoe UI", Arial, sans-serif; f
 .fullscreen-loading-panel .loading-ring { grid-row: span 2; width: 18px; height: 18px; }
 .fullscreen-loading-panel strong { color: var(--ink); font-size: 16px; }
 .fullscreen-loading-panel span:last-child { color: var(--muted); font-size: 13px; }
+.restore-dialog-backdrop { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 24px; background: rgba(18, 28, 48, .54); backdrop-filter: blur(5px); }
+.restore-dialog { position: relative; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 3px 15px; width: min(500px, 100%); padding: 25px 26px 22px; border: 1px solid rgba(255, 255, 255, .86); border-radius: 18px; background: var(--surface); box-shadow: 0 24px 70px rgba(14, 27, 54, .3); }
+.restore-dialog-close { position: absolute; top: 15px; right: 15px; display: grid; width: 30px; height: 30px; place-items: center; padding: 0; color: var(--muted); border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
+.restore-dialog-close:hover { color: var(--ink); background: var(--surface-soft); }
+.restore-dialog-close svg { width: 17px; height: 17px; }
+.restore-dialog-icon { display: grid; width: 48px; height: 48px; place-items: center; color: var(--danger); border-radius: 13px; background: var(--danger-soft); }
+.restore-dialog-icon svg { width: 23px; height: 23px; }
+.restore-dialog-content { padding: 0 30px 0 0; }
+.restore-dialog-content .eyebrow { margin: 1px 0 6px; color: var(--danger); font-weight: 600; }
+.restore-dialog-content h3 { margin: 0; font-size: 20px; line-height: 1.35; }
+.restore-dialog-content p { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.restore-dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+@media (max-width: 520px) {
+  .restore-dialog { grid-template-columns: 1fr; padding: 24px 20px 20px; }
+  .restore-dialog-icon { width: 42px; height: 42px; border-radius: 12px; }
+  .restore-dialog-content { padding-right: 20px; }
+  .restore-dialog-actions { grid-column: auto; }
+}

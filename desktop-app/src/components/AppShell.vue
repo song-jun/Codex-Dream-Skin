@@ -4,7 +4,7 @@
   交互边界：导航与全局操作调用工作台控制器，主题和会话内容交给子组件。
 -->
 <script setup lang="ts">
-import { CollectionTag, FolderOpened, Monitor, Refresh, Setting } from "@element-plus/icons-vue";
+import { Close, CollectionTag, FolderOpened, Monitor, Refresh, RefreshRight, Setting, WarningFilled } from "@element-plus/icons-vue";
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
@@ -28,6 +28,8 @@ const {
   installDreamSkin,
   openStateFolder,
   restoreSkin,
+  restoreConfirmVisible,
+  confirmRestore,
 } = useWorkbenchContext();
 </script>
 
@@ -86,6 +88,21 @@ const {
             <span class="loading-ring" /><strong>{{ operationText }}</strong>
             <span>完成后会自动刷新 Codex 状态</span>
           </div>
+        </div>
+        <div v-if="restoreConfirmVisible" class="restore-dialog-backdrop" role="presentation" @click.self="restoreConfirmVisible = false">
+          <section class="restore-dialog" role="dialog" aria-modal="true" aria-labelledby="restore-dialog-title">
+            <button class="restore-dialog-close" type="button" aria-label="关闭" @click="restoreConfirmVisible = false"><Close /></button>
+            <div class="restore-dialog-icon"><WarningFilled /></div>
+            <div class="restore-dialog-content">
+              <div class="eyebrow">外观恢复</div>
+              <h3 id="restore-dialog-title">恢复官方 Codex 外观？</h3>
+              <p>这会关闭并重新打开官方 Codex，移除当前 Dream Skin 注入。未保存的 Codex 输入可能丢失。</p>
+            </div>
+            <div class="restore-dialog-actions">
+              <el-button class="secondary-button" :icon="Close" @click="restoreConfirmVisible = false">取消</el-button>
+              <el-button type="primary" :icon="RefreshRight" @click="confirmRestore">恢复官方外观</el-button>
+            </div>
+          </section>
         </div>
 
         <OverviewPanel v-if="activeView === 'overview'" />

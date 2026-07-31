@@ -6,5 +6,4 @@ contextBridge.exposeInMainWorld('dreamSkin', {
   chooseImage: () => ipcRenderer.invoke('choose-image'),
   previewImage: (imagePath) => ipcRenderer.invoke('preview-image', imagePath),
   openStateFolder: () => ipcRenderer.invoke('open-state-folder'),
-  confirmRestore: () => ipcRenderer.invoke('confirm-restore'),
 })

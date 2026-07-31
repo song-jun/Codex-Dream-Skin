@@ -166,8 +166,18 @@ function imageDataUrl(imagePath: string): string {
 }
 
 function execute(file: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => execFile(file, args, { windowsHide: true, maxBuffer: 12 * 1024 * 1024 }, (error, stdout, stderr) => {
-    if (error) { reject(new Error((stderr || stdout || error.message).trim() || '操作失败。')); return }
+  return new Promise((resolve, reject) => execFile(file, args, {
+    windowsHide: true,
+    maxBuffer: 12 * 1024 * 1024,
+    timeout: 120_000,
+  }, (error, stdout, stderr) => {
+    if (error) {
+      const message = error.killed
+        ? '平台操作超过 120 秒，已停止等待。请检查 Codex 和 Dream Skin 状态后重试。'
+        : (stderr || stdout || error.message).trim() || '操作失败。'
+      reject(new Error(message))
+      return
+    }
     resolve({ stdout, stderr })
   }))
 }
@@ -417,10 +427,6 @@ app.whenReady().then(async () => {
     return imageDataUrl(value)
   })
   ipcMain.handle('open-state-folder', async () => { await shell.openPath(stateRoot()); return true })
-  ipcMain.handle('confirm-restore', async () => {
-    const result = await dialog.showMessageBox({ type: 'warning', buttons: ['恢复官方外观', '取消'], defaultId: 1, cancelId: 1, title: '恢复 Codex 外观', message: '这会关闭并重新打开官方 Codex，移除当前皮肤。', detail: '未保存的 Codex 输入可能丢失。' })
-    return result.response === 0
-  })
   await createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow() })
 })

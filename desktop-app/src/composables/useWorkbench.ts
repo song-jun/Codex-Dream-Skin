@@ -81,6 +81,7 @@ export type WorkbenchContext = {
   themeAppearanceLabel: ComputedRef<string>;
   settingsDirty: Ref<boolean>;
   themeDefaults: Ref<ThemeRecord | null>;
+  restoreConfirmVisible: Ref<boolean>;
   selectView: (key: string) => void;
   refresh: (showLoading?: boolean) => Promise<void>;
   runAction: (
@@ -91,6 +92,7 @@ export type WorkbenchContext = {
   installDreamSkin: () => Promise<void>;
   openStateFolder: () => Promise<void>;
   restoreSkin: () => Promise<void>;
+  confirmRestore: () => Promise<void>;
   chooseTheme: (theme: ThemeRecord) => Promise<void>;
   chooseBackgroundImage: () => Promise<void>;
   applyThemeSettings: (message?: string) => Promise<void>;
@@ -130,6 +132,7 @@ export function createWorkbench(): WorkbenchContext {
   const pendingImagePreview = ref<string | null>(null);
   const managementPalette = ref<ImagePalette | null>(null);
   const themeDefaults = ref<ThemeRecord | null>(null);
+  const restoreConfirmVisible = ref(false);
   const editingMode = ref<ThemeMode>("dark");
   const themeSettings = reactive<ThemeSettings>({
     maskOpacityLight: 0.7,
@@ -337,7 +340,7 @@ export function createWorkbench(): WorkbenchContext {
       scheduleThemeSettings();
     },
   });
-  const managementThemeStyle = computed<any>(() => {
+  const managementThemeStyle = computed<Record<string, string>>(() => {
     if (!managementPalette.value && !art.value.accent) return {};
     const accent = committedAccent.value;
     return {
@@ -698,12 +701,12 @@ export function createWorkbench(): WorkbenchContext {
     }
   }
   async function restoreSkin() {
-    if (
-      !ensureBridge() ||
-      loading.value ||
-      !(await window.dreamSkin.confirmRestore())
-    )
-      return;
+    if (!ensureBridge() || loading.value) return;
+    restoreConfirmVisible.value = true;
+  }
+  async function confirmRestore() {
+    if (!ensureBridge() || loading.value) return;
+    restoreConfirmVisible.value = false;
     await runAction("restore", [], "官方外观已恢复。");
   }
   async function saveCurrentTheme() {
@@ -853,6 +856,7 @@ export function createWorkbench(): WorkbenchContext {
     themeAppearanceLabel,
     settingsDirty,
     themeDefaults,
+    restoreConfirmVisible,
     art,
     selectView,
     refresh,
@@ -860,6 +864,7 @@ export function createWorkbench(): WorkbenchContext {
     installDreamSkin,
     openStateFolder,
     restoreSkin,
+    confirmRestore,
     chooseTheme,
     chooseBackgroundImage,
     applyThemeSettings,

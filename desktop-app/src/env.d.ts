@@ -8,7 +8,6 @@ declare global {
       chooseImage: () => Promise<string | null>
       previewImage: (imagePath: string) => Promise<string>
       openStateFolder: () => Promise<boolean>
-      confirmRestore: () => Promise<boolean>
     }
   }
 }
