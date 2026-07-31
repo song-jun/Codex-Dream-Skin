@@ -126,6 +126,15 @@ switch ($Action) {
       if ($caretColor -notmatch '^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$') { throw 'Caret color is invalid.' }
       $theme.art | Add-Member -NotePropertyName caretColor -NotePropertyValue $caretColor -Force
     }
+    foreach ($mode in @('Light', 'Dark')) {
+      $property = "caretColor$mode"
+      $value = $patch.art.$property
+      if ($null -ne $value) {
+        $caretColor = "$value".Trim()
+        if ($caretColor -notmatch '^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$') { throw 'Caret color is invalid.' }
+        $theme.art | Add-Member -NotePropertyName $property -NotePropertyValue $caretColor -Force
+      }
+    }
     Write-DreamSkinTheme -ThemeDirectory $paths.Active -Theme $theme
     $result = [pscustomobject]@{ ok = $true; action = $Action; snapshot = Get-Snapshot }
   }

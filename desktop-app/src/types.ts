@@ -3,6 +3,7 @@ export type SessionState = 'active' | 'paused' | 'off' | 'stale' | 'unknown'
 export type ThemeRecord = {
   id: string
   name: string
+  imagePath?: string
   preview?: string | null
   theme?: Record<string, unknown>
 }
@@ -19,7 +20,8 @@ export type RendererConnection = {
 export type DreamArtVariables = {
   maskOpacityLight: number
   maskOpacityDark: number
-  caretColor: string
+  caretColorLight: string
+  caretColorDark: string
 }
 
 export type CodexSessionRecord = {

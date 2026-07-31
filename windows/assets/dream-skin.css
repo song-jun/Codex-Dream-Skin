@@ -15,7 +15,8 @@
   --dream-shell-mask: color-mix(in oklab, var(--dream-surface) calc(70% * var(--dream-mask-opacity-active)), transparent);
   --dream-message-mask: color-mix(in oklab, var(--dream-mask-color) calc(52% * var(--dream-mask-opacity-active)), transparent);
   --dream-send-bg: #C84F70;
-  --dream-caret-color: var(--dream-send-bg);
+  --dream-caret-color-light: #C84F70;
+  --dream-caret-color: var(--dream-caret-color-light);
   --dream-composer-border: rgba(190, 103, 131, .82);
   /* 全屏背景图透明度：让图片覆盖整个 Codex，同时保留界面可读性。 */
   --dream-global-art-opacity: .46;
@@ -59,6 +60,8 @@
   /* 暗色全屏背景提高可见度，面板透明度负责控制文字对比度。 */
   --dream-global-art-opacity: .72;
   --dream-send-bg: #6C7EEB;
+  --dream-caret-color-dark: #6C7EEB;
+  --dream-caret-color: var(--dream-caret-color-dark);
   --dream-composer-border: rgba(132, 148, 232, .86);
   --dream-canvas: color-mix(in oklab, oklch(0.16 0.012 245) 96%, var(--dream-accent));
   --dream-surface: color-mix(in oklab, oklch(0.19 0.012 245) 95%, var(--dream-accent));

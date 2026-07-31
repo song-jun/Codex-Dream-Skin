@@ -23,6 +23,8 @@
   --ds-secondary-rgb: 141 163 151;
   --ds-highlight-rgb: var(--ds-secondary-rgb);
   --ds-accent: var(--ds-green);
+  --dream-caret-color-dark: #8298A3;
+  --dream-caret-color: var(--dream-caret-color-dark);
   --ds-accent-soft: var(--ds-lime);
   --ds-secondary: var(--ds-cyan);
   --ds-highlight: var(--ds-purple);
@@ -78,6 +80,8 @@ html.codex-dream-skin[data-dream-shell="light"] {
   --ds-text-rgb: 34 39 42;
   --ds-muted-rgb: 104 113 118;
   --ds-accent-rgb: 84 112 126;
+  --dream-caret-color-light: #54707E;
+  --dream-caret-color: var(--dream-caret-color-light);
   --ds-secondary-rgb: 102 128 116;
   --ds-highlight-rgb: var(--ds-secondary-rgb);
   --ds-on-accent: rgb(var(--ds-panel-rgb) / 1);

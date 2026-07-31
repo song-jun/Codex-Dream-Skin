@@ -34,6 +34,12 @@ if (patch.art.caretColor !== undefined) {
   if (!/^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(color)) throw new Error("Caret color is invalid.");
   theme.art.caretColor = color;
 }
+for (const key of ["caretColorLight", "caretColorDark"]) {
+  if (patch.art[key] === undefined) continue;
+  const color = String(patch.art[key]).trim();
+  if (!/^(#[\da-f]{3,8}|(rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(color)) throw new Error("Caret color is invalid.");
+  theme.art[key] = color;
+}
 const temporary = `${file}.${process.pid}.tmp`;
 try {
   fs.writeFileSync(temporary, `${JSON.stringify(theme, null, 2)}\n`, { mode: 0o600, flag: "wx" });

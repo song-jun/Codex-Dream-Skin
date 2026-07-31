@@ -465,10 +465,17 @@ async function loadTheme(themeDir) {
     }
     return number;
   };
-  const requestedCaretColor = typeof art.caretColor === "string" ? art.caretColor.trim() : "";
-  const normalizedCaretColor = requestedCaretColor && /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(requestedCaretColor)
-    ? requestedCaretColor : null;
-  if (requestedCaretColor && normalizedCaretColor === null) throw new Error("art.caretColor is not a supported CSS color");
+  const normalizeCaretColor = (value, name) => {
+    if (value === undefined || value === null || value === "") return null;
+    const color = typeof value === "string" ? value.trim() : "";
+    if (!color || !/^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(color)) {
+      throw new Error(`${name} is not a supported CSS color`);
+    }
+    return color;
+  };
+  const legacyCaretColor = normalizeCaretColor(art.caretColor, "art.caretColor");
+  const caretColorLight = normalizeCaretColor(art.caretColorLight, "art.caretColorLight") ?? legacyCaretColor;
+  const caretColorDark = normalizeCaretColor(art.caretColorDark, "art.caretColorDark") ?? legacyCaretColor;
   const palette = raw.palette && typeof raw.palette === "object" && !Array.isArray(raw.palette)
     ? raw.palette : {};
   const theme = {
@@ -483,7 +490,9 @@ async function loadTheme(themeDir) {
       taskMode: normalizedChoice(art.taskMode, "art.taskMode", THEME_CHOICES.taskMode, "auto"),
       maskOpacityLight: normalizedOpacity(art.maskOpacityLight ?? art.maskOpacity, "art.maskOpacityLight"),
       maskOpacityDark: normalizedOpacity(art.maskOpacityDark ?? art.maskOpacity, "art.maskOpacityDark"),
-      caretColor: normalizedCaretColor,
+      caretColor: legacyCaretColor,
+      caretColorLight,
+      caretColorDark,
     },
     palette: {},
   };

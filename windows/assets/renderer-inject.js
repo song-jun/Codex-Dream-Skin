@@ -33,6 +33,7 @@
     "--dream-caret-color",
   ];
   const HOME_UTILITY_CLASS = "dream-home-utility";
+  const CARET_TARGETS = ".ProseMirror, [contenteditable=\"true\"], textarea, input";
   const installToken = {};
   let samplingNativeShell = false;
   let observer = null;
@@ -80,10 +81,12 @@
     const legacyMaskOpacity = hasNumber(art.maskOpacity) ? clamp(art.maskOpacity) : null;
     const maskOpacityLight = hasNumber(art.maskOpacityLight) ? clamp(art.maskOpacityLight) : legacyMaskOpacity;
     const maskOpacityDark = hasNumber(art.maskOpacityDark) ? clamp(art.maskOpacityDark) : legacyMaskOpacity;
-    const requestedCaretColor = typeof art.caretColor === "string" ? art.caretColor.trim() : "";
-    const safeCaretColor = /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(requestedCaretColor)
-      ? requestedCaretColor
+    const safeCaretColor = (value) => typeof value === "string" && /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(value.trim())
+      ? value.trim()
       : null;
+    const legacyCaretColor = safeCaretColor(art.caretColor);
+    const caretColorLight = safeCaretColor(art.caretColorLight) ?? legacyCaretColor;
+    const caretColorDark = safeCaretColor(art.caretColorDark) ?? legacyCaretColor;
     const metadataRatio = Number(config?.artMetadata?.ratio);
     return {
       appearance,
@@ -91,7 +94,9 @@
       taskMode,
       maskOpacityLight,
       maskOpacityDark,
-      caretColor: safeCaretColor,
+      caretColor: legacyCaretColor,
+      caretColorLight,
+      caretColorDark,
       focusX: hasNumber(art.focusX) ? clamp(art.focusX) : null,
       focusY: hasNumber(art.focusY) ? clamp(art.focusY) : null,
       accent: safeAccent,
@@ -293,6 +298,7 @@
     const root = document.documentElement;
     root?.classList.remove(...ROOT_CLASSES);
     for (const property of ROOT_PROPERTIES) root?.style.removeProperty(property);
+    document.querySelectorAll(CARET_TARGETS).forEach((node) => node.style.removeProperty("caret-color"));
     document.querySelectorAll(".dream-home").forEach((node) => node.classList.remove("dream-home"));
     document.querySelectorAll(".dream-task").forEach((node) => node.classList.remove("dream-task"));
     document.querySelectorAll(".dream-home-shell").forEach((node) => node.classList.remove("dream-home-shell"));
@@ -338,8 +344,14 @@
     else root.style.setProperty("--dream-mask-opacity-light", String(config.maskOpacityLight));
     if (config.maskOpacityDark === null) root.style.removeProperty("--dream-mask-opacity-dark");
     else root.style.setProperty("--dream-mask-opacity-dark", String(config.maskOpacityDark));
-    if (config.caretColor === null) root.style.removeProperty("--dream-caret-color");
-    else root.style.setProperty("--dream-caret-color", config.caretColor);
+    const caretColor = appearance === "light" ? config.caretColorLight : config.caretColorDark;
+    if (caretColor === null) {
+      root.style.removeProperty("--dream-caret-color");
+      document.querySelectorAll(CARET_TARGETS).forEach((node) => node.style.removeProperty("caret-color"));
+    } else {
+      root.style.setProperty("--dream-caret-color", caretColor);
+      document.querySelectorAll(CARET_TARGETS).forEach((node) => node.style.setProperty("caret-color", caretColor, "important"));
+    }
   };
 
   const ensure = () => {

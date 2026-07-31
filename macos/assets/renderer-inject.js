@@ -4,6 +4,7 @@
   const STYLE_ID = "codex-dream-skin-style";
   const CHROME_ID = "codex-dream-skin-chrome";
   const SHELL_ATTR = "data-dream-shell";
+  const CARET_TARGETS = ".ProseMirror, [contenteditable=\"true\"], textarea, input";
   const ART_ATTRS = [
     "data-dream-art-wide", "data-dream-art-safe", "data-dream-task-mode",
     "data-dream-art-safe-area", "data-dream-art-task-mode", "data-dream-art-aspect",
@@ -358,9 +359,17 @@
     else setStyleProperty(root, "--dream-mask-opacity-light", String(safeLight));
     if (safeDark === null) root.style.removeProperty("--dream-mask-opacity-dark");
     else setStyleProperty(root, "--dream-mask-opacity-dark", String(safeDark));
-    const caretColor = typeof ART.caretColor === "string" ? ART.caretColor.trim() : "";
-    if (/^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(caretColor)) setStyleProperty(root, "--dream-caret-color", caretColor);
-    else root.style.removeProperty("--dream-caret-color");
+    const legacyCaretColor = typeof ART.caretColor === "string" ? ART.caretColor.trim() : "";
+    const modeCaretColor = typeof ART[shell === "light" ? "caretColorLight" : "caretColorDark"] === "string"
+      ? ART[shell === "light" ? "caretColorLight" : "caretColorDark"].trim()
+      : legacyCaretColor;
+    if (/^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(modeCaretColor)) {
+      setStyleProperty(root, "--dream-caret-color", modeCaretColor);
+      document.querySelectorAll(CARET_TARGETS).forEach((node) => node.style.setProperty("caret-color", modeCaretColor, "important"));
+    } else {
+      root.style.removeProperty("--dream-caret-color");
+      document.querySelectorAll(CARET_TARGETS).forEach((node) => node.style.removeProperty("caret-color"));
+    }
   };
 
   const applyArtMetadata = (root) => {
@@ -668,6 +677,7 @@
     for (const name of ART_ATTRS) document.documentElement?.removeAttribute(name);
     document.documentElement?.style.removeProperty("--dream-skin-art");
     for (const name of THEME_VARIABLES) document.documentElement?.style.removeProperty(name);
+    document.querySelectorAll(CARET_TARGETS).forEach((node) => node.style.removeProperty("caret-color"));
     document.querySelectorAll(".dream-skin-home").forEach((node) => node.classList.remove("dream-skin-home"));
     document.querySelectorAll(".dream-skin-home-shell").forEach((node) => node.classList.remove("dream-skin-home-shell"));
     document.querySelectorAll(".dream-skin-home-utility").forEach((node) => node.classList.remove("dream-skin-home-utility"));

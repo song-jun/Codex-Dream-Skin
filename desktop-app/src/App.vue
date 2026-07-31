@@ -28,6 +28,7 @@ import type {
 } from "./types";
 
 type ViewName = "overview" | "sessions";
+type ThemeMode = "light" | "dark";
 type Activity = {
   action: string;
   message: string;
@@ -43,13 +44,16 @@ const errorMessage = ref("");
 const activities = ref<Activity[]>([]);
 const switchingThemeId = ref<string | null>(null);
 const settingsDirty = ref(false);
+const pendingImagePath = ref<string | null>(null);
+const themeDefaults = ref<ThemeRecord | null>(null);
+const editingMode = ref<ThemeMode>("dark");
 const themeSettings = reactive({
   maskOpacityLight: 0.7,
   maskOpacityDark: 0.5,
-  caretColor: "#C84F70",
+  caretColorLight: "#C84F70",
+  caretColorDark: "#6C7EEB",
 });
 let refreshTimer: number | undefined;
-let settingsTimer: number | undefined;
 
 const statusLabel = computed(
   () =>
@@ -81,9 +85,96 @@ const artVariables = computed(
     snapshot.value?.variables ?? {
       maskOpacityLight: 0.7,
       maskOpacityDark: 0.5,
-      caretColor: "#C84F70",
+      caretColorLight: "#C84F70",
+      caretColorDark: "#6C7EEB",
     },
 );
+const defaultArt = computed(
+  () => (themeDefaults.value?.theme?.art ?? {}) as Record<string, unknown>,
+);
+const themeAppearanceLabel = computed(() => {
+  const appearance = activeTheme.value?.theme?.appearance;
+  return appearance === "light"
+    ? "浅色模式"
+    : appearance === "dark"
+      ? "暗色模式"
+      : "跟随 Codex";
+});
+const editingModeLabel = computed(() =>
+  editingMode.value === "light" ? "浅色模式" : "暗色模式",
+);
+const editingOpacityVariable = computed(() =>
+  editingMode.value === "light"
+    ? "--dream-mask-opacity-light"
+    : "--dream-mask-opacity-dark",
+);
+const editingCaretVariable = computed(() =>
+  editingMode.value === "light"
+    ? "--dream-caret-color-light"
+    : "--dream-caret-color-dark",
+);
+function resolveCaretColor(value: unknown, mode: ThemeMode): string {
+  const fallback =
+    mode === "light"
+      ? artVariables.value.caretColorLight
+      : artVariables.value.caretColorDark;
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+  const color = value.trim();
+  const reference = /^var\((?:--dream-caret-color(?:-(light|dark))?|--dream-send-bg)\)$/i.exec(color);
+  if (!reference) return color;
+  if (reference[1] === "light") return artVariables.value.caretColorLight;
+  if (reference[1] === "dark") return artVariables.value.caretColorDark;
+  return fallback;
+}
+const editingMaskOpacity = computed({
+  get: (): number =>
+    editingMode.value === "light"
+      ? themeSettings.maskOpacityLight
+      : themeSettings.maskOpacityDark,
+  set: (value: number) => {
+    if (editingMode.value === "light") themeSettings.maskOpacityLight = value;
+    else themeSettings.maskOpacityDark = value;
+    scheduleThemeSettings();
+  },
+});
+const editingCaretColor = computed({
+  get: (): string =>
+    editingMode.value === "light"
+      ? themeSettings.caretColorLight
+      : themeSettings.caretColorDark,
+  set: (value: string) => {
+    if (editingMode.value === "light") themeSettings.caretColorLight = value;
+    else themeSettings.caretColorDark = value;
+    scheduleThemeSettings();
+  },
+});
+const defaultEditingMaskOpacity = computed(() => {
+  const legacy = Number(defaultArt.value.maskOpacity);
+  const value = Number(
+    defaultArt.value[
+      editingMode.value === "light" ? "maskOpacityLight" : "maskOpacityDark"
+    ] ?? legacy,
+  );
+  const fallback =
+    editingMode.value === "light"
+      ? artVariables.value.maskOpacityLight
+      : artVariables.value.maskOpacityDark;
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
+});
+const defaultCaretColor = computed(() =>
+  resolveCaretColor(
+    defaultArt.value[
+      editingMode.value === "light" ? "caretColorLight" : "caretColorDark"
+    ] ?? defaultArt.value.caretColor,
+    editingMode.value,
+  ),
+);
+const pendingImageName = computed(() => {
+  if (!pendingImagePath.value) return "";
+  return pendingImagePath.value.split(/[\\/]/).pop() ?? pendingImagePath.value;
+});
 const currentConnection = computed<RendererConnection | null>(
   () => snapshot.value?.connection ?? null,
 );
@@ -96,6 +187,7 @@ const operationText = computed(
         refresh: "正在刷新 Dream Skin 状态",
         "use-theme": "正在将主题应用到 Codex renderer",
         "update-theme": "正在实时应用外观参数",
+        "apply-theme": "正在应用外观参数和背景图片",
         "choose-image": "正在准备背景图片",
         "delete-codex-session": "正在删除 Codex 会话",
         start: "正在启动或重启 Codex Dream Skin",
@@ -151,6 +243,10 @@ function ensureBridge() {
 
 function hydrateThemeSettings() {
   if (settingsDirty.value) return;
+  const appearance = activeTheme.value?.theme?.appearance;
+  if (appearance === "light" || appearance === "dark") {
+    editingMode.value = appearance;
+  }
   const legacy = Number(art.value.maskOpacity);
   const light = Number(art.value.maskOpacityLight ?? legacy);
   const dark = Number(art.value.maskOpacityDark ?? legacy);
@@ -162,10 +258,22 @@ function hydrateThemeSettings() {
     Number.isFinite(dark) && dark >= 0 && dark <= 1
       ? dark
       : artVariables.value.maskOpacityDark;
-  themeSettings.caretColor =
-    typeof art.value.caretColor === "string"
-      ? art.value.caretColor
-      : artVariables.value.caretColor;
+  themeSettings.caretColorLight = resolveCaretColor(
+    art.value.caretColorLight ?? art.value.caretColor,
+    "light",
+  );
+  themeSettings.caretColorDark = resolveCaretColor(
+    art.value.caretColorDark ?? art.value.caretColor,
+    "dark",
+  );
+  pendingImagePath.value = null;
+}
+
+function syncThemeDefaults() {
+  const active = snapshot.value?.active;
+  if (!active || themeDefaults.value?.id === active.id) return;
+  themeDefaults.value =
+    themes.value.find((theme) => theme.id === active.id) ?? active;
 }
 
 async function refresh(showLoading = false) {
@@ -177,6 +285,7 @@ async function refresh(showLoading = false) {
   try {
     errorMessage.value = "";
     snapshot.value = await window.dreamSkin.snapshot();
+    syncThemeDefaults();
     hydrateThemeSettings();
   } catch (error) {
     errorMessage.value =
@@ -218,6 +327,7 @@ async function runAction(
   errorMessage.value = "";
   try {
     snapshot.value = await window.dreamSkin.action(action, values);
+    syncThemeDefaults();
     hydrateThemeSettings();
     addActivity(actionLabel(action), message);
     ElMessage.success(message);
@@ -234,6 +344,20 @@ async function runAction(
 
 async function chooseTheme(theme: ThemeRecord) {
   if (loading.value || theme.id === activeTheme.value?.id) return;
+  if (settingsDirty.value) {
+    try {
+      await ElMessageBox.confirm(
+        "当前有尚未应用的外观参数，切换主题会放弃这些修改。继续吗？",
+        "放弃未应用修改",
+        { confirmButtonText: "继续切换", cancelButtonText: "取消", type: "warning" },
+      );
+    } catch {
+      return;
+    }
+    settingsDirty.value = false;
+    pendingImagePath.value = null;
+    hydrateThemeSettings();
+  }
   switchingThemeId.value = theme.id;
   try {
     await runAction(
@@ -248,34 +372,35 @@ async function chooseTheme(theme: ThemeRecord) {
 
 function scheduleThemeSettings() {
   settingsDirty.value = true;
-  if (settingsTimer) window.clearTimeout(settingsTimer);
-  settingsTimer = window.setTimeout(() => {
-    void saveThemeSettings();
-  }, 180);
 }
 
-async function saveThemeSettings() {
+async function applyThemeSettings(activityMessage = "外观参数和背景图片已应用。") {
   if (!settingsDirty.value || !ensureBridge()) return;
-  if (loading.value) {
-    settingsTimer = window.setTimeout(() => {
-      void saveThemeSettings();
-    }, 220);
-    return;
-  }
+  if (loading.value) return;
   loading.value = true;
-  currentAction.value = "update-theme";
+  currentAction.value = "apply-theme";
   try {
+    if (pendingImagePath.value) {
+      snapshot.value = await window.dreamSkin.action("set-image", [
+        pendingImagePath.value,
+      ]);
+    }
     snapshot.value = await window.dreamSkin.action("update-theme", [
       JSON.stringify({
         art: {
           maskOpacityLight: themeSettings.maskOpacityLight,
           maskOpacityDark: themeSettings.maskOpacityDark,
-          caretColor: themeSettings.caretColor,
+          caretColorLight: themeSettings.caretColorLight,
+          caretColorDark: themeSettings.caretColorDark,
         },
       }),
     ]);
     settingsDirty.value = false;
-    addActivity("修改外观参数", "浅色、暗色遮罩和输入框光标颜色已实时应用。");
+    pendingImagePath.value = null;
+    syncThemeDefaults();
+    hydrateThemeSettings();
+    addActivity("应用外观参数", activityMessage);
+    ElMessage.success(activityMessage);
   } catch (error) {
     errorMessage.value =
       error instanceof Error ? error.message : "外观参数更新失败。";
@@ -286,6 +411,38 @@ async function saveThemeSettings() {
   }
 }
 
+async function resetThemeSettings() {
+  if (!ensureBridge() || loading.value) return;
+  const defaults = themeDefaults.value ?? activeTheme.value;
+  if (!defaults) return;
+  const source = (defaults.theme?.art ?? {}) as Record<string, unknown>;
+  const legacy = Number(source.maskOpacity);
+  const light = Number(source.maskOpacityLight ?? legacy);
+  const dark = Number(source.maskOpacityDark ?? legacy);
+  themeSettings.maskOpacityLight =
+    Number.isFinite(light) && light >= 0 && light <= 1
+      ? light
+      : artVariables.value.maskOpacityLight;
+  themeSettings.maskOpacityDark =
+    Number.isFinite(dark) && dark >= 0 && dark <= 1
+      ? dark
+      : artVariables.value.maskOpacityDark;
+  themeSettings.caretColorLight = resolveCaretColor(
+    source.caretColorLight ?? source.caretColor,
+    "light",
+  );
+  themeSettings.caretColorDark = resolveCaretColor(
+    source.caretColorDark ?? source.caretColor,
+    "dark",
+  );
+  pendingImagePath.value =
+    defaults.imagePath && defaults.imagePath !== activeTheme.value?.imagePath
+      ? defaults.imagePath
+      : null;
+  settingsDirty.value = true;
+  await applyThemeSettings("当前主题已重置为默认参数和背景图片。");
+}
+
 async function chooseBackgroundImage() {
   if (!ensureBridge() || loading.value) return;
   loading.value = true;
@@ -293,13 +450,9 @@ async function chooseBackgroundImage() {
   try {
     const filePath = await window.dreamSkin.chooseImage();
     if (filePath) {
-      loading.value = false;
-      currentAction.value = "";
-      await runAction(
-        "set-image",
-        [filePath],
-        "背景图片已更新，Codex 正在刷新。",
-      );
+      pendingImagePath.value = filePath;
+      settingsDirty.value = true;
+      ElMessage.info("背景图片已选择，点击“应用”后更新 Codex。");
     }
   } catch (error) {
     errorMessage.value =
@@ -434,7 +587,6 @@ onMounted(async () => {
 });
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer);
-  if (settingsTimer) window.clearTimeout(settingsTimer);
 });
 </script>
 
@@ -634,9 +786,7 @@ onUnmounted(() => {
                     themeValue(activeTheme, "image", "未选择背景图")
                   }}</span
                 ><span
-                  ><Moon />{{
-                    themeValue(activeTheme, "appearance", "auto")
-                  }}</span
+                  ><Moon />{{ themeAppearanceLabel }}</span
                 ><span><Setting />{{ String(art.taskMode ?? "auto") }}</span>
               </div>
             </div>
@@ -648,11 +798,6 @@ onUnmounted(() => {
                 </div>
                 <div class="inspector-actions">
                   <el-button
-                    class="text-button"
-                    :icon="Picture"
-                    @click="chooseBackgroundImage"
-                    >更换背景图</el-button
-                  ><el-button
                     v-if="snapshot?.platform !== 'darwin'"
                     class="text-button"
                     :icon="Setting"
@@ -662,68 +807,100 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="variable-controls">
+                <div class="variable-control background-variable-control">
+                  <div class="variable-label">
+                    <span>背景图片</span>
+                    <code>{{ pendingImagePath ? "待应用" : "当前主题" }}</code>
+                  </div>
+                  <div class="variable-input background-input">
+                    <el-button
+                      class="text-button"
+                      :icon="Picture"
+                      @click="chooseBackgroundImage"
+                      >选择图片</el-button>
+                    <span class="background-name">{{
+                      pendingImageName ||
+                      themeValue(activeTheme, "image", "未选择背景图片")
+                    }}</span>
+                  </div>
+                  <small>选择后不会立即更新 Codex，点击下方“应用”后才会生效。</small>
+                </div>
                 <div class="variable-control">
                   <div class="variable-label">
-                    <span>浅色模式遮罩透明度</span
-                    ><code>--dream-mask-opacity-light</code>
+                    <span>编辑模式</span><code>主题参数</code>
+                  </div>
+                  <div class="variable-input mode-input">
+                    <el-select v-model="editingMode" class="mode-select">
+                      <el-option label="浅色模式" value="light" />
+                      <el-option label="暗色模式" value="dark" />
+                    </el-select>
+                    <span class="mode-current"
+                      >当前主题：{{ themeAppearanceLabel }}</span
+                    >
+                  </div>
+                  <small>选择要编辑的遮罩透明度和输入框光标颜色。</small>
+                </div>
+                <div class="variable-control">
+                  <div class="variable-label">
+                    <span>{{ editingModeLabel }}遮罩透明度</span
+                    ><code>{{ editingOpacityVariable }}</code>
                   </div>
                   <div class="variable-input">
                     <el-slider
-                      v-model="themeSettings.maskOpacityLight"
+                      v-model="editingMaskOpacity"
                       :min="0"
                       :max="1"
                       :step="0.01"
-                      @input="scheduleThemeSettings"
                     /><strong
                       >{{
-                        Math.round(themeSettings.maskOpacityLight * 100)
+                        Math.round(editingMaskOpacity * 100)
                       }}%</strong
                     >
                   </div>
                   <small
-                    >dream-art-standard 默认值：{{
-                      Math.round(artVariables.maskOpacityLight * 100)
+                    >当前主题默认值：{{
+                      Math.round(defaultEditingMaskOpacity * 100)
                     }}%</small
                   >
                 </div>
                 <div class="variable-control">
                   <div class="variable-label">
-                    <span>暗色模式遮罩透明度</span
-                    ><code>--dream-mask-opacity-dark</code>
-                  </div>
-                  <div class="variable-input">
-                    <el-slider
-                      v-model="themeSettings.maskOpacityDark"
-                      :min="0"
-                      :max="1"
-                      :step="0.01"
-                      @input="scheduleThemeSettings"
-                    /><strong
-                      >{{
-                        Math.round(themeSettings.maskOpacityDark * 100)
-                      }}%</strong
-                    >
-                  </div>
-                  <small
-                    >dream-art-standard 默认值：{{
-                      Math.round(artVariables.maskOpacityDark * 100)
-                    }}%</small
-                  >
-                </div>
-                <div class="variable-control">
-                  <div class="variable-label">
-                    <span>输入框光标颜色</span><code>--dream-caret-color</code>
+                    <span>{{ editingModeLabel }}输入框光标颜色</span
+                    ><code>{{ editingCaretVariable }}</code>
                   </div>
                   <div class="variable-input color-input">
                     <el-color-picker
-                      v-model="themeSettings.caretColor"
-                      @change="scheduleThemeSettings"
-                    /><code>{{ themeSettings.caretColor }}</code>
+                      v-model="editingCaretColor"
+                    /><code>{{ editingCaretColor }}</code>
                   </div>
                   <small
-                    >应用到 Codex ProseMirror 输入框，watcher
-                    会实时更新。</small
+                    >当前主题默认值：{{
+                      defaultCaretColor
+                    }}</small
                   >
+                </div>
+              </div>
+              <div class="inspector-footer">
+                <div class="inspector-dirty-state">
+                  <span
+                    class="status-dot"
+                    :class="settingsDirty ? 'is-paused' : 'is-online'"
+                  />
+                  {{ settingsDirty ? "有未应用修改" : "参数已应用" }}
+                </div>
+                <div class="inspector-footer-actions">
+                  <el-button
+                    class="secondary-button"
+                    :icon="Refresh"
+                    :disabled="!themeDefaults"
+                    @click="resetThemeSettings"
+                    >重置当前主题</el-button>
+                  <el-button
+                    type="primary"
+                    :icon="Check"
+                    :disabled="!settingsDirty"
+                    @click="applyThemeSettings()"
+                    >应用</el-button>
                 </div>
               </div>
             </div>
@@ -754,28 +931,30 @@ onUnmounted(() => {
                 </div>
                 <div class="theme-card-body">
                   <strong>{{ theme.name }}</strong>
-                  <span>{{ theme.id }}</span>
+                  <div class="theme-card-meta">
+                    <span>{{ theme.id }}</span>
+                    <div class="theme-card-actions">
+                      <el-tooltip content="修改名称"
+                        ><el-button
+                          circle
+                          text
+                          :icon="EditPen"
+                          @click.stop="renameTheme(theme)" /></el-tooltip
+                      ><el-tooltip content="删除主题"
+                        ><el-button
+                          circle
+                          text
+                          class="delete-button"
+                          :icon="Delete"
+                          @click.stop="deleteTheme(theme)"
+                      /></el-tooltip>
+                    </div>
+                  </div>
                   <el-icon
                     v-if="theme.id === activeTheme?.id"
                     class="theme-selected-mark"
                     ><Check
                   /></el-icon>
-                  <div class="theme-card-actions">
-                    <el-tooltip content="修改名称"
-                      ><el-button
-                        circle
-                        text
-                        :icon="EditPen"
-                        @click.stop="renameTheme(theme)" /></el-tooltip
-                    ><el-tooltip content="删除主题"
-                      ><el-button
-                        circle
-                        text
-                        class="delete-button"
-                        :icon="Delete"
-                        @click.stop="deleteTheme(theme)"
-                    /></el-tooltip>
-                  </div>
                 </div>
               </article>
               <div v-if="!themes.length" class="empty-state">

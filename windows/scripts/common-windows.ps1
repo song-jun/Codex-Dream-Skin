@@ -769,11 +769,14 @@ function Stop-DreamSkinRecordedInjector {
   }
 
   Stop-Process -Id $processId -Force -ErrorAction Stop
-  try { Wait-Process -Id $processId -Timeout 5 -ErrorAction Stop } catch {}
-  if (Get-Process -Id $processId -ErrorAction SilentlyContinue) {
-    throw "The recorded Dream Skin injector did not stop: PID $processId"
+  $deadline = (Get-Date).AddSeconds(8)
+  while ((Get-Date) -lt $deadline) {
+    if (-not (Get-Process -Id $processId -ErrorAction SilentlyContinue)) {
+      return $true
+    }
+    Start-Sleep -Milliseconds 150
   }
-  return $true
+  throw "The recorded Dream Skin injector did not stop: PID $processId"
 }
 
 function Stop-DreamSkinTrayProcess {

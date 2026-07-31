@@ -498,10 +498,17 @@ async function loadTheme(themeDir) {
     }
     return value;
   };
-  const requestedCaretColor = typeof rawArt.caretColor === "string" ? rawArt.caretColor.trim() : "";
-  const caretColor = requestedCaretColor && /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(requestedCaretColor)
-    ? requestedCaretColor : null;
-  if (requestedCaretColor && caretColor === null) throw new Error(`${configPath} has an invalid art.caretColor field`);
+  const normalizeCaretColor = (value, name) => {
+    if (value === undefined || value === null || value === "") return null;
+    const color = typeof value === "string" ? value.trim() : "";
+    if (!color || !/^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i.test(color)) {
+      throw new Error(`${configPath} has an invalid ${name} field`);
+    }
+    return color;
+  };
+  const caretColor = normalizeCaretColor(rawArt.caretColor, "art.caretColor");
+  const caretColorLight = normalizeCaretColor(rawArt.caretColorLight, "art.caretColorLight") ?? caretColor;
+  const caretColorDark = normalizeCaretColor(rawArt.caretColorDark, "art.caretColorDark") ?? caretColor;
   const art = {
     focusX: unit(rawArt.focusX, "art.focusX"),
     focusY: unit(rawArt.focusY, "art.focusY"),
@@ -510,6 +517,8 @@ async function loadTheme(themeDir) {
     maskOpacityLight: opacity(rawArt.maskOpacityLight ?? rawArt.maskOpacity, "art.maskOpacityLight"),
     maskOpacityDark: opacity(rawArt.maskOpacityDark ?? rawArt.maskOpacity, "art.maskOpacityDark"),
     caretColor,
+    caretColorLight,
+    caretColorDark,
   };
   const theme = {
     schemaVersion: 1,

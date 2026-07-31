@@ -28,6 +28,7 @@ function platformRoot(): string { return path.join(resourceRoot(), isWindows ? '
 function bridgePath(): string { return app.isPackaged ? path.join(resourceRoot(), 'bridge', isWindows ? 'windows-bridge.ps1' : 'macos-bridge.sh') : path.join(here, 'platform', isWindows ? 'windows-bridge.ps1' : 'macos-bridge.sh') }
 
 function scriptsRoot(): string {
+  if (!app.isPackaged) return path.join(platformRoot(), 'scripts')
   const installed = isWindows ? path.join(stateRoot(), 'engine', 'scripts') : path.join(process.env.HOME ?? '', '.codex', 'codex-dream-skin-studio', 'scripts')
   return existsSync(path.join(installed, isWindows ? 'common-windows.ps1' : 'common-macos.sh')) ? installed : path.join(platformRoot(), 'scripts')
 }
@@ -59,8 +60,28 @@ function readDreamArtVariables(): Record<string, unknown> {
   try {
     const css = readFileSync(path.join(platformRoot(), 'assets', 'dream-skin.css'), 'utf8')
     const read = (name: string, fallback: string) => new RegExp(`${name}\\s*:\\s*([^;]+);`).exec(css)?.[1]?.trim() || fallback
-    return { maskOpacityLight: Number(read('--dream-mask-opacity-light', '.70')), maskOpacityDark: Number(read('--dream-mask-opacity-dark', '.50')), caretColor: read('--dream-caret-color', read('--dream-send-bg', '#C84F70')) }
-  } catch { return { maskOpacityLight: .70, maskOpacityDark: .50, caretColor: '#C84F70' } }
+    const readColor = (name: string, fallback: string, seen = new Set<string>()): string => {
+      if (seen.has(name)) return fallback
+      const value = read(name, fallback)
+      const reference = /^var\((--[A-Za-z0-9_-]+)\)$/i.exec(value)
+      if (!reference) return value
+      return readColor(reference[1], fallback, new Set([...seen, name]))
+    }
+    const legacyCaretColor = readColor('--dream-caret-color', readColor('--dream-send-bg', isMac ? '#8298A3' : '#C84F70'))
+    return {
+      maskOpacityLight: Number(read('--dream-mask-opacity-light', '.70')),
+      maskOpacityDark: Number(read('--dream-mask-opacity-dark', '.50')),
+      caretColorLight: readColor('--dream-caret-color-light', isMac ? '#54707E' : legacyCaretColor),
+      caretColorDark: readColor('--dream-caret-color-dark', isMac ? '#8298A3' : legacyCaretColor),
+    }
+  } catch {
+    return {
+      maskOpacityLight: .70,
+      maskOpacityDark: .50,
+      caretColorLight: isMac ? '#54707E' : '#C84F70',
+      caretColorDark: isMac ? '#8298A3' : '#6C7EEB',
+    }
+  }
 }
 
 function normalizeThemePatch(value: string): string {
@@ -78,9 +99,11 @@ function normalizeThemePatch(value: string): string {
     if (!Number.isFinite(number) || number < 0 || number > 1) throw new Error('遮罩透明度必须在 0 到 1 之间。')
     target[key] = number
   }
-  if (source.caretColor !== undefined) {
-    if (typeof source.caretColor !== 'string' || !allowedColor.test(source.caretColor.trim())) throw new Error('光标颜色格式无效。')
-    target.caretColor = source.caretColor.trim()
+  for (const key of ['caretColorLight', 'caretColorDark'] as const) {
+    const value = source[key] ?? source.caretColor
+    if (value === undefined) continue
+    if (typeof value !== 'string' || !allowedColor.test(value.trim())) throw new Error('光标颜色格式无效。')
+    target[key] = value.trim()
   }
   if (!Object.keys(target).length) throw new Error('没有可更新的主题参数。')
   return JSON.stringify({ art: target })
@@ -144,7 +167,7 @@ function imagePreview(imagePath: unknown): string | null {
 function enrichTheme(record: unknown): ThemeRecord | null {
   if (!record || typeof record !== 'object') return null
   const value = record as ThemeRecord
-  return { id: String(value.id ?? ''), name: String(value.name ?? value.id ?? '未命名主题'), theme: value.theme, preview: imagePreview(value.imagePath) }
+  return { id: String(value.id ?? ''), name: String(value.name ?? value.id ?? '未命名主题'), imagePath: value.imagePath, theme: value.theme, preview: imagePreview(value.imagePath) }
 }
 
 function directoryNames(directory: string): string[] {
@@ -257,7 +280,7 @@ async function snapshot(): Promise<BridgeResult> {
   try {
     const theme = JSON.parse(readFileSync(activePath, 'utf8')) as Record<string, unknown>
     const image = typeof theme.image === 'string' ? path.resolve(path.dirname(activePath), theme.image) : ''
-    active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), theme, preview: imagePreview(image) }
+    active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) }
   } catch { /* no active theme yet */ }
   return { ...raw, active, themes: localMacThemes(), connection, variables: readDreamArtVariables(), codexSessions }
 }
