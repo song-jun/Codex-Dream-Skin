@@ -455,7 +455,7 @@ async function createWindow(): Promise<void> {
   const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico')
   const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: 'Codex Dream Skin', ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } })
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL)
-  else await window.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
+  else await window.loadFile(path.join(app.getAppPath(), 'dist-ui', 'index.html'))
 }
 
 app.whenReady().then(async () => {

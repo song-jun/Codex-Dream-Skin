@@ -7,6 +7,10 @@
 README.preview.html
 docs/readme-preview.html
 release/
+desktop-app/release
+desktop-app/dist-ui
+desktop-app/dist
+
 runtime/
 .workbuddy/
 .codegraph/
