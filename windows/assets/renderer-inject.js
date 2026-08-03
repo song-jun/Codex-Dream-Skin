@@ -37,6 +37,8 @@
   const installToken = {};
   let samplingNativeShell = false;
   let observer = null;
+  let missingShellTimer = null;
+  let shellWasObserved = false;
   window.__CODEX_DREAM_SKIN_DISABLED__ = false;
 
   const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, Number(value)));
@@ -117,8 +119,10 @@
 
   const previous = window[STATE_KEY];
   if (previous?.observer) previous.observer.disconnect();
+  previous?.compatibilityCleanup?.();
   if (previous?.timer) clearInterval(previous.timer);
   if (previous?.scheduler?.timeout) clearTimeout(previous.scheduler.timeout);
+  if (previous?.missingShellTimer) clearTimeout(previous.missingShellTimer);
   if (previous?.artUrl) URL.revokeObjectURL(previous.artUrl);
   const artUrl = (() => {
     const comma = artDataUrl.indexOf(",");
@@ -314,8 +318,32 @@
     document.querySelectorAll(".dream-task").forEach((node) => node.classList.remove("dream-task"));
     document.querySelectorAll(".dream-home-shell").forEach((node) => node.classList.remove("dream-home-shell"));
     document.querySelectorAll(`.${HOME_UTILITY_CLASS}`).forEach((node) => node.classList.remove(HOME_UTILITY_CLASS));
+    compatibilityCleanup();
+    if (missingShellTimer) {
+      clearTimeout(missingShellTimer);
+      missingShellTimer = null;
+      syncMissingShellTimer();
+    }
     document.getElementById(STYLE_ID)?.remove();
     document.getElementById(CHROME_ID)?.remove();
+  };
+
+  // 新版 Codex 的 class 会带构建 hash；临时补回稳定语义 class，复用既有皮肤规则。
+  const compatibilityNodes = [];
+  const addCompatibilityClass = (node, className) => {
+    if (!node?.classList || node.classList.contains(className)) return;
+    node.classList.add(className);
+    compatibilityNodes.push([node, className]);
+  };
+  const compatibilityCleanup = () => {
+    for (const [node, className] of compatibilityNodes.splice(0)) {
+      try { node.classList.remove(className); } catch {}
+    }
+  };
+
+  const syncMissingShellTimer = () => {
+    const state = window[STATE_KEY];
+    if (state) state.missingShellTimer = missingShellTimer;
   };
 
   const applyProfile = (root) => {
@@ -381,9 +409,43 @@
       document.querySelector("main") ||
       document.querySelector('[role="main"]');
     if (!shellMain) {
-      clearSkinDom();
+      // 路由切换时 Codex 会短暂重建 main；延迟清理，避免顶栏和遮罩闪回原生样式。
+      if (!shellWasObserved) {
+        clearSkinDom();
+        return;
+      }
+      if (!missingShellTimer) {
+        missingShellTimer = setTimeout(() => {
+          missingShellTimer = null;
+          syncMissingShellTimer();
+          const currentShellMain = document.querySelector("main.main-surface") ||
+            document.querySelector("main") ||
+            document.querySelector('[role="main"]');
+          if (!currentShellMain) clearSkinDom();
+        }, 320);
+        syncMissingShellTimer();
+      }
       return;
     }
+    shellWasObserved = true;
+    if (missingShellTimer) {
+      clearTimeout(missingShellTimer);
+      missingShellTimer = null;
+      syncMissingShellTimer();
+    }
+
+    addCompatibilityClass(shellMain, "main-surface");
+    const sidebar = document.querySelector("aside.app-shell-left-panel") || document.querySelector("aside");
+    addCompatibilityClass(sidebar, "app-shell-left-panel");
+    const header = document.querySelector("main.main-surface > header") ||
+      document.querySelector("main > header[data-app-shell-application-menu-bar]");
+    addCompatibilityClass(header, "app-header-tint");
+    const applicationMenu = document.querySelector('[class*="_ApplicationMenuTopBar_"]');
+    addCompatibilityClass(applicationMenu, "group/application-menu-top-bar");
+    const contentTopFade = document.querySelector('[data-app-shell-main-content-top-fade]') ||
+      document.querySelector('[class*="MainContentTopFade"]') ||
+      document.querySelector('[class*="mainContentTopFade"]');
+    addCompatibilityClass(contentTopFade, "app-shell-main-content-top-fade");
 
     root.classList.add("codex-dream-skin");
     applyProfile(root);
@@ -399,7 +461,11 @@
       style.dataset.dreamVersion = "4";
     }
 
-    const home = document.querySelector('[role="main"]:has([data-testid="home-icon"])');
+    const homeMarker = document.querySelector('[data-testid="home-icon"]') ||
+      document.querySelector('.group\\/home-suggestions') ||
+      document.querySelector('[class*="home-suggestions"]');
+    const home = homeMarker?.closest('[role="main"], main') ||
+      document.querySelector('[role="main"]:has([data-testid="home-icon"])');
     const mainCandidates = [...document.querySelectorAll('[role="main"]')];
     if (!mainCandidates.length) mainCandidates.push(shellMain);
     for (const candidate of mainCandidates) {
@@ -460,7 +526,7 @@
   // 这里在首页路由下拦截 focusin，保留焦点但把所有可能滚动的祖先节点重置到顶部。
   const resetHomeScroll = () => {
     if (window.__CODEX_DREAM_SKIN_DISABLED__) return;
-    const home = document.querySelector('[role="main"].dream-home');
+    const home = document.querySelector('main.dream-home, [role="main"].dream-home');
     if (!home) return;
     const reset = (node) => {
       if (!node) return;
@@ -478,7 +544,7 @@
     }
   };
   document.addEventListener("focusin", (event) => {
-    const home = document.querySelector('[role="main"].dream-home');
+    const home = document.querySelector('main.dream-home, [role="main"].dream-home');
     if (!home) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -493,7 +559,8 @@
   }, true);
   const timer = setInterval(ensure, 5000);
   window[STATE_KEY] = {
-    ensure, cleanup, observer, timer, scheduler, artUrl, profile, config, installToken, version: "1.2.0",
+    ensure, cleanup, observer, timer, scheduler, artUrl, profile, config, installToken,
+    compatibilityCleanup, missingShellTimer, version: "1.2.0",
   };
   ensure();
   analyzeArt().then((result) => {

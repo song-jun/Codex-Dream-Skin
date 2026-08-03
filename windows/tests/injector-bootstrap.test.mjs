@@ -49,16 +49,12 @@ vm.runInNewContext(earlyPayloadFor('window.installs.push("guarded")', "guarded")
 assert.deepEqual(guarded.context.window.installs, [], "Auxiliary app targets must remain untouched.");
 guarded.markers.shell = true;
 guarded.observers[0].callback([]);
-assert.deepEqual(guarded.context.window.installs, [], "A main surface without the Codex sidebar is not sufficient.");
-guarded.markers.sidebar = true;
-guarded.observers[0].callback([]);
 assert.deepEqual(guarded.context.window.installs, ["guarded"], "The guarded payload should install once the shell is complete.");
 
 const generations = createFixture();
 vm.runInNewContext(earlyPayloadFor('window.installs.push("old")', "old"), generations.context);
 vm.runInNewContext(earlyPayloadFor('window.installs.push("new")', "new"), generations.context);
 generations.markers.shell = true;
-generations.markers.sidebar = true;
 for (const observer of generations.observers) observer.callback([]);
 assert.deepEqual(
   generations.context.window.installs,

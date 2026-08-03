@@ -18,6 +18,17 @@ try {
   if ($registeredInstalls.Count -eq 0) {
     throw 'The official OpenAI.Codex Store package is not installed or its identity cannot be validated.'
   }
+  $StateRoot = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin'
+  $StatePath = Join-Path $StateRoot 'state.json'
+  Ensure-DreamSkinManagedDirectory -Path $StateRoot -Root $StateRoot
+  $existingState = Read-DreamSkinState -Path $StatePath
+  if ($null -ne $existingState) {
+    $injectorStopped = Stop-DreamSkinRecordedInjector -State $existingState
+    if (-not $injectorStopped) {
+      $staleStatePath = Archive-DreamSkinStateFile -Path $StatePath
+      Write-Warning "Archived stale Dream Skin state at $staleStatePath"
+    }
+  }
   # Auto-close tray + Codex in parallel before install/reinstall.
   # Tray close is a synchronous powershell kill on this process; Codex close is a separate
   # heavy operation (15s graceful close + force kill) that we hand off to a background
@@ -58,11 +69,8 @@ try {
     }
   }
 
-  $StateRoot = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin'
   $themePaths = Get-DreamSkinThemePaths -StateRoot $StateRoot
   Ensure-DreamSkinManagedDirectory -Path $themePaths.Root -Root $themePaths.Root
-  $StatePath = Join-Path $StateRoot 'state.json'
-  $existingState = Read-DreamSkinState -Path $StatePath
   $savedPathCandidate = Get-DreamSkinCodexStatePathCandidate -State $existingState
   $savedCodex = Resolve-DreamSkinCodexInstallFromState -State $existingState -RegisteredInstalls $registeredInstalls
   if ($null -ne $savedPathCandidate -and $null -eq $savedCodex -and

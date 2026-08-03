@@ -343,7 +343,16 @@ html.codex-dream-skin.dream-art-standard:not(.dream-theme-dark) [class~="group/a
 
 /* 首页第一层容器：顶部内边距（去掉原来的 min-height: 100%，改走内容自然高度）。 */
 .dream-home > div:first-child {
+  justify-content: flex-start !important;
   padding-top: 24px !important;
+}
+
+/* 新版 Codex 首页在内容区前增加项目工具栏，标题容器变为第二个直接子节点；
+   覆盖新版原生的底部对齐，避免首页内容被推到窗口中下部。 */
+html.codex-dream-skin .dream-home > div:nth-child(2) > div:first-child {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding-bottom: 0 !important;
 }
 
 /* 首页 hero 区列宽（clamp 390–510px）与最小高度。 */
@@ -940,12 +949,19 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
   box-shadow: none !important;
 }
 
-/* 标准图和宽图隐藏原生顶部渐隐，避免主界面叠加一层深色遮罩。 */
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface .app-shell-main-content-top-fade {
+/* 标准图和宽图隐藏原生顶部渐隐；新版 Codex 使用 data 属性或 hash class，
+   不能只依赖旧的稳定 class，否则设置页切换时会短暂露出原生阴影。 */
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) .app-shell-main-content-top-fade,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-main-content-top-fade],
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [class*="MainContentTopFade"],
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [class*="mainContentTopFade"] {
   display: none !important;
   background: transparent !important;
   background-image: none !important;
   opacity: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* 沉浸态会话滚动区底部渐变（.bg-gradient-to-t.from-token-main-surface-primary）：透明，
@@ -1125,8 +1141,14 @@ html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
    navigating into Plugins or another message route. */
 html.codex-dream-skin main.main-surface,
 html.codex-dream-skin main.main-surface > header.app-header-tint,
-html.codex-dream-skin aside.app-shell-left-panel {
+html.codex-dream-skin aside.app-shell-left-panel,
+html.codex-dream-skin main,
+html.codex-dream-skin main > header {
+  background: transparent !important;
+  border: 0 !important;
   transition: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 /* Unified art-mode contract: paint the artwork once at the root, keep shell
@@ -1244,6 +1266,25 @@ html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
   border: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
+}
+
+/* 新版 Codex 顶栏由拖拽容器包裹，恢复控件子树的命中区域，保证插件页
+   的“技能/插件”、刷新、管理和创建按钮可以正常点击。 */
+html.codex-dream-skin main.main-surface > header.app-header-tint
+  > [data-app-shell-header-context-menu-surface]:has(button, a, input, select, textarea),
+html.codex-dream-skin main.main-surface > header.app-header-tint
+  > [data-app-shell-header-context-menu-surface]:has(button, a, input, select, textarea) * {
+  pointer-events: auto !important;
+}
+
+html.codex-dream-skin main.main-surface > header.app-header-tint button,
+html.codex-dream-skin main.main-surface > header.app-header-tint a,
+html.codex-dream-skin main.main-surface > header.app-header-tint input,
+html.codex-dream-skin main.main-surface > header.app-header-tint select,
+html.codex-dream-skin main.main-surface > header.app-header-tint textarea,
+html.codex-dream-skin main.main-surface > header.app-header-tint [role="button"] {
+  pointer-events: auto !important;
+  color: var(--dream-text) !important;
 }
 
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)::after {

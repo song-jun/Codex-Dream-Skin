@@ -577,13 +577,20 @@ async function readThemeSourceStamp(loadedTheme) {
 
 async function probeSession(session) {
   return session.evaluate(`(() => {
+    const shell = document.querySelector('main.main-surface') ||
+      document.querySelector('main') || document.querySelector('[role="main"]');
+    const sidebar = document.querySelector('aside.app-shell-left-panel, aside, nav');
+    const composer = document.querySelector('.composer-surface-chrome, [contenteditable="true"], textarea, input');
     const markers = {
-      shell: Boolean(document.querySelector('main.main-surface')),
-      sidebar: Boolean(document.querySelector('aside.app-shell-left-panel')),
-      composer: Boolean(document.querySelector('.composer-surface-chrome')),
+      shell: Boolean(shell),
+      sidebar: Boolean(sidebar),
+      composer: Boolean(composer),
       main: Boolean(document.querySelector('[role="main"]')),
     };
-    const codex = location.protocol === 'app:' && markers.shell && markers.sidebar && (markers.composer || markers.main);
+    const auxiliaryWindow = document.documentElement.classList.contains('compact-window') ||
+      location.search.includes('avatar-overlay') ||
+      Boolean(document.querySelector('[data-avatar-overlay-content-frame]'));
+    const codex = location.protocol === 'app:' && markers.shell && !auxiliaryWindow;
     let debug = null;
     if (!codex) {
       const main = document.querySelector('main');
@@ -591,6 +598,7 @@ async function probeSession(session) {
       debug = {
         protocol: location.protocol,
         url: location.href,
+        auxiliaryWindow,
         bodyFirstChild: first ? first.tagName + '#' + (first.id || '') + '.' + (first.className || '') : null,
         mainTag: main?.tagName ?? null,
         mainClass: main?.className ?? null,
@@ -685,9 +693,9 @@ export function earlyPayloadFor(payload, revision) {
       if (window[generationKey] !== generation) { stop(); return true; }
       const root = document.documentElement;
       if (!root || !document.body) return false;
-      const shell = document.querySelector('main.main-surface');
-      const sidebar = document.querySelector('aside.app-shell-left-panel');
-      if (!shell || !sidebar) return false;
+      const shell = document.querySelector('main.main-surface') ||
+        document.querySelector('main') || document.querySelector('[role="main"]');
+      if (!shell) return false;
       stop();
       ${payload};
       window[appliedKey] = generation;
@@ -944,8 +952,8 @@ async function verifySession(session) {
       suggestionsPresent: Boolean(suggestions),
       hero: box(home?.firstElementChild?.firstElementChild?.firstElementChild),
       cards,
-      composer: box(document.querySelector('.composer-surface-chrome')),
-      sidebar: box(document.querySelector('aside.app-shell-left-panel')),
+      composer: box(document.querySelector('.composer-surface-chrome, [contenteditable="true"], textarea, input')),
+      sidebar: box(document.querySelector('aside.app-shell-left-panel, aside, nav')),
       viewport: { width: innerWidth, height: innerHeight },
       documentOverflow: {
         x: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -954,7 +962,7 @@ async function verifySession(session) {
     };
     result.pass = result.installed && result.version === result.expectedVersion &&
       result.stylePresent && result.chromePresent &&
-      result.chromePointerEvents === 'none' && Boolean(result.composer) && Boolean(result.sidebar) &&
+      result.chromePointerEvents === 'none' && Boolean(result.composer) &&
       (!result.suggestionsPresent || (result.cards.length >= 2 && result.cards.length <= 4));
     return result;
   })()`);

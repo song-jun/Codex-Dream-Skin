@@ -37,6 +37,7 @@ function createFixture({
   const rootStyles = new Map(staleSkin ? [["--dream-art", "url(\"blob:stale\")"]] : []);
   const revokedUrls = [];
   const observers = [];
+  const pendingTimeouts = [];
   let objectUrlCount = 0;
   let hasMain = mainPresent;
   let hasSidebar = sidebarPresent;
@@ -149,6 +150,7 @@ function createFixture({
     documentElement: root,
     head: root,
     body,
+    addEventListener() {},
     createElement,
     getElementById(id) { return nodes.get(id) ?? null; },
     querySelector(selector) {
@@ -209,7 +211,7 @@ function createFixture({
     atob,
     setInterval: () => 1,
     clearInterval: () => {},
-    setTimeout: () => 2,
+    setTimeout: (callback) => { pendingTimeouts.push(callback); return pendingTimeouts.length; },
     clearTimeout: () => {},
     getComputedStyle() { return { colorScheme: computedColorScheme }; },
   };
@@ -236,6 +238,9 @@ function createFixture({
     },
     setSidebarPresent(value) { hasSidebar = value; },
     setMainPresent(value) { hasMain = value; },
+    runTimeouts() {
+      while (pendingTimeouts.length) pendingTimeouts.shift()();
+    },
   };
 }
 
@@ -307,6 +312,7 @@ assert.equal(collapsedSidebar.nodes.has("codex-dream-skin-style"), true);
 
 collapsedSidebar.setMainPresent(false);
 collapsedSidebar.context.window.__CODEX_DREAM_SKIN_STATE__.ensure();
+collapsedSidebar.runTimeouts();
 assert.equal(collapsedSidebar.rootClasses.has("codex-dream-skin"), false);
 assert.equal(collapsedSidebar.nodes.has("codex-dream-skin-style"), false);
 
