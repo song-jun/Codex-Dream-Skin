@@ -19,6 +19,12 @@ assert.doesNotMatch(
   /main\.main-surface\s*>\s*header\.app-header-tint\s*\{[^}]*\b(?:position|z-index)\s*:/,
   "The skin must preserve Codex's native fixed header so the side-panel toggle remains reachable.",
 );
+assert.match(css, /\[data-app-shell-main-content-top-fade\]/,
+  "The skin must keep a stable first-paint marker for the native top fade.");
+assert.doesNotMatch(css, /\[class\*="(?:MainContentTopFade|mainContentTopFade)"\]/,
+  "CSS must not depend on Codex build-hashed top-fade class names.");
+assert.match(template, /const findTopFade = \(shellMain\)/,
+  "The renderer must detect top fades from semantic or visual structure.");
 
 function createFixture({
   shellPresent,

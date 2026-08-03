@@ -949,12 +949,10 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
   box-shadow: none !important;
 }
 
-/* 标准图和宽图隐藏原生顶部渐隐；新版 Codex 使用 data 属性或 hash class，
-   不能只依赖旧的稳定 class，否则设置页切换时会短暂露出原生阴影。 */
+/* 标准图和宽图隐藏原生顶部渐隐。data 属性用于首帧兜底，稳定 class
+   由注入器根据语义和视觉结构探测后补充，不依赖 Codex 的构建 hash。 */
 html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) .app-shell-main-content-top-fade,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-main-content-top-fade],
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [class*="MainContentTopFade"],
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [class*="mainContentTopFade"] {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-main-content-top-fade] {
   display: none !important;
   background: transparent !important;
   background-image: none !important;

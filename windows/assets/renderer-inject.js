@@ -33,6 +33,7 @@
     "--dream-caret-color",
   ];
   const HOME_UTILITY_CLASS = "dream-home-utility";
+  const TOP_FADE_CLASS = "app-shell-main-content-top-fade";
   const CARET_TARGETS = ".ProseMirror, [contenteditable=\"true\"], textarea, input";
   const installToken = {};
   let samplingNativeShell = false;
@@ -341,6 +342,67 @@
     }
   };
 
+  let compatibilityReport = {
+    topFade: false,
+    source: "not-checked",
+  };
+
+  const nodeClassName = (node) => {
+    const value = node?.getAttribute?.("class") ?? node?.className;
+    return typeof value === "string" ? value : "";
+  };
+
+  const hasTopFadeName = (node) => {
+    const marker = [
+      nodeClassName(node),
+      node?.getAttribute?.("data-testid") ?? "",
+      node?.getAttribute?.("data-name") ?? "",
+      node?.getAttribute?.("aria-label") ?? "",
+    ].join(" ");
+    return /(?:main[-_ ]?content[-_ ]?)?top[-_ ]?fade/i.test(marker);
+  };
+
+  const looksLikeTopFade = (node) => {
+    if (!node?.getBoundingClientRect) return false;
+    try {
+      const rect = node.getBoundingClientRect();
+      if (rect.top > 8 || rect.height <= 0 || rect.height > 180) return false;
+      const style = getComputedStyle(node);
+      const positioned = /absolute|fixed|sticky/i.test(style.position || "");
+      const nonInteractive = style.pointerEvents === "none";
+      const gradient = /gradient|mask/i.test([
+        style.backgroundImage,
+        style.maskImage,
+        style.webkitMaskImage,
+      ].join(" "));
+      return positioned && nonInteractive && gradient;
+    } catch {
+      return false;
+    }
+  };
+
+  const findTopFade = (shellMain) => {
+    const candidates = [
+      ...document.querySelectorAll("[data-app-shell-main-content-top-fade]"),
+      ...document.querySelectorAll('[class*="TopFade"], [class*="top-fade"]'),
+    ].filter((node) => !shellMain?.contains || shellMain.contains(node));
+    const named = candidates.find(hasTopFadeName);
+    if (named) return { node: named, source: "semantic" };
+
+    const descendants = shellMain?.querySelectorAll?.("*") ?? [];
+    const visual = [...descendants].slice(0, 512).find(looksLikeTopFade);
+    return visual ? { node: visual, source: "visual" } : null;
+  };
+
+  const updateCompatibilityReport = (topFade) => {
+    compatibilityReport = {
+      topFade: Boolean(topFade),
+      source: topFade?.source ?? "not-found",
+    };
+    const state = window[STATE_KEY];
+    if (state) state.compatibility = compatibilityReport;
+  };
+
   const syncMissingShellTimer = () => {
     const state = window[STATE_KEY];
     if (state) state.missingShellTimer = missingShellTimer;
@@ -442,10 +504,9 @@
     addCompatibilityClass(header, "app-header-tint");
     const applicationMenu = document.querySelector('[class*="_ApplicationMenuTopBar_"]');
     addCompatibilityClass(applicationMenu, "group/application-menu-top-bar");
-    const contentTopFade = document.querySelector('[data-app-shell-main-content-top-fade]') ||
-      document.querySelector('[class*="MainContentTopFade"]') ||
-      document.querySelector('[class*="mainContentTopFade"]');
-    addCompatibilityClass(contentTopFade, "app-shell-main-content-top-fade");
+    const topFade = findTopFade(shellMain);
+    addCompatibilityClass(topFade?.node, TOP_FADE_CLASS);
+    updateCompatibilityReport(topFade);
 
     root.classList.add("codex-dream-skin");
     applyProfile(root);
@@ -560,7 +621,7 @@
   const timer = setInterval(ensure, 5000);
   window[STATE_KEY] = {
     ensure, cleanup, observer, timer, scheduler, artUrl, profile, config, installToken,
-    compatibilityCleanup, missingShellTimer, version: "1.2.0",
+    compatibilityCleanup, missingShellTimer, compatibility: compatibilityReport, version: "1.2.0",
   };
   ensure();
   analyzeArt().then((result) => {
