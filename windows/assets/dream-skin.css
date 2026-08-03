@@ -163,7 +163,7 @@ html.codex-dream-skin main.main-surface {
 }
 
 /* 顶部固定栏（header.app-header-tint）：文字、透明背景、无模糊。 */
-html.codex-dream-skin main.main-surface > header.app-header-tint {
+html.codex-dream-skin main.main-surface>header.app-header-tint {
   /* Preserve Codex's native fixed header geometry and side-panel controls. */
   color: var(--dream-text) !important;
   background: transparent !important;
@@ -254,7 +254,7 @@ html.codex-dream-skin.dream-task-off .dream-task::before {
 }
 
 /* 任务页内容层提到背景层之上（z-index:1），保留原生固定顶栏的定位。 */
-html.codex-dream-skin .dream-task > *:not(header.app-header-tint) {
+html.codex-dream-skin .dream-task>*:not(header.app-header-tint) {
   position: relative;
   z-index: 1;
 }
@@ -301,7 +301,7 @@ html.codex-dream-skin.dream-art-standard .dream-home {
 }
 
 /* 暗色标准图片保留顶部和侧栏的阅读保护，避免菜单文字融入背景。 */
-html.codex-dream-skin.dream-theme-dark.dream-art-standard main.main-surface > header.app-header-tint {
+html.codex-dream-skin.dream-theme-dark.dream-art-standard main.main-surface>header.app-header-tint {
   background: var(--dream-shell-mask) !important;
   border-bottom: 0 !important;
   box-shadow: none !important;
@@ -342,21 +342,23 @@ html.codex-dream-skin.dream-art-standard:not(.dream-theme-dark) [class~="group/a
 }
 
 /* 首页第一层容器：顶部内边距（去掉原来的 min-height: 100%，改走内容自然高度）。 */
-.dream-home > div:first-child {
+.dream-home>div:first-child {
   justify-content: flex-start !important;
   padding-top: 24px !important;
 }
 
 /* 新版 Codex 首页在内容区前增加项目工具栏，标题容器变为第二个直接子节点；
    覆盖新版原生的底部对齐，避免首页内容被推到窗口中下部。 */
-html.codex-dream-skin .dream-home > div:nth-child(2) > div:first-child {
+html.codex-dream-skin .dream-home>div:nth-child(2)>div:first-child {
   align-items: flex-start !important;
   justify-content: flex-start !important;
   padding-bottom: 0 !important;
+  /*输入框由原生底部布局控制；标题/卡片按窗口高度跟随其上方空间变化。*/
+  transform: translateY(clamp(170px, calc(49vh - 230px), 450px)) !important;
 }
 
 /* 首页 hero 区列宽（clamp 390–510px）与最小高度。 */
-.dream-home > div:first-child > div:first-child {
+.dream-home>div:first-child>div:first-child {
   flex: 0 0 clamp(390px, 42cqw, 510px) !important;
   min-height: 390px !important;
   align-items: flex-start !important;
@@ -364,7 +366,7 @@ html.codex-dream-skin .dream-home > div:nth-child(2) > div:first-child {
 }
 
 /* 首页 hero 卡片：背景图、1px 边框、20px 圆角、阴影、高度 clamp(230,27cqw,326)。 */
-.dream-home > div:first-child > div:first-child > div:first-child {
+.dream-home>div:first-child>div:first-child>div:first-child {
   position: relative !important;
   isolation: isolate;
   width: calc(100% - 56px) !important;
@@ -384,12 +386,12 @@ html.codex-dream-skin .dream-home > div:nth-child(2) > div:first-child {
 }
 
 /* 宽图模式 hero 卡片背景尺寸。 */
-html.codex-dream-skin.dream-art-wide .dream-home > div:first-child > div:first-child > div:first-child {
+html.codex-dream-skin.dream-art-wide .dream-home>div:first-child>div:first-child>div:first-child {
   background-size: cover !important;
 }
 
 /* hero 卡片左侧线性渐变蒙层（保证标题文字可读）。 */
-.dream-home > div:first-child > div:first-child > div:first-child::before {
+.dream-home>div:first-child>div:first-child>div:first-child::before {
   content: "";
   position: absolute;
   z-index: 0;
@@ -399,22 +401,22 @@ html.codex-dream-skin.dream-art-wide .dream-home > div:first-child > div:first-c
 }
 
 /* 安全区在右时：hero 蒙层方向反转为从右到左。 */
-html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child::before {
+html.codex-dream-skin.dream-safe-right .dream-home>div:first-child>div:first-child>div:first-child::before {
   background: linear-gradient(270deg, var(--dream-hero-shade) 0 32%, transparent 70%);
 }
 
 /* 安全区居中时：hero 蒙层改为径向渐变。 */
-html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child::before {
+html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-child>div:first-child::before {
   background: radial-gradient(ellipse at center, var(--dream-hero-shade) 0 23%, transparent 72%);
 }
 
 /* 无安全区时：hero 蒙层透明。 */
-html.codex-dream-skin.dream-safe-none .dream-home > div:first-child > div:first-child > div:first-child::before {
+html.codex-dream-skin.dream-safe-none .dream-home>div:first-child>div:first-child>div:first-child::before {
   background: transparent;
 }
 
 /* hero 卡片内层：标题/文案定位与内边距。 */
-.dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
+.dream-home>div:first-child>div:first-child>div:first-child>div:first-child {
   position: relative;
   z-index: 1;
   box-sizing: border-box;
@@ -425,30 +427,30 @@ html.codex-dream-skin.dream-safe-none .dream-home > div:first-child > div:first-
 }
 
 /* hero 文案列宽（min(48%,520px)）与对齐。 */
-.dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+.dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child {
   width: min(48%, 520px) !important;
   align-items: flex-start !important;
   gap: 0 !important;
 }
 
 /* 安全区在右：hero 文案右对齐。 */
-html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
+html.codex-dream-skin.dream-safe-right .dream-home>div:first-child>div:first-child>div:first-child>div:first-child {
   justify-content: flex-end !important;
 }
 
 /* 安全区在右：hero 文案列右对齐 + 右对齐文字。 */
-html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+html.codex-dream-skin.dream-safe-right .dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child {
   align-items: flex-end !important;
   text-align: right !important;
 }
 
 /* 安全区居中：hero 文案居中。 */
-html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
+html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-child>div:first-child>div:first-child {
   justify-content: center !important;
 }
 
 /* 安全区居中：hero 文案列居中 + 居中文字。 */
-html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child {
   align-items: center !important;
   text-align: center !important;
 }
@@ -487,7 +489,7 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
 }
 
 /* hero 下方建议卡区定位（左右贴边 + 顶部偏移）。 */
-.dream-home > div:first-child > div:first-child > div:first-child > div:nth-child(2) {
+.dream-home>div:first-child>div:first-child>div:first-child>div:nth-child(2) {
   left: 0 !important;
   right: 0 !important;
   top: 100% !important;
@@ -520,7 +522,7 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
 }
 
 /* 强制每个子项水平居中（覆盖 Codex 原生 align-self:flex-start / width:100%）。 */
-.dream-home .group\/home-suggestions button > * {
+.dream-home .group\/home-suggestions button>* {
   align-self: center !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
@@ -529,12 +531,12 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
 /* 建议卡悬停：上移 2px + 边框 + 强调色软背景。 */
 .dream-home .group\/home-suggestions button:hover {
   transform: translateY(-2px) !important;
-  border-color: var(--dream-line) !important;
+  border-color: var(--dream-caret-color) !important;
   background: var(--dream-accent-soft) !important;
 }
 
 /* 建议卡图标徽章：38px 圆角方块 + 强调色 + 外发光环。 */
-.dream-home .group\/home-suggestions button > span:first-child > span:first-child {
+.dream-home .group\/home-suggestions button>span:first-child>span:first-child {
   /* width: 38px;
   height: 38px;
   display: grid !important;
@@ -646,8 +648,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 }
 
 /* 宽图沉浸态侧栏：半透明渐变背景，去掉边框/圆角/阴影/模糊。 */
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel {
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel {
   background: transparent !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -655,11 +656,10 @@ html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel {
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel {
   background: linear-gradient(90deg,
-    var(--dream-immersive-sidebar),
-    var(--dream-immersive-edge)) !important;
+      var(--dream-immersive-sidebar),
+      var(--dream-immersive-edge)) !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -667,11 +667,10 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 }
 
 /* 宽图沉浸态任务页侧栏：更不透明的任务页专用渐变。 */
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel {
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel {
   background: linear-gradient(90deg,
-    var(--dream-task-immersive-sidebar),
-    var(--dream-task-immersive-edge)) !important;
+      var(--dream-task-immersive-sidebar),
+      var(--dream-task-immersive-edge)) !important;
 }
 
 /* Dark wide-mode sidebar uses the same light mask as the fixed top bar. */
@@ -680,10 +679,8 @@ html.codex-dream-skin.dream-theme-dark.dream-art-wide aside.app-shell-left-panel
 }
 
 /* 宽图沉浸态侧栏 ::after：透明，避免侧栏残留原生拖拽区背景。 */
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel::after,
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel::after {
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel::after,
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel::after {
   background: transparent !important;
 }
 
@@ -691,9 +688,9 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(.dream-home-shell) {
   background: linear-gradient(90deg,
-    var(--dream-immersive-edge),
-    var(--dream-immersive-mid) 64%,
-    var(--dream-immersive-far)) !important;
+      var(--dream-immersive-edge),
+      var(--dream-immersive-mid) 64%,
+      var(--dream-immersive-far)) !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -702,9 +699,9 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 /* 宽图沉浸态任务页主区域：任务页专用渐变背景。 */
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(.dream-home-shell) {
   background: linear-gradient(90deg,
-    var(--dream-task-immersive-edge),
-    var(--dream-task-immersive-mid) 64%,
-    var(--dream-task-immersive-far)) !important;
+      var(--dream-task-immersive-edge),
+      var(--dream-task-immersive-mid) 64%,
+      var(--dream-task-immersive-far)) !important;
 }
 
 /* 沉浸态任务页 .dream-task 背景透明（图已在 body）。 */
@@ -718,7 +715,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 }
 
 /* 宽图沉浸态顶栏：透明 + 文字阴影，去掉边框/阴影/模糊。 */
-html.codex-dream-skin.dream-art-wide main.main-surface > header.app-header-tint {
+html.codex-dream-skin.dream-art-wide main.main-surface>header.app-header-tint {
   background: transparent !important;
   border-bottom: 0 !important;
   box-shadow: none !important;
@@ -728,7 +725,7 @@ html.codex-dream-skin.dream-art-wide main.main-surface > header.app-header-tint 
 }
 
 /* 宽图沉浸态顶栏图标：drop-shadow 保证可读。 */
-html.codex-dream-skin.dream-art-wide main.main-surface > header.app-header-tint svg {
+html.codex-dream-skin.dream-art-wide main.main-surface>header.app-header-tint svg {
   filter: drop-shadow(0 1px 2px color-mix(in oklab, var(--dream-canvas) 72%, transparent));
 }
 
@@ -738,8 +735,7 @@ html.codex-dream-skin.dream-art-wide main.main-surface [role="main"] {
 }
 
 /* 宽图沉浸态首页 hero 卡片：去边框/圆角/背景/阴影（图在 body）。 */
-html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
-  .dream-home > div:first-child > div:first-child > div:first-child {
+html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell .dream-home>div:first-child>div:first-child>div:first-child {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -747,14 +743,12 @@ html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
 }
 
 /* 宽图沉浸态首页 hero ::before：移除蒙层。 */
-html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
-  .dream-home > div:first-child > div:first-child > div:first-child::before {
+html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell .dream-home>div:first-child>div:first-child>div:first-child::before {
   content: none !important;
 }
 
 /* 宽图沉浸态首页建议卡：玻璃感半透明背景 + 内描边 + 模糊。 */
-html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell
-  .dream-home .group\/home-suggestions button {
+html.codex-dream-skin.dream-art-wide main.main-surface.dream-home-shell .dream-home .group\/home-suggestions button {
   background: color-mix(in oklab, var(--dream-surface-raised) 58%, transparent) !important;
   box-shadow: 0 8px 22px color-mix(in oklab, var(--dream-canvas) 18%, transparent),
     inset 0 0 0 1px var(--dream-immersive-line) !important;
@@ -905,7 +899,7 @@ html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface {
   background: rgba(43, 44, 66, .16) !important;
 }
 
-html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface > header.app-header-tint {
+html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface>header.app-header-tint {
   background: var(--dream-shell-mask) !important;
   border-bottom: 1px solid rgba(132, 148, 232, .24) !important;
 }
@@ -916,10 +910,8 @@ html.codex-dream-skin.dream-theme-dark.dream-art-wide main.main-surface > header
    Clear only full-window or sticky route chrome, leaving functional cards and
    their hover states intact. */
 /* 沉浸态任务页置顶输入条（div.sticky:has(input)）及其 ::after：透明化。 */
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-ambient, .dream-task-banner)
-  main.main-surface:not(:has(.dream-home)) div.sticky:has(input[type="text"]),
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-ambient, .dream-task-banner)
-  main.main-surface:not(:has(.dream-home)) div.sticky:has(input[type="text"])::after {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(:has(.dream-home)) div.sticky:has(input[type="text"]),
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(:has(.dream-home)) div.sticky:has(input[type="text"])::after {
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
@@ -928,8 +920,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):is(.dream-task-am
 }
 
 /* 沉浸态任务页搜索输入框（div.no-drag:has(input)）：沉浸态背景 + 内描边。 */
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
-  main.main-surface:not(.dream-home-shell) div.no-drag:has(> input[type="text"]) {
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(.dream-home-shell) div.no-drag:has(> input[type="text"]) {
   background: var(--dream-immersive-composer) !important;
   border: 0 !important;
   box-shadow: inset 0 0 0 1px var(--dream-immersive-line) !important;
@@ -937,9 +928,7 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
 }
 
 /* 沉浸态任务页整窗不透明表面（bg-token-main-surface-primary h-full w-full）：透明化。 */
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
-  main.main-surface:not(.dream-home-shell)
-  [class~="bg-token-main-surface-primary"][class~="h-full"][class~="w-full"] {
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner) main.main-surface:not(.dream-home-shell) [class~="bg-token-main-surface-primary"][class~="h-full"][class~="w-full"] {
   background: transparent !important;
 }
 
@@ -964,8 +953,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-m
 
 /* 沉浸态会话滚动区底部渐变（.bg-gradient-to-t.from-token-main-surface-primary）：透明，
    避免与输入框形成假双层底栏。 */
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
-  .thread-scroll-container .bg-gradient-to-t.from-token-main-surface-primary {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface .thread-scroll-container .bg-gradient-to-t.from-token-main-surface-primary {
   background: transparent !important;
 }
 
@@ -975,33 +963,33 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
     --thread-content-max-width: min(940px, calc(100cqw - 36px)) !important;
   }
 
-  .dream-home > div:first-child > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child>div:first-child {
     width: calc(100% - 36px) !important;
   }
 }
 
 /* 响应式 · 窄宽度（≤900px）：首页 hero/建议卡/标题缩小。 */
 @media (max-width: 900px) {
-  .dream-home > div:first-child {
+  .dream-home>div:first-child {
     padding-top: 16px !important;
   }
 
-  .dream-home > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child {
     flex-basis: 370px !important;
     min-height: 370px !important;
   }
 
-  .dream-home > div:first-child > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child>div:first-child {
     height: 220px !important;
     min-height: 220px !important;
     border-radius: 16px !important;
   }
 
-  .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child>div:first-child>div:first-child {
     padding: 24px;
   }
 
-  .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child {
     width: 62% !important;
   }
 
@@ -1018,21 +1006,22 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
 
 /* 响应式 · 超窄宽度（≤680px）：hero 蒙层加浓、文案居中。 */
 @media (max-width: 680px) {
-  .dream-home > div:first-child > div:first-child > div:first-child::before,
-  html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child::before,
-  html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child::before {
+
+  .dream-home>div:first-child>div:first-child>div:first-child::before,
+  html.codex-dream-skin.dream-safe-right .dream-home>div:first-child>div:first-child>div:first-child::before,
+  html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-child>div:first-child::before {
     background: color-mix(in oklab, var(--dream-surface) 78%, transparent);
   }
 
-  .dream-home > div:first-child > div:first-child > div:first-child > div:first-child,
-  html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child > div:first-child,
-  html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child>div:first-child>div:first-child,
+  html.codex-dream-skin.dream-safe-right .dream-home>div:first-child>div:first-child>div:first-child>div:first-child,
+  html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-child>div:first-child>div:first-child {
     justify-content: center !important;
   }
 
-  .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child,
-  html.codex-dream-skin.dream-safe-right .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child,
-  html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+  .dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child,
+  html.codex-dream-skin.dream-safe-right .dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child,
+  html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-child>div:first-child>div:first-child>div:first-child {
     width: min(88%, 440px) !important;
     align-items: center !important;
     text-align: center !important;
@@ -1041,6 +1030,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
 
 /* 无障碍 · 减弱动效（prefers-reduced-motion）：关闭过渡/动画。 */
 @media (prefers-reduced-motion: reduce) {
+
   html.codex-dream-skin *,
   html.codex-dream-skin *::before,
   html.codex-dream-skin *::after {
@@ -1051,8 +1041,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface
 
 /* Legacy route defaults; the unified full-window contract below overrides the
    shell surfaces for both art modes. */
-html.codex-dream-skin:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel {
+html.codex-dream-skin:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel {
   background: var(--dream-shell-mask) !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -1060,21 +1049,18 @@ html.codex-dream-skin:has(main.main-surface.dream-home-shell)
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel::after {
+html.codex-dream-skin:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel::after {
   background: transparent !important;
 }
 
-html.codex-dream-skin:has(main.main-surface.dream-home-shell)
-  main.main-surface {
+html.codex-dream-skin:has(main.main-surface.dream-home-shell) main.main-surface {
   background: var(--dream-shell-mask) !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface.dream-home-shell)
-  main.main-surface > header.app-header-tint {
+html.codex-dream-skin:has(main.main-surface.dream-home-shell) main.main-surface>header.app-header-tint {
   background: transparent !important;
   border-bottom: 0 !important;
   box-shadow: none !important;
@@ -1086,50 +1072,41 @@ html.codex-dream-skin:has(main.main-surface.dream-home-shell) .dream-home {
   box-shadow: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface.dream-home-shell)
-  [class~="group/application-menu-top-bar"] {
+html.codex-dream-skin:has(main.main-surface.dream-home-shell) [class~="group/application-menu-top-bar"] {
   background: var(--dream-shell-mask) !important;
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel,
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  main.main-surface,
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  main.main-surface > header.app-header-tint {
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel,
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) main.main-surface,
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) main.main-surface>header.app-header-tint {
   background: var(--dream-message-mask) !important;
 }
 
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel {
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel {
   border: 0 !important;
   border-radius: 0 !important;
   border-right: 1px solid color-mix(in oklab, var(--color-token-foreground) 25%, transparent) !important;
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel::after {
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel::after {
   background: transparent !important;
 }
 
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  main.main-surface {
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) main.main-surface {
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  main.main-surface > header.app-header-tint {
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) main.main-surface>header.app-header-tint {
   border-bottom: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
-  [class~="group/application-menu-top-bar"] {
+html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell)) [class~="group/application-menu-top-bar"] {
   background: var(--dream-message-mask) !important;
   backdrop-filter: none !important;
 }
@@ -1138,10 +1115,10 @@ html.codex-dream-skin:has(main.main-surface:not(.dream-home-shell))
    applies transition: all to main, which briefly animates the old shadow when
    navigating into Plugins or another message route. */
 html.codex-dream-skin main.main-surface,
-html.codex-dream-skin main.main-surface > header.app-header-tint,
+html.codex-dream-skin main.main-surface>header.app-header-tint,
 html.codex-dream-skin aside.app-shell-left-panel,
 html.codex-dream-skin main,
-html.codex-dream-skin main > header {
+html.codex-dream-skin main>header {
   background: transparent !important;
   border: 0 !important;
   transition: none !important;
@@ -1155,8 +1132,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   background: transparent !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell) aside.app-shell-left-panel {
   background: transparent !important;
   border: 0 !important;
   border-right: 1px solid color-mix(in oklab, var(--color-token-foreground) 25%, transparent) !important;
@@ -1165,20 +1141,16 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
-  main.main-surface,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
-  main.main-surface > header.app-header-tint,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
-  [class~="group/application-menu-top-bar"] {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell) main.main-surface,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell) main.main-surface>header.app-header-tint,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell) [class~="group/application-menu-top-bar"] {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell)
-  .dream-home {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface.dream-home-shell) .dream-home {
   background: transparent !important;
   box-shadow: none !important;
 }
@@ -1203,8 +1175,7 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   background-image: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel {
   background: transparent !important;
   border: 0 !important;
   border-right: 1px solid color-mix(in oklab, var(--color-token-foreground) 25%, transparent) !important;
@@ -1213,26 +1184,19 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-sur
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
-  main.main-surface,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
-  main.main-surface > header.app-header-tint,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell))
-  [class~="group/application-menu-top-bar"] {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell)) main.main-surface,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell)) main.main-surface>header.app-header-tint,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface:not(.dream-home-shell)) [class~="group/application-menu-top-bar"] {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
-  main.main-surface .app-shell-main-content-frame,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
-  main.main-surface .app-shell-main-content-viewport,
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
-  main.main-surface [role="main"],
-html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface)
-  main.main-surface .thread-scroll-container {
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface) main.main-surface .app-shell-main-content-frame,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface) main.main-surface .app-shell-main-content-viewport,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface) main.main-surface [role="main"],
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard):has(main.main-surface) main.main-surface .thread-scroll-container {
   background: transparent !important;
   box-shadow: none !important;
 }
@@ -1250,16 +1214,11 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) .app-header-tint 
 /* Wide art follows the standard-art route contract for shell surfaces. Keep
    this final so the wide-only gradients above cannot reintroduce a panel mask. */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) body,
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel,
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  main.main-surface,
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  main.main-surface > header.app-header-tint,
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  [class~="group/application-menu-top-bar"],
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  .dream-home {
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel,
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) main.main-surface,
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) main.main-surface>header.app-header-tint,
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) [class~="group/application-menu-top-bar"],
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) .dream-home {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
@@ -1268,19 +1227,17 @@ html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
 
 /* 新版 Codex 顶栏由拖拽容器包裹，恢复控件子树的命中区域，保证插件页
    的“技能/插件”、刷新、管理和创建按钮可以正常点击。 */
-html.codex-dream-skin main.main-surface > header.app-header-tint
-  > [data-app-shell-header-context-menu-surface]:has(button, a, input, select, textarea),
-html.codex-dream-skin main.main-surface > header.app-header-tint
-  > [data-app-shell-header-context-menu-surface]:has(button, a, input, select, textarea) * {
+html.codex-dream-skin main.main-surface>header.app-header-tint>[data-app-shell-header-context-menu-surface]:has(button, a, input, select, textarea),
+html.codex-dream-skin main.main-surface>header.app-header-tint>[data-app-shell-header-context-menu-surface]:has(button, a, input, select, textarea) * {
   pointer-events: auto !important;
 }
 
-html.codex-dream-skin main.main-surface > header.app-header-tint button,
-html.codex-dream-skin main.main-surface > header.app-header-tint a,
-html.codex-dream-skin main.main-surface > header.app-header-tint input,
-html.codex-dream-skin main.main-surface > header.app-header-tint select,
-html.codex-dream-skin main.main-surface > header.app-header-tint textarea,
-html.codex-dream-skin main.main-surface > header.app-header-tint [role="button"] {
+html.codex-dream-skin main.main-surface>header.app-header-tint button,
+html.codex-dream-skin main.main-surface>header.app-header-tint a,
+html.codex-dream-skin main.main-surface>header.app-header-tint input,
+html.codex-dream-skin main.main-surface>header.app-header-tint select,
+html.codex-dream-skin main.main-surface>header.app-header-tint textarea,
+html.codex-dream-skin main.main-surface>header.app-header-tint [role="button"] {
   pointer-events: auto !important;
   color: var(--dream-text) !important;
 }
@@ -1305,36 +1262,26 @@ html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner)
   background-image: none !important;
 }
 
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel,
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  main.main-surface,
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  main.main-surface > header.app-header-tint,
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  [class~="group/application-menu-top-bar"] {
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel,
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) main.main-surface,
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) main.main-surface>header.app-header-tint,
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) [class~="group/application-menu-top-bar"] {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 
-html.codex-dream-skin.dream-art-wide:has(main.main-surface)
-  main.main-surface .app-shell-main-content-frame,
-html.codex-dream-skin.dream-art-wide:has(main.main-surface)
-  main.main-surface .app-shell-main-content-viewport,
-html.codex-dream-skin.dream-art-wide:has(main.main-surface)
-  main.main-surface [role="main"],
-html.codex-dream-skin.dream-art-wide:has(main.main-surface)
-  main.main-surface .thread-scroll-container {
+html.codex-dream-skin.dream-art-wide:has(main.main-surface) main.main-surface .app-shell-main-content-frame,
+html.codex-dream-skin.dream-art-wide:has(main.main-surface) main.main-surface .app-shell-main-content-viewport,
+html.codex-dream-skin.dream-art-wide:has(main.main-surface) main.main-surface [role="main"],
+html.codex-dream-skin.dream-art-wide:has(main.main-surface) main.main-surface .thread-scroll-container {
   background: transparent !important;
   box-shadow: none !important;
 }
 
 /* Preserve the standard-art shell divider after clearing wide surfaces. */
-html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)
-  aside.app-shell-left-panel,
-html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell))
-  aside.app-shell-left-panel {
+html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel,
+html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel {
   border-right: 1px solid color-mix(in oklab, var(--dream-text) 25%, transparent) !important;
 }
