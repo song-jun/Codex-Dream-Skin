@@ -6,6 +6,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron --import=tsx electron/main.ts\"",
+    "skin:inject": "powershell -NoProfile -ExecutionPolicy RemoteSigned -Command \"$statePath = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin\\state.json'; if (-not (Test-Path -LiteralPath $statePath)) { throw 'Dream Skin 未启动，请先启动皮肤。' }; $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json; if (-not $state.port -or -not $state.browserId -or -not $state.themeDir) { throw 'Dream Skin 状态不完整，请先启动皮肤。' }; $injector = Join-Path (Get-Location) '..\\windows\\scripts\\injector.mjs'; & node $injector --once --port $state.port --browser-id $state.browserId --theme-dir $state.themeDir --pause-file $state.pauseFile\"",
     "build": "vue-tsc --noEmit && vite build && tsc -p tsconfig.electron.json && node electron/copy-preload.mjs && electron-builder",
     "typecheck": "vue-tsc --noEmit"
   },

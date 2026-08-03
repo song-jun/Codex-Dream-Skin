@@ -1,0 +1,7 @@
+{
+  "name": "codex-dream-skin",
+  "private": true,
+  "scripts": {
+    "skin:inject": "npm --prefix desktop-app run skin:inject"
+  }
+}
