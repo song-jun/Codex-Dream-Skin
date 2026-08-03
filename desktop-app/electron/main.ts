@@ -1,8 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { execFile } from 'node:child_process'
-import { closeSync, existsSync, lstatSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { execFile, spawn } from 'node:child_process'
+import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { tmpdir } from 'node:os'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const isWindows = process.platform === 'win32'
@@ -166,6 +167,9 @@ function imageDataUrl(imagePath: string): string {
 }
 
 function execute(file: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+  if (isWindows) {
+    return executeWindowsProcess(file, args)
+  }
   return new Promise((resolve, reject) => execFile(file, args, {
     windowsHide: true,
     maxBuffer: 12 * 1024 * 1024,
@@ -180,6 +184,49 @@ function execute(file: string, args: string[]): Promise<{ stdout: string; stderr
     }
     resolve({ stdout, stderr })
   }))
+}
+
+// Windows 子进程可能把 stdout 句柄传给后代进程，使用临时文件只等待宿主进程退出。
+function executeWindowsProcess(file: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const temporary = mkdtempSync(path.join(tmpdir(), 'codex-dream-skin-'))
+    const stdoutPath = path.join(temporary, 'stdout.log')
+    const stderrPath = path.join(temporary, 'stderr.log')
+    const stdout = openSync(stdoutPath, 'w')
+    const stderr = openSync(stderrPath, 'w')
+    const child = spawn(file, args, { windowsHide: true, stdio: ['ignore', stdout, stderr] })
+    let settled = false
+    let timer: NodeJS.Timeout
+
+    const finish = (error?: Error, code?: number | null): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      closeSync(stdout)
+      closeSync(stderr)
+      let output = ''
+      let errors = ''
+      try {
+        output = readFileSync(stdoutPath, 'utf8')
+        errors = readFileSync(stderrPath, 'utf8')
+      } finally {
+        rmSync(temporary, { recursive: true, force: true })
+      }
+      if (error || code !== 0) {
+        const message = error?.message || (errors || output || `进程退出码：${code ?? '未知'}`).trim() || '操作失败。'
+        reject(new Error(message))
+        return
+      }
+      resolve({ stdout: output, stderr: errors })
+    }
+
+    timer = setTimeout(() => {
+      child.kill()
+      finish(new Error('平台操作超过 120 秒，已停止等待。请检查 Codex 和 Dream Skin 状态后重试。'))
+    }, 120_000)
+    child.once('error', (error) => finish(error))
+    child.once('close', (code) => finish(undefined, code))
+  })
 }
 
 function parseJsonOutput(stdout: string): BridgeResult {
@@ -401,7 +448,7 @@ async function snapshot(): Promise<BridgeResult> {
     const image = typeof theme.image === 'string' ? path.resolve(path.dirname(activePath), theme.image) : ''
     active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) }
   } catch { /* no active theme yet */ }
-  return { ...raw, installation: 'installed', active, themes: localMacThemes(), connection, variables: readDreamArtVariables(), codexSessions }
+  return { ...raw, installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), codexSessions }
 }
 
 async function createWindow(): Promise<void> {

@@ -167,7 +167,7 @@ switch ($Action) {
     $result = [pscustomobject]@{ ok = $true; action = $Action; snapshot = Get-Snapshot }
   }
   'start' {
-    & (Join-Path $ScriptsRoot 'start-dream-skin.ps1') -RestartExisting | Out-Null
+    & (Join-Path $ScriptsRoot 'start-dream-skin.ps1') -RestartExisting -SkipVerification | Out-Null
     $result = [pscustomobject]@{ ok = $true; action = $Action; snapshot = Get-Snapshot }
   }
   'pause' {
@@ -177,7 +177,7 @@ switch ($Action) {
   'resume' {
     $null = Set-DreamSkinPaused -Paused $false -StateRoot $stateRoot
     if (-not (Test-DreamSkinInjectorAlive)) {
-      & (Join-Path $ScriptsRoot 'start-dream-skin.ps1') -RestartExisting | Out-Null
+      & (Join-Path $ScriptsRoot 'start-dream-skin.ps1') -RestartExisting -SkipVerification | Out-Null
     }
     $result = [pscustomobject]@{ ok = $true; action = $Action; snapshot = Get-Snapshot }
   }

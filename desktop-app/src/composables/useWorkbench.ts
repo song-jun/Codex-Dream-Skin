@@ -348,7 +348,7 @@ export function createWorkbench(): WorkbenchContext {
   const managementThemeStyle = computed<Record<string, string>>(() => {
     if (!managementPalette.value && !art.value.accent) return {};
     const accent = committedAccent.value;
-    return {
+    const styles: Record<string, string> = {
       "--dream-accent": accent,
       "--dream-accent-ink": committedAccentInk.value,
       "--dream-image-luma": committedImageLuma.value.toFixed(3),
@@ -372,6 +372,7 @@ export function createWorkbench(): WorkbenchContext {
       "--el-border-color": `color-mix(in oklab, ${accent} 12%, #e1e6ee)`,
       "--el-border-color-light": `color-mix(in oklab, ${accent} 9%, #e1e6ee)`,
     };
+    return styles;
   });
   let paletteRequest = 0;
   async function updateManagementPalette(dataUrl: string | null) {

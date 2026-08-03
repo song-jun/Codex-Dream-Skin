@@ -586,10 +586,30 @@ function Get-DreamSkinCdpBrowserIdentity {
 
 function Get-DreamSkinPortListeners {
   param([int]$Port)
-  if (-not (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue)) {
-    throw 'Get-NetTCPConnection is required to verify CDP listener ownership.'
+  if (-not (Get-Command netstat.exe -ErrorAction SilentlyContinue)) {
+    throw 'netstat.exe is required to verify CDP listener ownership.'
   }
-  return @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+  $listeners = @()
+  $lines = @(& netstat.exe -ano -p tcp 2>$null)
+  foreach ($line in $lines) {
+    $parts = @($line -split '\s+' | Where-Object { $_ })
+    if ($parts.Count -lt 5 -or "$($parts[0])" -ine 'TCP' -or "$($parts[3])" -ine 'LISTENING') { continue }
+    $local = "$($parts[1])"
+    $separator = $local.LastIndexOf(':')
+    if ($separator -lt 1) { continue }
+    $localAddress = $local.Substring(0, $separator).Trim('[', ']')
+    $localPort = 0
+    $processId = 0
+    if (-not [int]::TryParse($local.Substring($separator + 1), [ref]$localPort) -or
+      -not [int]::TryParse("$($parts[4])", [ref]$processId) -or $localPort -ne $Port) { continue }
+    $listeners += [pscustomobject]@{
+      LocalAddress = $localAddress
+      LocalPort = $localPort
+      OwningProcess = $processId
+      State = 'Listen'
+    }
+  }
+  return $listeners
 }
 
 function Test-DreamSkinPortAvailable {
@@ -603,8 +623,12 @@ function Test-DreamSkinCodexPortOwner {
   if ($listeners.Count -eq 0) { return $false }
   foreach ($listener in $listeners) {
     if ($listener.LocalAddress -notin @('127.0.0.1', '::1')) { return $false }
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $([int]$listener.OwningProcess)" -ErrorAction SilentlyContinue
-    $processPath = if ($process) { Get-DreamSkinProcessExecutablePath -ProcessInfo $process } else { $null }
+    $process = Get-Process -Id ([int]$listener.OwningProcess) -ErrorAction SilentlyContinue
+    $processPath = if ($process) { "$($process.Path)" } else { $null }
+    if (-not $processPath) {
+      $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $([int]$listener.OwningProcess)" -ErrorAction SilentlyContinue
+      $processPath = if ($processInfo) { Get-DreamSkinProcessExecutablePath -ProcessInfo $processInfo } else { $null }
+    }
     if (-not $processPath -or -not (Test-DreamSkinPathEqual -Left $processPath -Right $Codex.Executable)) {
       return $false
     }

@@ -4,7 +4,8 @@ param(
   [switch]$RestartExisting,
   [switch]$PromptRestart,
   [string]$ProfilePath,
-  [switch]$ForegroundInjector
+  [switch]$ForegroundInjector,
+  [switch]$SkipVerification
 )
 
 $ErrorActionPreference = 'Stop'
@@ -225,11 +226,13 @@ try {
     }
     Write-DreamSkinState -Path $StatePath -State $state
 
-    $verify = Invoke-DreamSkinNative -FilePath $node.Path -ArgumentList @(
-      $Injector, '--verify', '--port', "$Port",
-      '--browser-id', $cdpIdentity.BrowserId, '--timeout-ms', '40000')
-    Write-DreamSkinUtf8FileAtomically -Path $VerifyPath -Content (($verify.Output -join "`r`n") + "`r`n")
-    if ($verify.ExitCode -ne 0) { throw "Dream Skin verification failed. See $VerifyPath" }
+    if (-not $SkipVerification) {
+      $verify = Invoke-DreamSkinNative -FilePath $node.Path -ArgumentList @(
+        $Injector, '--verify', '--port', "$Port",
+        '--browser-id', $cdpIdentity.BrowserId, '--timeout-ms', '40000')
+      Write-DreamSkinUtf8FileAtomically -Path $VerifyPath -Content (($verify.Output -join "`r`n") + "`r`n")
+      if ($verify.ExitCode -ne 0) { throw "Dream Skin verification failed. See $VerifyPath" }
+    }
   } catch {
     $startupError = $_
     $injectorStopped = $true
