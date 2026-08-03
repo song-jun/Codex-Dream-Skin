@@ -528,6 +528,14 @@ html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-ch
   margin-right: 0 !important;
 }
 
+/* 建议卡图标容器：占满内容宽度后水平居中图标。 */
+.dream-home .group\/home-suggestions button>span:first-child {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
 /* 建议卡悬停：上移 2px + 边框 + 强调色软背景。 */
 .dream-home .group\/home-suggestions button:hover {
   transform: translateY(-2px) !important;
