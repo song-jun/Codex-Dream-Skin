@@ -514,7 +514,7 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
   color: var(--dream-text) !important;
   border: 1px solid var(--dream-line-soft) !important;
   border-radius: 16px !important;
-  background: var(--dream-surface-raised) !important;
+  /* background: var(--dream-surface-raised) !important; */
   box-shadow: 0 8px 24px color-mix(in oklab, var(--dream-accent) 6%, transparent) !important;
   transition: transform 180ms cubic-bezier(.22, 1, .36, 1), border-color 180ms cubic-bezier(.22, 1, .36, 1), background-color 180ms cubic-bezier(.22, 1, .36, 1) !important;
 }
@@ -535,21 +535,21 @@ html.codex-dream-skin.dream-safe-center .dream-home > div:first-child > div:firs
 
 /* 建议卡图标徽章：38px 圆角方块 + 强调色 + 外发光环。 */
 .dream-home .group\/home-suggestions button > span:first-child > span:first-child {
-  width: 38px;
+  /* width: 38px;
   height: 38px;
   display: grid !important;
   place-items: center;
   border-radius: 12px;
   color: var(--dream-accent-ink) !important;
   background: var(--dream-accent) !important;
-  box-shadow: 0 0 0 6px var(--dream-accent-soft);
+  box-shadow: 0 0 0 6px var(--dream-accent-soft); */
 }
 
 /* 建议卡图标尺寸（20px）。 */
 .dream-home .group\/home-suggestions button svg {
-  width: 20px !important;
-  height: 20px !important;
-  color: currentColor !important;
+  width: 24px !important;
+  height: 24px !important;
+  /* color: currentColor !important; */
 }
 
 /* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、底色用 --dream-composer-bg、阴影、模糊。
