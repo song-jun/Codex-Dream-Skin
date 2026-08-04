@@ -19,6 +19,7 @@ const {
   loading,
   errorMessage,
   installationMissing,
+  runtimeUpdateAvailable,
   statusLabel,
   statusTone,
   currentConnection,
@@ -30,6 +31,7 @@ const {
   refresh,
   runAction,
   installDreamSkin,
+  updateRuntime,
   openStateFolder,
   restoreSkin,
   restoreConfirmVisible,
@@ -90,6 +92,10 @@ const {
         <div v-if="installationMissing" class="installation-alert">
           <el-alert title="Dream Skin 运行时尚未安装" description="请先安装 Dream Skin 运行时，再启动皮肤或修改主题。安装过程不会修改官方 Codex 安装文件。" type="warning" :closable="false" show-icon />
           <el-button type="primary" :icon="Setting" @click="installDreamSkin">安装 Dream Skin 运行时</el-button>
+        </div>
+        <div v-else-if="runtimeUpdateAvailable" class="installation-alert">
+          <el-alert :title="snapshot?.runtimeUpdateKind === 'development' ? '检测到开发版样式更新' : '检测到新的皮肤资源'" :description="snapshot?.runtimeUpdateKind === 'development' ? '当前 Codex 仍由旧 watcher 控制，重新注入后会使用仓库中的最新样式。' : '安装包内的 CSS 和注入器比本机运行时更新，同步后会保留主题库和图片。'" type="warning" :closable="false" show-icon />
+          <el-button type="primary" :icon="RefreshRight" @click="updateRuntime">{{ snapshot?.runtimeUpdateKind === 'development' ? '应用开发版样式' : '更新运行时' }}</el-button>
         </div>
         <div v-if="loading" class="fullscreen-loading" role="status" aria-live="polite">
           <div class="fullscreen-loading-panel">

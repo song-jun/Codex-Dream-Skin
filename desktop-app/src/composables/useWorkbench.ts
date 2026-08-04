@@ -56,6 +56,7 @@ export type WorkbenchContext = {
   codexSessionGroups: ComputedRef<CodexSessionGroup[]>;
   art: ComputedRef<Record<string, unknown>>;
   installationMissing: ComputedRef<boolean>;
+  runtimeUpdateAvailable: ComputedRef<boolean>;
   themeUnavailable: ComputedRef<boolean>;
   statusLabel: ComputedRef<string>;
   statusTone: ComputedRef<string>;
@@ -91,6 +92,7 @@ export type WorkbenchContext = {
     message?: string,
   ) => Promise<void>;
   installDreamSkin: () => Promise<void>;
+  updateRuntime: () => Promise<void>;
   openStateFolder: () => Promise<void>;
   restoreSkin: () => Promise<void>;
   confirmRestore: () => Promise<void>;
@@ -172,6 +174,9 @@ export function createWorkbench(): WorkbenchContext {
   const codexSessions = computed(() => snapshot.value?.codexSessions ?? []);
   const installationMissing = computed(
     () => snapshot.value?.installation === "missing",
+  );
+  const runtimeUpdateAvailable = computed(
+    () => snapshot.value?.runtimeUpdateKind !== null && snapshot.value?.runtimeUpdateKind !== undefined,
   );
   const themeUnavailable = computed(
     () => snapshot.value?.session !== "active",
@@ -560,6 +565,30 @@ export function createWorkbench(): WorkbenchContext {
       /* 用户取消安装 */
     }
   }
+  async function updateRuntime() {
+    if (loading.value || !runtimeUpdateAvailable.value) return;
+    const isDevelopment = snapshot.value?.runtimeUpdateKind === "development";
+    try {
+      await ElMessageBox.confirm(
+        isDevelopment
+          ? "检测到仓库中的皮肤源码比当前注入版本更新。重新注入会重启皮肤 watcher，可能重启 Codex，但不会修改主题和配置。继续吗？"
+          : "桌面应用内含有更新的皮肤资源。同步会关闭正在运行的 Codex，但会保留主题、图片和配置。继续吗？",
+        isDevelopment ? "应用开发版样式" : "更新 Dream Skin 运行时",
+        {
+          confirmButtonText: "开始更新",
+          cancelButtonText: "取消",
+          type: "warning",
+        },
+      );
+      await runAction(
+        isDevelopment ? "start" : "install",
+        [],
+        isDevelopment ? "开发版样式已重新注入。" : "Dream Skin 运行时已更新，请重新启动皮肤。",
+      );
+    } catch {
+      /* 用户取消更新 */
+    }
+  }
   async function chooseTheme(theme: ThemeRecord) {
     if (loading.value) return;
     if (themeUnavailable.value) {
@@ -865,6 +894,7 @@ export function createWorkbench(): WorkbenchContext {
     codexSessions,
     codexSessionGroups,
     installationMissing,
+    runtimeUpdateAvailable,
     themeUnavailable,
     statusLabel,
     statusTone,
@@ -897,6 +927,7 @@ export function createWorkbench(): WorkbenchContext {
     refresh,
     runAction,
     installDreamSkin,
+    updateRuntime,
     openStateFolder,
     restoreSkin,
     confirmRestore,

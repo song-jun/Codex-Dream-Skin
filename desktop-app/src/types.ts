@@ -47,5 +47,6 @@ export type Snapshot = {
   stateUpdatedAt?: string | null
   connection?: RendererConnection | null
   variables?: DreamArtVariables
+  runtimeUpdateKind?: 'package' | 'development' | null
   codexSessions: CodexSessionRecord[]
 }
