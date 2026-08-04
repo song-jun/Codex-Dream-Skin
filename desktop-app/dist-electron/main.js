@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import { execFile, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,7 @@ const allowedThemeName = /^[^\u0000-\u001f]{1,80}$/;
 const allowedSessionId = /^[0-9a-f-]{36}$/i;
 const allowedColor = /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i;
 const previewCache = new Map();
+const runtimeFingerprintCache = new Map();
 function stateRoot() {
     return isWindows
         ? path.join(process.env.LOCALAPPDATA ?? path.join(process.env.USERPROFILE ?? '', 'AppData', 'Local'), 'CodexDreamSkin')
@@ -32,6 +34,82 @@ function installedRuntimeScript() {
         : path.join(process.env.HOME ?? '', '.codex', 'codex-dream-skin-studio', 'scripts', 'common-macos.sh');
 }
 function isRuntimeInstalled() { return existsSync(installedRuntimeScript()); }
+function installedPlatformRoot() {
+    return isWindows
+        ? path.join(stateRoot(), 'engine')
+        : path.join(process.env.HOME ?? '', '.codex', 'codex-dream-skin-studio');
+}
+function runtimeAssetRoot() {
+    const installed = path.join(installedPlatformRoot(), 'assets');
+    return existsSync(path.join(installed, 'dream-skin.css')) ? installed : path.join(platformRoot(), 'assets');
+}
+function runtimeFingerprint(root) {
+    const cached = runtimeFingerprintCache.get(root);
+    if (cached)
+        return cached;
+    const hash = createHash('sha256');
+    let fileCount = 0;
+    const includedExtensions = new Set(['.bat', '.css', '.json', '.js', '.mjs', '.ps1', '.sh']);
+    const visit = (directory, relativeDirectory) => {
+        let entries;
+        try {
+            entries = readdirSync(directory, { withFileTypes: true });
+        }
+        catch {
+            return;
+        }
+        for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+            if (entry.isSymbolicLink())
+                continue;
+            const fullPath = path.join(directory, entry.name);
+            const relativePath = path.join(relativeDirectory, entry.name);
+            if (entry.isDirectory())
+                visit(fullPath, relativePath);
+            else if (entry.isFile() && includedExtensions.has(path.extname(entry.name).toLowerCase())) {
+                hash.update(`${relativePath}\0`);
+                hash.update(readFileSync(fullPath));
+                fileCount += 1;
+            }
+        }
+    };
+    for (const directoryName of ['assets', 'scripts', 'presets']) {
+        const directory = path.join(root, directoryName);
+        if (existsSync(directory))
+            visit(directory, directoryName);
+    }
+    if (!fileCount)
+        return null;
+    const fingerprint = `${fileCount}:${hash.digest('hex')}`;
+    runtimeFingerprintCache.set(root, fingerprint);
+    return fingerprint;
+}
+function runtimeUpdateKind() {
+    if (!isRuntimeInstalled())
+        return null;
+    if (!app.isPackaged) {
+        const state = readManagedState();
+        if (!state)
+            return null;
+        const sourceInjector = path.resolve(platformRoot(), 'scripts', 'injector.mjs');
+        const activeInjector = typeof state.injectorPath === 'string' ? path.resolve(state.injectorPath) : '';
+        if (activeInjector && activeInjector.toLowerCase() !== sourceInjector.toLowerCase())
+            return 'development';
+        const startedAt = Date.parse(typeof state.injectorStartedAt === 'string' ? state.injectorStartedAt : '');
+        if (!Number.isFinite(startedAt))
+            return null;
+        for (const relativePath of ['assets/dream-skin.css', 'assets/renderer-inject.js', 'scripts/injector.mjs']) {
+            try {
+                if (statSync(path.join(platformRoot(), relativePath)).mtimeMs > startedAt)
+                    return 'development';
+            }
+            catch { }
+        }
+        return null;
+    }
+    const bundled = runtimeFingerprint(platformRoot());
+    const installed = runtimeFingerprint(installedPlatformRoot());
+    return bundled && installed && bundled !== installed ? 'package' : null;
+}
 function installerPath() {
     return path.join(platformRoot(), 'scripts', isWindows ? 'install-dream-skin.ps1' : 'install-dream-skin-macos.sh');
 }
@@ -45,6 +123,7 @@ async function installRuntime() {
     else {
         await execute('/bin/bash', [script, '--no-launchers', '--no-launch']);
     }
+    runtimeFingerprintCache.delete(installedPlatformRoot());
 }
 function readManagedState() {
     const file = path.join(stateRoot(), 'state.json');
@@ -74,7 +153,7 @@ function connectionFromState(raw) {
 }
 function readDreamArtVariables() {
     try {
-        const css = readFileSync(path.join(platformRoot(), 'assets', 'dream-skin.css'), 'utf8');
+        const css = readFileSync(path.join(runtimeAssetRoot(), 'dream-skin.css'), 'utf8');
         const read = (name, fallback) => new RegExp(`${name}\\s*:\\s*([^;]+);`).exec(css)?.[1]?.trim() || fallback;
         const readColor = (name, fallback, seen = new Set()) => {
             if (seen.has(name))
@@ -317,6 +396,7 @@ function enrichWindowsSnapshot(raw) {
         themes,
         connection,
         variables: readDreamArtVariables(),
+        runtimeUpdateKind: runtimeUpdateKind(),
         codexSessions: readCodexSessions(),
     };
 }
@@ -563,6 +643,7 @@ async function snapshot() {
             stateUpdatedAt: null,
             connection: null,
             variables: readDreamArtVariables(),
+            runtimeUpdateKind: null,
             codexSessions,
         };
     }
@@ -578,7 +659,7 @@ async function snapshot() {
         active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) };
     }
     catch { /* no active theme yet */ }
-    return { ...raw, version: app.getVersion(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), codexSessions };
+    return { ...raw, version: app.getVersion(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions };
 }
 async function createWindow() {
     const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico');

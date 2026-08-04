@@ -1,6 +1,22 @@
 # Changelog
 
-<!-- changelog:base a708ab53435582a1952b20f521b91ff7ac1ec672 -->
+<!-- changelog:base 1d891d1c1ebd6b14751970fb47279fc2c8e1b6a7 -->
+
+## [0.1.3] - 2026-08-04
+
+### 桌面端更新
+
+- 版本号更新。
+
+## [0.1.2] - 2026-08-04
+
+### 桌面端更新
+
+- 新增自动生成更新日志的脚本。
+- 集成 changelog 生成到 prebuild 和 postversion 流程。
+- 重构版本历史面板，从 CHANGELOG.md 动态加载更新内容。
+- 移除侧边栏版本号对 snapshot 的依赖，直接使用 appVersion。
+- 创建初始 CHANGELOG 文档。
 
 ## [0.1.1] - 2026-08-04
 

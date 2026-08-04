@@ -39,13 +39,23 @@ function formatCommit(subject) {
   return subject.replace(/^(feat|fix|refactor|build|chore|docs|perf|test)(\([^)]*\))?!?:\s*/i, '')
 }
 
+function formatCommitBody(body) {
+  return body
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^(?:[-*]|\d+[.)])\s*/, ''))
+}
+
 function readCommits(base) {
   const range = base ? `${base}..HEAD` : 'HEAD'
-  const output = git(['log', range, '--format=%ad\t%s', '--date=short', '--', '.'])
+  const output = git(['log', range, '--format=%ad%x1f%s%x1f%b%x1e', '--date=short', '--', '.'])
   return output
-    ? output.split(/\r?\n/).map((line) => {
-        const [date, ...subjectParts] = line.split('\t')
-        return { date, subject: formatCommit(subjectParts.join('\t')) }
+    ? output.split('\x1e').map((record) => {
+        const [date, subject, ...bodyParts] = record.split('\x1f')
+        const subjectText = formatCommit(subject ?? '')
+        const bodyChanges = formatCommitBody(bodyParts.join('\x1f'))
+        return { date, subject: subjectText, changes: bodyChanges.length > 0 ? bodyChanges : [subjectText] }
       }).filter((commit) => commit.subject)
     : []
 }
@@ -85,7 +95,7 @@ if (shouldCreateEntry) {
     version: currentVersion,
     date: commits[0]?.date || currentDate,
     title: '桌面端更新',
-    changes: commits.length > 0 ? commits.map((commit) => commit.subject) : ['版本号更新。'],
+    changes: commits.length > 0 ? commits.flatMap((commit) => commit.changes) : ['版本号更新。'],
   })
 }
 
