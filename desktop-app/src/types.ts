@@ -36,6 +36,7 @@ export type CodexSessionRecord = {
 
 export type Snapshot = {
   platform: 'windows' | 'darwin'
+  version: string
   session: SessionState
   installation: InstallationState
   codexRunning: boolean

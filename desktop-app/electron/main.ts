@@ -284,6 +284,7 @@ function enrichWindowsSnapshot(raw: BridgeResult): BridgeResult {
     : null
   return {
     ...raw,
+    version: app.getVersion(),
     installation: 'installed',
     active,
     themes,
@@ -424,6 +425,7 @@ async function snapshot(): Promise<BridgeResult> {
   if (!isRuntimeInstalled()) {
     return {
       platform: isMac ? 'darwin' : 'windows',
+      version: app.getVersion(),
       session: 'uninstalled',
       installation: 'missing',
       codexRunning: false,
@@ -448,12 +450,12 @@ async function snapshot(): Promise<BridgeResult> {
     const image = typeof theme.image === 'string' ? path.resolve(path.dirname(activePath), theme.image) : ''
     active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) }
   } catch { /* no active theme yet */ }
-  return { ...raw, installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), codexSessions }
+  return { ...raw, version: app.getVersion(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), codexSessions }
 }
 
 async function createWindow(): Promise<void> {
   const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico')
-  const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: 'Codex Dream Skin', ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } })
+  const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: `Codex Dream Skin v${app.getVersion()}`, ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } })
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL)
   else await window.loadFile(path.join(app.getAppPath(), 'dist-ui', 'index.html'))
 }

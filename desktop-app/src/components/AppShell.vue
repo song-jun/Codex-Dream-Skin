@@ -8,6 +8,9 @@ import { Close, CollectionTag, FolderOpened, Monitor, Refresh, RefreshRight, Set
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
+import packageJson from "../../package.json";
+
+const appVersion = packageJson.version;
 
 const {
   activeView,
@@ -59,6 +62,7 @@ const {
         </div>
         <div class="guard-line"><span class="guard-mark" />本机 CDP 连接</div>
         <div class="guard-line"><span class="guard-mark" />官方 Codex 窗口</div>
+        <div class="sidebar-version">v{{ snapshot?.version || appVersion }}</div>
       </div>
     </el-aside>
 
