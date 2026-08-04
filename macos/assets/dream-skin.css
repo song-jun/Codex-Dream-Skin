@@ -1231,6 +1231,186 @@ html.codex-dream-skin [data-message-author-role] { border-radius: 16px; }
   .dream-skin-home .group\/home-suggestions button { min-height: 112px !important; font-size: 12px !important; }
 }
 
+/* 与 Windows 首页布局保持一致，避免原生容器查询让卡片闪变或折叠。 */
+.dream-skin-home > div:first-child {
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.dream-skin-home > div:first-child > div:first-child {
+  flex: 0 0 clamp(390px, 42cqw, 510px) !important;
+  min-height: 390px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding-bottom: 0 !important;
+}
+
+.dream-skin-home > div:first-child > div:first-child > div:first-child {
+  box-sizing: border-box !important;
+  width: calc(100% - 56px) !important;
+  max-width: 1180px !important;
+  margin-inline: auto !important;
+  height: clamp(230px, 27cqw, 326px) !important;
+  min-height: 230px !important;
+  overflow: visible !important;
+}
+
+.dream-skin-home > div:first-child > div:first-child > div:first-child > div:first-child {
+  box-sizing: border-box !important;
+  padding: 30px 40px !important;
+}
+
+.dream-skin-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+  width: min(48%, 520px) !important;
+}
+
+.dream-skin-home > div:first-child > div:first-child > div:first-child > div:nth-child(2) {
+  left: 0 !important;
+  right: 0 !important;
+  top: 100% !important;
+  margin-top: 16px !important;
+  transform: none !important;
+}
+
+.dream-skin-home .group\/home-suggestions {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.dream-skin-home .group\/home-suggestions > div[class*="@container"] {
+  align-self: stretch !important;
+  width: 100% !important;
+  max-width: none !important;
+  container-type: normal !important;
+}
+
+.dream-skin-home .group\/home-suggestions > div[class*="@container"] > div[class*="grid-cols-"] {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.dream-skin-home .group\/home-suggestions > div[class*="@container"] > div[class*="grid-cols-"] > div {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.dream-skin-home .group\/home-suggestions button {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-height: 112px !important;
+  padding: 16px 14px !important;
+  display: grid !important;
+  place-items: center !important;
+  align-items: center !important;
+  align-content: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  text-align: center !important;
+}
+
+.dream-skin-home .group\/home-suggestions button > * {
+  align-self: center !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dream-skin-home .group\/home-suggestions button > span:first-child {
+  width: 100% !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* 详情选项只保留必要内边距，避免点击卡片后撑高整组内容。 */
+.dream-skin-home .group\/home-suggestions button[class*="home-suggestion-list-item"] {
+  min-height: 40px !important;
+  height: auto !important;
+  padding: 8px 12px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  text-align: left !important;
+}
+
+.dream-skin-home .group\/home-suggestions button[class*="home-suggestion-list-item"] > span:first-child {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  justify-content: center !important;
+}
+
+.dream-skin-home .group\/home-suggestions button[class*="home-suggestion-list-item"] > span:last-child {
+  width: auto !important;
+  flex: 1 1 auto !important;
+  text-align: left !important;
+}
+
+@media (max-width: 1120px) {
+  html.codex-dream-skin .dream-skin-home {
+    --thread-content-max-width: min(940px, calc(100cqw - 36px)) !important;
+  }
+
+  .dream-skin-home > div:first-child > div:first-child > div:first-child {
+    width: calc(100% - 36px) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .dream-skin-home > div:first-child > div:first-child {
+    flex-basis: 370px !important;
+    min-height: 370px !important;
+  }
+
+  .dream-skin-home > div:first-child > div:first-child > div:first-child {
+    height: 220px !important;
+    min-height: 220px !important;
+    border-radius: 16px !important;
+  }
+
+  .dream-skin-home > div:first-child > div:first-child > div:first-child > div:first-child {
+    padding: 24px !important;
+  }
+
+  .dream-skin-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
+    width: 62% !important;
+  }
+
+  .dream-skin-home [data-feature="game-source"] {
+    font-size: 22px !important;
+  }
+
+  .dream-skin-home .group\/home-suggestions button {
+    min-height: 104px !important;
+    padding: 12px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .dream-skin-home .group\/home-suggestions > div[class*="@container"] > div[class*="grid-cols-"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dream-skin-home .group\/home-suggestions button[class*="home-suggestion-list-item"] {
+    min-height: 40px !important;
+    padding: 8px 10px !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .dream-skin-home .group\/home-suggestions > div[class*="@container"] > div[class*="grid-cols-"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 /* 无障碍·减弱动效(prefers-reduced-motion)：关闭过渡/动画 */
 @media (prefers-reduced-motion: reduce) {
   html.codex-dream-skin *,
