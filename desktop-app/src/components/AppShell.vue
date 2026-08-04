@@ -68,7 +68,7 @@ const {
         </div>
         <div class="guard-line"><span class="guard-mark" />本机 CDP 连接</div>
         <div class="guard-line"><span class="guard-mark" />官方 Codex 窗口</div>
-        <div class="sidebar-version">v{{ snapshot?.version || appVersion }}</div>
+        <div class="sidebar-version">v{{ appVersion }}</div>
       </div>
     </el-aside>
 

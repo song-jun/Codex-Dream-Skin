@@ -10,7 +10,9 @@
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron --import=tsx electron/main.ts\"",
     "skin:inject": "bash scripts/skin-inject.sh",
     "skin:pause": "bash scripts/skin-pause.sh",
-    "prebuild": "npm version patch --no-git-tag-version --ignore-scripts",
+    "changelog": "node scripts/generate-changelog.mjs",
+    "postversion": "npm run changelog",
+    "prebuild": "npm version patch --no-git-tag-version --ignore-scripts && npm run changelog",
     "build": "vue-tsc --noEmit && vite build && tsc -p tsconfig.electron.json && node electron/copy-preload.mjs && electron-builder",
     "typecheck": "vue-tsc --noEmit"
   },

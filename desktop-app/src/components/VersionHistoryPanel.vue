@@ -4,20 +4,9 @@
 -->
 <script setup lang="ts">
 import packageJson from "../../package.json";
+import { changelog } from "../changelog";
 
 const appVersion = packageJson.version;
-const versionChanges = [
-  {
-    version: appVersion,
-    date: "2026-08-04",
-    title: "桌面端工作台",
-    changes: [
-      "新增桌面端版本号显示。",
-      "新增中文原生菜单。",
-      "完善主题状态与运行控制。",
-    ],
-  },
-];
 </script>
 
 <template>
@@ -36,7 +25,7 @@ const versionChanges = [
 
     <el-timeline class="version-timeline">
       <el-timeline-item
-        v-for="entry in versionChanges"
+        v-for="entry in changelog"
         :key="entry.version"
         :timestamp="entry.date"
         placement="top"
