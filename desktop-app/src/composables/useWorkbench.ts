@@ -26,7 +26,7 @@ import type {
 } from "../types";
 import { analyzeImagePalette, type ImagePalette } from "../image-palette";
 
-type ViewName = "overview" | "sessions";
+type ViewName = "overview" | "sessions" | "history";
 type ThemeMode = "light" | "dark";
 type CodexSessionGroup = {
   key: string;
@@ -421,7 +421,7 @@ export function createWorkbench(): WorkbenchContext {
   );
 
   function selectView(key: string) {
-    if (key === "overview" || key === "sessions") activeView.value = key;
+    if (key === "overview" || key === "sessions" || key === "history") activeView.value = key;
   }
   function notifyThemeStart() {
     ElMessage.warning(

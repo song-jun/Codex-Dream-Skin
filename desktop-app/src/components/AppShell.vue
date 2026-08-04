@@ -4,9 +4,10 @@
   交互边界：导航与全局操作调用工作台控制器，主题和会话内容交给子组件。
 -->
 <script setup lang="ts">
-import { Close, CollectionTag, FolderOpened, Monitor, Refresh, RefreshRight, Setting, WarningFilled } from "@element-plus/icons-vue";
+import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, WarningFilled } from "@element-plus/icons-vue";
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
+import VersionHistoryPanel from "./VersionHistoryPanel.vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
 import packageJson from "../../package.json";
 
@@ -53,6 +54,9 @@ const {
         <el-menu-item index="sessions">
           <el-icon><CollectionTag /></el-icon><span>Codex 会话</span>
         </el-menu-item>
+        <el-menu-item index="history">
+          <el-icon><Document /></el-icon><span>版本记录</span>
+        </el-menu-item>
       </el-menu>
       <div class="sidebar-session">
         <div class="nav-label">当前状态</div>
@@ -70,7 +74,7 @@ const {
       <el-header class="topbar" height="78px">
         <div class="topbar-title">
           <div class="breadcrumb">DREAM SKIN / {{ snapshot?.platform === "darwin" ? "MACOS" : "WINDOWS" }}</div>
-          <h1>{{ activeView === "overview" ? "主题控制" : "Codex 会话" }}</h1>
+          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : "版本记录" }}</h1>
         </div>
         <div class="top-actions">
           <div class="status-chip" :class="statusTone"><span class="status-dot" />{{ statusLabel }}</div>
@@ -110,7 +114,8 @@ const {
         </div>
 
         <OverviewPanel v-if="activeView === 'overview'" />
-        <SessionsPanel v-else />
+        <SessionsPanel v-else-if="activeView === 'sessions'" />
+        <VersionHistoryPanel v-else />
       </el-main>
     </el-container>
   </el-container>
