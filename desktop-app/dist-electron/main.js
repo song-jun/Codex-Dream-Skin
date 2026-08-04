@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -311,6 +311,7 @@ function enrichWindowsSnapshot(raw) {
         : null;
     return {
         ...raw,
+        version: app.getVersion(),
         installation: 'installed',
         active,
         themes,
@@ -482,11 +483,76 @@ function assertThemeTreeSafe(directory) {
 }
 function renameSavedTheme(id, name) { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); const file = path.join(directory, 'theme.json'); const theme = JSON.parse(readFileSync(file, 'utf8')); theme.name = name; atomicWrite(file, `${JSON.stringify(theme, null, 2)}\n`); }
 function deleteSavedTheme(id) { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); rmSync(directory, { recursive: true, force: false }); }
+function installApplicationMenu() {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+        {
+            label: '文件',
+            submenu: [
+                { label: '关闭窗口', role: 'close' },
+                { type: 'separator' },
+                { label: '退出', role: 'quit' },
+            ],
+        },
+        {
+            label: '编辑',
+            submenu: [
+                { label: '撤销', role: 'undo' },
+                { label: '重做', role: 'redo' },
+                { type: 'separator' },
+                { label: '剪切', role: 'cut' },
+                { label: '复制', role: 'copy' },
+                { label: '粘贴', role: 'paste' },
+                { label: '删除', role: 'delete' },
+                { type: 'separator' },
+                { label: '全选', role: 'selectAll' },
+            ],
+        },
+        {
+            label: '视图',
+            submenu: [
+                { label: '重新加载', role: 'reload' },
+                { label: '强制重新加载', role: 'forceReload' },
+                { label: '开发者工具', role: 'toggleDevTools' },
+                { type: 'separator' },
+                { label: '重置缩放', role: 'resetZoom' },
+                { label: '放大', role: 'zoomIn' },
+                { label: '缩小', role: 'zoomOut' },
+                { type: 'separator' },
+                { label: '全屏', role: 'togglefullscreen' },
+            ],
+        },
+        {
+            label: '窗口',
+            submenu: [
+                { label: '最小化', role: 'minimize' },
+                { label: '缩放', role: 'zoom' },
+                { label: '关闭', role: 'close' },
+            ],
+        },
+        {
+            label: '帮助',
+            submenu: [
+                {
+                    label: '关于 Codex Dream Skin',
+                    click: () => {
+                        void dialog.showMessageBox({
+                            type: 'info',
+                            title: '关于 Codex Dream Skin',
+                            message: 'Codex Dream Skin',
+                            detail: `版本 v${app.getVersion()}`,
+                        });
+                    },
+                },
+            ],
+        },
+    ]));
+}
 async function snapshot() {
     const codexSessions = readCodexSessions();
     if (!isRuntimeInstalled()) {
         return {
             platform: isMac ? 'darwin' : 'windows',
+            version: app.getVersion(),
             session: 'uninstalled',
             installation: 'missing',
             codexRunning: false,
@@ -512,17 +578,18 @@ async function snapshot() {
         active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) };
     }
     catch { /* no active theme yet */ }
-    return { ...raw, installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), codexSessions };
+    return { ...raw, version: app.getVersion(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), codexSessions };
 }
 async function createWindow() {
     const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico');
-    const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: 'Codex Dream Skin', ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
+    const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: `Codex Dream Skin v${app.getVersion()}`, ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
     if (process.env.VITE_DEV_SERVER_URL)
         await window.loadURL(process.env.VITE_DEV_SERVER_URL);
     else
         await window.loadFile(path.join(app.getAppPath(), 'dist-ui', 'index.html'));
 }
 app.whenReady().then(async () => {
+    installApplicationMenu();
     ipcMain.handle('snapshot', snapshot);
     ipcMain.handle('action', async (_event, action, values = []) => {
         const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore'];

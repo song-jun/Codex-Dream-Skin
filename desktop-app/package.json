@@ -1,6 +1,6 @@
 {
   "name": "codex-dream-skin-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Codex Dream Skin desktop application",
   "author": "Codex Dream Skin",
   "private": true,
@@ -35,15 +35,37 @@
   "build": {
     "appId": "local.codex.dreamskin.desktop",
     "productName": "Codex Dream Skin",
-    "directories": { "output": "release" },
+    "directories": {
+      "output": "release"
+    },
     "asar": true,
-    "files": ["dist-ui", "dist-electron", "assets"],
-    "extraResources": [
-      { "from": "../windows", "to": "platform/windows" },
-      { "from": "../macos", "to": "platform/macos" },
-      { "from": "electron/platform", "to": "platform/bridge" }
+    "files": [
+      "dist-ui",
+      "dist-electron",
+      "assets"
     ],
-    "win": { "target": "nsis", "icon": "assets/dream-skin.ico", "artifactName": "Codex-Dream-Skin-Setup-${version}.${ext}" },
-    "mac": { "target": "dmg", "artifactName": "Codex-Dream-Skin-${version}.${ext}" }
+    "extraResources": [
+      {
+        "from": "../windows",
+        "to": "platform/windows"
+      },
+      {
+        "from": "../macos",
+        "to": "platform/macos"
+      },
+      {
+        "from": "electron/platform",
+        "to": "platform/bridge"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/dream-skin.ico",
+      "artifactName": "Codex-Dream-Skin-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": "dmg",
+      "artifactName": "Codex-Dream-Skin-${version}.${ext}"
+    }
   }
 }
