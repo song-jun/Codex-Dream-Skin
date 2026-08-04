@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -420,6 +420,71 @@ function assertThemeTreeSafe(directory: string): void {
 function renameSavedTheme(id: string, name: string): void { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); const file = path.join(directory, 'theme.json'); const theme = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>; theme.name = name; atomicWrite(file, `${JSON.stringify(theme, null, 2)}\n`) }
 function deleteSavedTheme(id: string): void { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); rmSync(directory, { recursive: true, force: false }) }
 
+function installApplicationMenu(): void {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: '文件',
+      submenu: [
+        { label: '关闭窗口', role: 'close' },
+        { type: 'separator' },
+        { label: '退出', role: 'quit' },
+      ],
+    },
+    {
+      label: '编辑',
+      submenu: [
+        { label: '撤销', role: 'undo' },
+        { label: '重做', role: 'redo' },
+        { type: 'separator' },
+        { label: '剪切', role: 'cut' },
+        { label: '复制', role: 'copy' },
+        { label: '粘贴', role: 'paste' },
+        { label: '删除', role: 'delete' },
+        { type: 'separator' },
+        { label: '全选', role: 'selectAll' },
+      ],
+    },
+    {
+      label: '视图',
+      submenu: [
+        { label: '重新加载', role: 'reload' },
+        { label: '强制重新加载', role: 'forceReload' },
+        { label: '开发者工具', role: 'toggleDevTools' },
+        { type: 'separator' },
+        { label: '重置缩放', role: 'resetZoom' },
+        { label: '放大', role: 'zoomIn' },
+        { label: '缩小', role: 'zoomOut' },
+        { type: 'separator' },
+        { label: '全屏', role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: '窗口',
+      submenu: [
+        { label: '最小化', role: 'minimize' },
+        { label: '缩放', role: 'zoom' },
+        { label: '关闭', role: 'close' },
+      ],
+    },
+    {
+      label: '帮助',
+      submenu: [
+        {
+          label: '关于 Codex Dream Skin',
+          click: () => {
+            void dialog.showMessageBox({
+              type: 'info',
+              title: '关于 Codex Dream Skin',
+              message: 'Codex Dream Skin',
+              detail: `版本 v${app.getVersion()}`,
+            })
+          },
+        },
+      ],
+    },
+  ]))
+}
+
 async function snapshot(): Promise<BridgeResult> {
   const codexSessions = readCodexSessions()
   if (!isRuntimeInstalled()) {
@@ -461,6 +526,7 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  installApplicationMenu()
   ipcMain.handle('snapshot', snapshot)
   ipcMain.handle('action', async (_event, action: string, values: string[] = []) => {
     const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore']
