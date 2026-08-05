@@ -149,6 +149,20 @@ Logo 资源：`docs/images/sponsor-passion8.png`（及 svg）。
 *最后更新：随仓库提交维护。有架构变更时优先改本文件与 `platforms.md`。*
 ## Desktop control app
 
+The optional `功能` menu switches between `Codex Dream Skin` and the migrated
+`API Workbench`. API Workbench runs as a full application view inside this
+Electron window and includes
+OpenAPI document loading, TypeScript code generation, API invocation, export,
+environment-variable editing, and encrypted token storage. Export writes are
+limited to directories explicitly selected by the user; it does not modify
+Codex provider, Base URL, or API key settings.
+
+API Workbench settings include invoke configuration and an editable environment
+variable table. The bundled `desktop-app/.env.example` supplies the initial
+rows; development saves values back to `desktop-app/.env`, while packaged
+builds store them in the Electron user-data file `api-workbench.env`. The reset
+action restores the bundled defaults.
+
 The optional `desktop-app/` project is a Vue 3 + Electron + Element Plus
 control surface for the existing platform runtime. It can inspect the managed
 Dream Skin session, switch saved themes through the existing watcher, start or

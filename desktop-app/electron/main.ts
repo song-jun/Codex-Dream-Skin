@@ -1,6 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell, type MenuItemConstructorOptions } from 'electron'
+import { config as loadDotenv } from 'dotenv'
 import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import * as fs from 'node:fs'
 import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +20,126 @@ const runtimeFingerprintCache = new Map<string, string>()
 const featureKeyPattern = /^sj(?:[1-9]\d{4})$/i
 const permanentFeatureKey = 'sj520'
 let mainWindow: BrowserWindow | null = null
+const apiAllowedRoots = new Set<string>()
+const apiEnvFileName = 'api-workbench.env'
+const apiTokenFileName = 'api-workbench-token.enc'
+
+function normalizeApiPath(value: string): string {
+  return path.resolve(value)
+}
+
+function isApiPathInside(child: string, parent: string): boolean {
+  const relative = path.relative(normalizeApiPath(parent), normalizeApiPath(child))
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+function apiAllowedRootsFile(): string {
+  return path.join(app.getPath('userData'), 'api-workbench-allowed-roots.json')
+}
+
+function loadApiAllowedRoots(): void {
+  try {
+    const value = JSON.parse(readFileSync(apiAllowedRootsFile(), 'utf8')) as unknown
+    if (Array.isArray(value)) {
+      value.filter((item): item is string => typeof item === 'string' && existsSync(item)).forEach((item) => apiAllowedRoots.add(normalizeApiPath(item)))
+    }
+  } catch {
+    // 忽略损坏的授权记录，用户可重新选择导出目录。
+  }
+}
+
+function saveApiAllowedRoots(): void {
+  fs.mkdirSync(app.getPath('userData'), { recursive: true })
+  writeFileSync(apiAllowedRootsFile(), `${JSON.stringify([...apiAllowedRoots], null, 2)}\n`, 'utf8')
+}
+
+function isApiPathAllowed(value: string): boolean {
+  return [...apiAllowedRoots].some((root) => isApiPathInside(value, root))
+}
+
+function apiEnvFile(): string {
+  return app.isPackaged ? path.join(app.getPath('userData'), apiEnvFileName) : apiEnvSourceFile()
+}
+
+function apiEnvExampleFile(): string {
+  const candidates = [
+    path.join(here, '..', '.env.example'),
+    path.join(app.getAppPath(), '.env.example'),
+  ]
+  return candidates.find((file) => existsSync(file)) ?? candidates[0]
+}
+
+function apiEnvSourceFile(): string {
+  const candidates = [
+    path.join(here, '..', '.env'),
+    path.join(app.getAppPath(), '.env'),
+  ]
+  return candidates.find((file) => existsSync(file)) ?? candidates[0]
+}
+
+function parseApiEnv(text: string): Array<{ key: string; value: string; description: string }> {
+  const rows: Array<{ key: string; value: string; description: string }> = []
+  let description = ''
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line) {
+      description = ''
+      continue
+    }
+    if (line.startsWith('#')) {
+      description = line.replace(/^#+\s*/, '')
+      continue
+    }
+    const separator = line.indexOf('=')
+    if (separator <= 0) {
+      description = ''
+      continue
+    }
+    const key = line.slice(0, separator).trim()
+    let value = line.slice(separator + 1).trim()
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1)
+    if (/^OPENAPI_[A-Z0-9_]+$/.test(key)) rows.push({ key, value, description })
+    description = ''
+  }
+  return rows
+}
+
+function readApiEnv(): Array<{ key: string; value: string; description: string }> {
+  for (const file of [apiEnvFile(), apiEnvSourceFile()]) {
+    if (!existsSync(file)) continue
+    try {
+      const rows = parseApiEnv(readFileSync(file, 'utf8'))
+      if (rows.length > 0) return rows
+    } catch {
+      // 读取失败时继续尝试下一个配置来源。
+    }
+  }
+  return []
+}
+
+function readApiEnvDefaults(): Array<{ key: string; value: string; description: string }> {
+  if (!existsSync(apiEnvExampleFile())) return []
+  try { return parseApiEnv(readFileSync(apiEnvExampleFile(), 'utf8')) } catch { return [] }
+}
+
+function loadApiEnv(): void {
+  for (const row of readApiEnv()) process.env[row.key] = row.value
+}
+
+function formatApiEnv(rows: Array<{ key: string; value: string; description?: string }>): string {
+  return `${rows.flatMap((row) => [
+    ...(row.description?.trim() ? [`# ${row.description.trim()}`] : []),
+    `${row.key}=${/[\s"\\#]/.test(row.value) ? `"${row.value.replace(/"/g, '\\\"')}"` : row.value}`,
+  ]).join('\n')}\n`
+}
+
+function loadDevelopmentConfig(): void {
+  if (!app.isPackaged) loadDotenv({ path: apiEnvSourceFile(), override: false })
+}
+
+function apiTokenFile(): string {
+  return path.join(app.getPath('userData'), apiTokenFileName)
+}
 
 type BridgeResult = Record<string, unknown>
 type ThemeRecord = { id: string; name: string; imagePath?: string; theme?: Record<string, unknown>; preview?: string | null }
@@ -31,11 +153,19 @@ function stateRoot(): string {
 
 function featureAccessPath(): string { return path.join(app.getPath('userData'), 'feature-access.json') }
 
-function featureUnlocked(): boolean {
+function featureAccessState(): Record<string, unknown> {
   try {
-    const value = JSON.parse(readFileSync(featureAccessPath(), 'utf8')) as Record<string, unknown>
-    return value.unlocked === true
-  } catch { return false }
+    return JSON.parse(readFileSync(featureAccessPath(), 'utf8')) as Record<string, unknown>
+  } catch { return {} }
+}
+
+function featureUnlocked(): boolean {
+  return featureAccessState().unlocked === true
+}
+
+function featurePermanent(): boolean {
+  const value = featureAccessState()
+  return value.unlocked === true && value.permanent === true
 }
 
 function validFeatureKey(value: unknown): boolean {
@@ -44,12 +174,12 @@ function validFeatureKey(value: unknown): boolean {
   return key === permanentFeatureKey || featureKeyPattern.test(key)
 }
 
-function unlockFeatures(): void {
-  atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: true })}\n`)
+function unlockFeatures(permanent: boolean): void {
+  atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: true, permanent })}\n`)
 }
 
 function lockFeatures(): void {
-  atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: false })}\n`)
+  atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: false, permanent: false })}\n`)
 }
 
 function resourceRoot(): string { return app.isPackaged ? path.join(process.resourcesPath, 'platform') : path.resolve(here, '..', '..') }
@@ -379,6 +509,7 @@ function enrichWindowsSnapshot(raw: BridgeResult): BridgeResult {
     ...raw,
     version: app.getVersion(),
     featureUnlocked: featureUnlocked(),
+    featurePermanent: featurePermanent(),
     installation: 'installed',
     active,
     themes,
@@ -564,7 +695,7 @@ function installApplicationMenu(): void {
       ...(featureUnlocked() ? [{
         label: "功能",
         submenu: [
-          { label: "API", click: () => mainWindow?.webContents.send('feature-command', 'api') },
+          { label: "API Workbench", click: () => mainWindow?.webContents.send('feature-command', 'api') },
           { label: "Skin", click: () => mainWindow?.webContents.send('feature-command', 'skin') },
         ],
       }] : []),
@@ -595,6 +726,7 @@ async function snapshot(): Promise<BridgeResult> {
       platform: isMac ? 'darwin' : 'windows',
       version: app.getVersion(),
       featureUnlocked: featureUnlocked(),
+      featurePermanent: featurePermanent(),
       session: 'uninstalled',
       installation: 'missing',
       codexRunning: false,
@@ -620,7 +752,7 @@ async function snapshot(): Promise<BridgeResult> {
     const image = typeof theme.image === 'string' ? path.resolve(path.dirname(activePath), theme.image) : ''
     active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) }
   } catch { /* no active theme yet */ }
-  return { ...raw, version: app.getVersion(), featureUnlocked: featureUnlocked(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions }
+  return { ...raw, version: app.getVersion(), featureUnlocked: featureUnlocked(), featurePermanent: featurePermanent(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions }
 }
 
 async function createWindow(): Promise<void> {
@@ -630,21 +762,26 @@ async function createWindow(): Promise<void> {
   window.on('closed', () => { if (mainWindow === window) mainWindow = null })
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL)
   else await window.loadFile(path.join(app.getAppPath(), 'dist-ui', 'index.html'))
+  if (!app.isPackaged && process.env.ELECTRON_OPEN_DEVTOOLS === 'true') window.webContents.openDevTools({ mode: 'detach' })
 }
 
 app.whenReady().then(async () => {
+  loadDevelopmentConfig()
+  loadApiAllowedRoots()
+  loadApiEnv()
   installApplicationMenu()
   ipcMain.handle('snapshot', snapshot)
   ipcMain.handle('activate-feature', async (_event, key: unknown) => {
     if (!validFeatureKey(key)) throw new Error('功能密钥无效。格式为 sj 加 10000 到 99999，或使用永久密钥 sj520。')
-    unlockFeatures()
+    const normalizedKey = String(key).trim().toLowerCase()
+    unlockFeatures(normalizedKey === permanentFeatureKey)
     installApplicationMenu()
-    return { featureUnlocked: true }
+    return { featureUnlocked: true, featurePermanent: normalizedKey === permanentFeatureKey }
   })
   ipcMain.handle('deactivate-feature', () => {
     lockFeatures()
     installApplicationMenu()
-    return { featureUnlocked: false }
+    return { featureUnlocked: false, featurePermanent: false }
   })
   ipcMain.handle('action', async (_event, action: string, values: string[] = []) => {
     const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore']
@@ -678,6 +815,112 @@ app.whenReady().then(async () => {
     return imageDataUrl(value)
   })
   ipcMain.handle('open-state-folder', async () => { await shell.openPath(stateRoot()); return true })
+  ipcMain.handle('env:getOpenApi', () => Object.fromEntries(readApiEnv().map(({ key, value }) => [key, value])))
+  ipcMain.handle('dialog:selectDirectory', async (_event, defaultPath?: string) => {
+    if (!mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, { title: '选择 API 导出目录', properties: ['openDirectory', 'createDirectory'], defaultPath })
+    if (result.canceled || !result.filePaths[0]) return null
+    apiAllowedRoots.add(normalizeApiPath(result.filePaths[0]))
+    saveApiAllowedRoots()
+    return result.filePaths[0]
+  })
+  ipcMain.handle('dialog:saveFile', async (_event, options: { defaultPath?: string; filters?: Electron.FileFilter[] } = {}) => {
+    if (!mainWindow) return null
+    const result = await dialog.showSaveDialog(mainWindow, { title: '保存 API 文件', ...options })
+    return result.canceled ? null : result.filePath ?? null
+  })
+  ipcMain.handle('fs:writeFile', async (_event, filePath: string, content: string) => {
+    if (typeof filePath !== 'string' || !isApiPathAllowed(filePath)) return { success: false, error: '导出路径未授权' }
+    try {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true })
+      writeFileSync(filePath, content ?? '', 'utf8')
+      return { success: true, path: filePath }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('fs:writeFiles', async (_event, items: Array<{ path: string; content: string }>) => {
+    if (!Array.isArray(items)) return []
+    if (items.some((item) => !item?.path || !isApiPathAllowed(item.path))) return items.map((item) => ({ path: item?.path ?? '', success: false, error: '导出路径未授权' }))
+    return Promise.all(items.map(async (item) => {
+      try {
+        await fs.promises.mkdir(path.dirname(item.path), { recursive: true })
+        await fs.promises.writeFile(item.path, item.content ?? '', 'utf8')
+        return { path: item.path, success: true }
+      } catch (error) {
+        return { path: item.path, success: false, error: error instanceof Error ? error.message : String(error) }
+      }
+    }))
+  })
+  ipcMain.handle('env:load', () => {
+    const items = readApiEnv()
+    return { success: true, items: items.length > 0 ? items : readApiEnvDefaults(), path: apiEnvFile() }
+  })
+  ipcMain.handle('env:save', (_event, items: Array<{ key: string; value: string; description?: string }>) => {
+    if (!Array.isArray(items) || items.some((item) => !/^OPENAPI_[A-Z0-9_]+$/.test(item?.key ?? ''))) return { success: false, error: '环境变量名必须以 OPENAPI_ 开头' }
+    try {
+      const existing = new Map(readApiEnv().map((item) => [item.key, item.value]))
+      const protectedKeys = new Set(['OPENAPI_PWD_ENC_KEY', 'OPENAPI_OAUTH_CLIENT_ID', 'OPENAPI_OAUTH_CLIENT_SECRET'])
+      const normalizedItems = items.map((item) => ({
+        ...item,
+        value: protectedKeys.has(item.key) && !item.value.trim() && existing.get(item.key)
+          ? existing.get(item.key) as string
+          : item.value,
+      }))
+      fs.mkdirSync(app.getPath('userData'), { recursive: true })
+      writeFileSync(apiEnvFile(), formatApiEnv(normalizedItems), 'utf8')
+      for (const key of Object.keys(process.env)) if (key.startsWith('OPENAPI_')) delete process.env[key]
+      loadApiEnv()
+      return { success: true, items: readApiEnv(), path: apiEnvFile() }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('env:reset', () => {
+    try {
+      const items = readApiEnvDefaults()
+      fs.mkdirSync(app.getPath('userData'), { recursive: true })
+      writeFileSync(apiEnvFile(), formatApiEnv(items), 'utf8')
+      for (const key of Object.keys(process.env)) if (key.startsWith('OPENAPI_')) delete process.env[key]
+      for (const item of items) process.env[item.key] = item.value
+      return { success: true, items, path: apiEnvFile() }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('token:save', (_event, token: string) => {
+    try {
+      if (!token) {
+        if (existsSync(apiTokenFile())) fs.unlinkSync(apiTokenFile())
+        return { success: true }
+      }
+      fs.mkdirSync(app.getPath('userData'), { recursive: true })
+      if (safeStorage.isEncryptionAvailable()) {
+        fs.writeFileSync(apiTokenFile(), safeStorage.encryptString(token))
+        return { success: true, encrypted: true }
+      }
+      writeFileSync(apiTokenFile(), token, 'utf8')
+      return { success: true, encrypted: false }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('token:load', () => {
+    try {
+      if (!existsSync(apiTokenFile())) return ''
+      const value = fs.readFileSync(apiTokenFile())
+      return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(value) : value.toString('utf8')
+    } catch { return '' }
+  })
+  ipcMain.handle('token:clear', () => {
+    try {
+      if (existsSync(apiTokenFile())) fs.unlinkSync(apiTokenFile())
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('shell:openPath', (_event, value: string) => isApiPathAllowed(value) ? shell.openPath(value) : '打开路径未授权')
   await createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow() })
 })

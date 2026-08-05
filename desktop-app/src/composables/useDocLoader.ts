@@ -1,0 +1,352 @@
+/**
+ * 文档加载 composable
+ * 负责：URL 拉取、JSON 编辑（textarea 完全非受控，composable 不持有 draft 状态）、
+ *       URL 历史/收藏（localStorage）、接口 tag 分组、JSON 行级高亮、
+ *       curl 复制、路由 query 处理
+ *
+ * 设计：textarea 内容由 DocLoaderCard 自己管理（getValue/setValue），
+ *       composable 只在"显式动作"（loadFromJson / prettyJson / loadFromFile /
+ *       loadFromUrl）被调用时接收或返回文本，不参与每次按键的响应式追踪。
+ */
+import { ref, computed, watch, onBeforeUnmount } from "vue";
+import { ElMessage } from "element-plus";
+import { useRoute } from "vue-router";
+import { useDocStore } from "@/stores/doc";
+import { useConfigStore } from "@/stores/config";
+import { DEFAULT_API_URL } from "@/core/env";
+import { copyToClipboard } from "@/utils/clipboard";
+import { formatJson } from "@/utils/formatJson";
+import type { IEndpointInfo, IOpenAPIDocument } from "@/core/types";
+
+export type DocViewTab = "list" | "raw";
+export type DocTab = "url" | "json";
+
+export interface TagGroup {
+  name: string;
+  endpoints: IEndpointInfo[];
+}
+
+const HISTORY_KEY = "apiWorkbench.docUrlHistory";
+const FAV_KEY = "apiWorkbench.docUrlFavorites";
+
+/** localStorage 安全读取（数组内只保留 string） */
+function loadList(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveList(key: string, list: string[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function isValidUrl(s: string) {
+  if (!s) return false;
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function useDocLoader() {
+  const route = useRoute();
+  const docStore = useDocStore();
+  const configStore = useConfigStore();
+
+  // ===== 加载卡片本地状态 =====
+  const urlValue = ref<string>(DEFAULT_API_URL[0] || "");
+  // 注：JSON 编辑器内容由 DocLoaderCard 完全非受控管理（getValue/setValue），
+  //     composable 不持有任何 draft 状态，避免每次按键触发响应式追踪
+  const tab = ref<DocTab>("url");
+
+  // ===== 查看卡片本地状态 =====
+  const activeTab = ref<DocViewTab>("list");
+  const listCollapseAll = ref<boolean>(false);
+  const expandedTags = ref<Record<string, boolean>>({});
+  const selectedTag = ref<string>("");
+  const searchText = ref<string>("");
+  const showOnlyMine = ref<boolean>(false);
+
+  // ===== 接口 tag 分组（按 tag 名排序）=====
+  const tagGroups = computed<TagGroup[]>(() => {
+    const map = new Map<string, IEndpointInfo[]>();
+    for (const ep of docStore.endpoints) {
+      const key = ep.tag || "";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(ep);
+    }
+    return Array.from(map.entries())
+      .map(([name, endpoints]) => ({ name, endpoints }))
+      .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+  });
+
+  // ===== URL 历史 / 收藏（持久化到 localStorage）=====
+  const urlHistory = ref<string[]>(loadList(HISTORY_KEY));
+  const favorites = ref<string[]>(loadList(FAV_KEY));
+
+  // 预设地址（来自 .env OPENAPI_DEFAULT_API_URL）
+  // 注意：DEFAULT_API_URL 是模块级 let，computed 追踪不到引用变化
+  // 用 ref 镜像 + 监听 apiworkbench:env-changed 事件，env 保存后强制刷新
+  const presetUrls = ref<string[]>([...DEFAULT_API_URL]);
+  const _envHandler = () => {
+    presetUrls.value = [...DEFAULT_API_URL];
+  };
+  window.addEventListener("apiworkbench:env-changed", _envHandler);
+
+  // ===== 统一清理：组件卸载时释放所有定时器 + 事件监听 =====
+  onBeforeUnmount(() => {
+    window.removeEventListener("apiworkbench:env-changed", _envHandler);
+  });
+
+  // 默认展开所有 tag 分组
+  watch(
+    tagGroups,
+    (groups) => {
+      groups.forEach((t) => {
+        if (expandedTags.value[t.name] === undefined) {
+          expandedTags.value[t.name] = true;
+        }
+      });
+    },
+    { immediate: true },
+  );
+
+  // ===== prettyJson + 行级高亮 =====
+  function escapeHtml(s: string) {
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  const _hlCache = new Map<string, string>();
+  function highlightJsonLine(line: string): string {
+    if (line === "") return "&nbsp;";
+    const cached = _hlCache.get(line);
+    if (cached !== undefined) return cached;
+    let html = escapeHtml(line);
+    // 字符串 "..." + 可选冒号
+    html = html.replace(
+      /&quot;((?:[^&]|&amp;|&lt;|&gt;)*?)&quot;(\s*:)?/g,
+      (_m, _s, colon) =>
+        colon
+          ? `<span class="hljs-attr">&quot;${_s}&quot;</span>${colon}`
+          : `<span class="hljs-string">&quot;${_s}&quot;</span>`,
+    );
+    // 数字
+    html = html.replace(
+      /\b(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g,
+      '<span class="hljs-number">$1</span>',
+    );
+    // bool / null
+    html = html.replace(
+      /\b(true|false|null)\b/g,
+      '<span class="hljs-literal">$1</span>',
+    );
+    if (_hlCache.size > 5000) _hlCache.clear();
+    _hlCache.set(line, html);
+    return html;
+  }
+
+  const highlightLines = computed<string[]>(() => {
+    if (!docStore.doc) return [];
+    const pretty = formatJson(docStore.doc);
+    if (!pretty) return [];
+    // normalize CRLF/CR，避免 \r 在 white-space: pre 下触发回车覆盖
+    const src = pretty.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    return src.split("\n").map(highlightJsonLine);
+  });
+
+  /** 当前选中的接口（按 selectedTag 过滤后的第一个，未选中时为 null） */
+  const selectedEndpoint = computed<IEndpointInfo | null>(() => {
+    if (!selectedTag.value) return null;
+    const g = tagGroups.value.find((t) => t.name === selectedTag.value);
+    return g && g.endpoints.length ? g.endpoints[0] : null;
+  });
+
+  /** 当前文档（来自 docStore） */
+  const currentDoc = computed<IOpenAPIDocument | null>(() => docStore.doc);
+
+  // ===== 路由 query 处理 =====
+  // 进入页面时如果 ?url=xxx，自动填入并触发拉取
+  watch(
+    () => route.query?.url,
+    (q) => {
+      if (typeof q === "string" && q && isValidUrl(q)) {
+        urlValue.value = q;
+      }
+    },
+    { immediate: true },
+  );
+
+  // ===== URL 历史 / 收藏操作 =====
+  function onUrlBlur() {
+    const v = urlValue.value.trim();
+    if (!isValidUrl(v)) return;
+    urlHistory.value = [v, ...urlHistory.value.filter((x) => x !== v)].slice(
+      0,
+      20,
+    );
+    saveList(HISTORY_KEY, urlHistory.value);
+  }
+
+  function onUrlSelectChange(v: string) {
+    if (!v) return;
+    if (!isValidUrl(v)) return;
+    if (urlHistory.value.includes(v)) return;
+    urlHistory.value = [v, ...urlHistory.value].slice(0, 20);
+    saveList(HISTORY_KEY, urlHistory.value);
+  }
+
+  function onUrlHistorySelect(cmd: string) {
+    if (cmd === "__clear__") {
+      urlHistory.value = [];
+      saveList(HISTORY_KEY, []);
+      return;
+    }
+    urlValue.value = cmd;
+    // 选中历史后自动拉取（与原行为一致）
+    void loadFromUrl(cmd);
+  }
+
+  function onUrlHistoryDel(h: string) {
+    urlHistory.value = urlHistory.value.filter((x) => x !== h);
+    saveList(HISTORY_KEY, urlHistory.value);
+  }
+
+  function toggleFavorite(url: string) {
+    const v = (url ?? "").trim();
+    if (!v) return;
+    if (favorites.value.includes(v)) {
+      favorites.value = favorites.value.filter((x) => x !== v);
+      ElMessage.success("已取消收藏");
+    } else {
+      favorites.value = [v, ...favorites.value.filter((x) => x !== v)].slice(
+        0,
+        20,
+      );
+      ElMessage.success("已收藏");
+    }
+    saveList(FAV_KEY, favorites.value);
+  }
+
+  function isFavorite(url: string) {
+    return favorites.value.includes(url);
+  }
+
+  // ===== 加载 / 解析 / 格式化 =====
+  async function loadFromUrl(url?: string) {
+    const u = url ?? urlValue.value;
+    const ok = await docStore.loadFromUrl(u);
+    if (ok) {
+      ElMessage.success("文档加载成功");
+    } else {
+      ElMessage.error(docStore.error || "加载失败");
+    }
+    return ok;
+  }
+
+  function loadFromJson(text: string) {
+    const ok = docStore.loadFromJson(text);
+    if (ok) {
+      ElMessage.success("JSON 解析成功");
+    } else {
+      ElMessage.error(docStore.error || "解析失败");
+    }
+    return ok;
+  }
+
+  function prettyJson(text: string): string | null {
+    try {
+      const parsed = JSON.parse(text);
+      return formatJson(parsed);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      ElMessage.error("JSON 不合法：" + msg);
+      return null;
+    }
+  }
+
+  function refresh() {
+    return loadFromUrl();
+  }
+
+  /** 清空全部（外部按钮触发） */
+  function clearAll() {
+    docStore.clear();
+    ElMessage.success("已清空文档");
+  }
+
+  // ===== curl 复制 =====
+  function buildCurl(ep: IEndpointInfo): string {
+    const base =
+      configStore.config.baseUrl ||
+      (docStore.sourceUrl
+        ? new URL(docStore.sourceUrl).origin
+        : "https://your-host");
+    const path = ep.path;
+    const url = base.replace(/\/$/, "") + path;
+    return `curl -X ${ep.method.toUpperCase()} '${url}'`;
+  }
+
+  function copyCurl(ep: IEndpointInfo) {
+    const text = buildCurl(ep);
+    // 注意：copyToClipboard 内部已 await writeText，不能再 fire-and-forget
+    copyToClipboard(text, `已复制：${ep.method.toUpperCase()} ${ep.path}`);
+  }
+
+  function toggleTag(name: string) {
+    expandedTags.value[name] = !expandedTags.value[name];
+  }
+
+  return {
+    // 状态
+    docStore,
+    urlValue,
+    presetUrls,
+    isLoading: computed(() => docStore.loading),
+    isParsing: computed(() => docStore.loading),
+    hasError: computed(() => !!docStore.error),
+    errorMsg: computed(() => docStore.error || ""),
+    activeTab,
+    listCollapseAll,
+    expandedTags,
+    selectedTag,
+    searchText,
+    showOnlyMine,
+    highlightLines,
+    tagGroups,
+    selectedEndpoint,
+    currentDoc,
+    // URL 历史 / 收藏
+    urlHistory,
+    favorites,
+    onUrlBlur,
+    onUrlSelectChange,
+    onUrlHistorySelect,
+    onUrlHistoryDel,
+    toggleFavorite,
+    isFavorite,
+    // JSON 编辑
+    tab,
+    prettyJson,
+    // 加载 / 解析
+    loadFromUrl,
+    loadFromJson,
+    refresh,
+    copyCurl,
+    clearAll,
+    toggleTag,
+  };
+}

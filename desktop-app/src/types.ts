@@ -38,6 +38,7 @@ export type Snapshot = {
   platform: 'windows' | 'darwin'
   version: string
   featureUnlocked: boolean
+  featurePermanent: boolean
   session: SessionState
   installation: InstallationState
   codexRunning: boolean

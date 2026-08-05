@@ -4,22 +4,35 @@
   交互边界：导航与全局操作调用工作台控制器，主题和会话内容交给子组件。
 -->
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, WarningFilled } from "@element-plus/icons-vue";
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
 import VersionHistoryPanel from "./VersionHistoryPanel.vue";
-import FeaturePanel from "./FeaturePanel.vue";
+import ApiWorkbenchPanel from "../api-workbench/ApiWorkbenchPanel.vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
 import packageJson from "../../package.json";
 
 const appVersion = packageJson.version;
-type FeatureCategory = "api" | "skin";
+type ApplicationMode = "skin" | "api";
+const TRANSITION_LOADING_KEY = "codexDreamSkin:transition-loading";
+const TRANSITION_LOADING_EVENT = "codexDreamSkin:transition-loading";
+const TRANSITION_LOADING_END_EVENT = "codexDreamSkin:transition-loading-end";
 const featureKeyDialogVisible = ref(false);
 const featureKey = ref("");
 const featureKeySubmitting = ref(false);
-const featureCategory = ref<FeatureCategory>("skin");
+const route = useRoute();
+const router = useRouter();
+function isApiRoute(path: string): boolean {
+  return path.startsWith("/api-workbench") || window.location.hash.startsWith("#/api-workbench");
+}
+const applicationMode = ref<ApplicationMode>(isApiRoute(route.path) ? "api" : "skin");
+const transitionLoading = ref(
+  typeof window !== "undefined" && sessionStorage.getItem(TRANSITION_LOADING_KEY) === "1",
+);
+let transitionLoadingTimer: number | null = null;
 let stopFeatureCommand: (() => void) | null = null;
 
 const {
@@ -48,6 +61,38 @@ const {
   confirmRestore,
 } = useWorkbenchContext();
 
+watch(
+  () => route.path,
+  (path) => {
+    applicationMode.value = isApiRoute(path) ? "api" : "skin";
+    if (isApiRoute(path) && transitionLoading.value) scheduleTransitionLoadingEnd();
+  },
+  { immediate: true },
+);
+
+function scheduleTransitionLoadingEnd() {
+  if (transitionLoadingTimer !== null) window.clearTimeout(transitionLoadingTimer);
+  transitionLoadingTimer = window.setTimeout(() => {
+    if (isApiRoute(route.path)) {
+      sessionStorage.removeItem(TRANSITION_LOADING_KEY);
+      transitionLoading.value = false;
+    }
+    transitionLoadingTimer = null;
+  }, 700);
+}
+
+function handleTransitionLoading() {
+  transitionLoading.value = true;
+  if (isApiRoute(route.path)) scheduleTransitionLoadingEnd();
+}
+
+function handleTransitionLoadingEnd() {
+  if (transitionLoadingTimer !== null) window.clearTimeout(transitionLoadingTimer);
+  transitionLoadingTimer = null;
+  sessionStorage.removeItem(TRANSITION_LOADING_KEY);
+  transitionLoading.value = false;
+}
+
 function openFeatureKeyDialog() {
   featureKey.value = "";
   featureKeyDialogVisible.value = true;
@@ -58,7 +103,7 @@ async function submitFeatureKey() {
   featureKeySubmitting.value = true;
   try {
     const result = await window.dreamSkin.activateFeature(featureKey.value.trim());
-    if (snapshot.value) snapshot.value = { ...snapshot.value, featureUnlocked: result.featureUnlocked };
+    if (snapshot.value) snapshot.value = { ...snapshot.value, featureUnlocked: result.featureUnlocked, featurePermanent: result.featurePermanent };
     featureKeyDialogVisible.value = false;
     featureKey.value = "";
     ElMessage.success("功能菜单已启用。");
@@ -74,36 +119,59 @@ async function restoreFeatureAccess() {
   featureKeySubmitting.value = true;
   try {
     const result = await window.dreamSkin.deactivateFeature();
-    if (snapshot.value) snapshot.value = { ...snapshot.value, featureUnlocked: result.featureUnlocked };
-    if (activeView.value === "feature") selectView("overview");
+    if (snapshot.value) snapshot.value = { ...snapshot.value, featureUnlocked: result.featureUnlocked, featurePermanent: result.featurePermanent };
     featureKeyDialogVisible.value = false;
     featureKey.value = "";
     ElMessage.success("功能菜单已隐藏。");
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "恢复功能菜单失败。");
+    ElMessage.error(error instanceof Error ? error.message : "撤销菜单失败。");
   } finally {
     featureKeySubmitting.value = false;
   }
 }
 
-function openFeatureCategory(category: FeatureCategory) {
+function openFeatureCategory(category: "api" | "skin") {
   if (!featureUnlocked.value) return;
-  featureCategory.value = category;
-  selectView("feature");
+  if (category === "api") {
+    applicationMode.value = "api";
+    if (!route.path.startsWith("/api-workbench")) void router.push("/api-workbench/doc");
+    return;
+  }
+  switchToSkin();
+}
+
+function switchToSkin() {
+  applicationMode.value = "skin";
+  selectView("overview");
+  if (route.path !== "/") void router.replace("/");
 }
 
 onMounted(() => {
+  window.addEventListener(TRANSITION_LOADING_EVENT, handleTransitionLoading);
+  window.addEventListener(TRANSITION_LOADING_END_EVENT, handleTransitionLoadingEnd);
   if (window.dreamSkin) stopFeatureCommand = window.dreamSkin.onFeatureCommand(openFeatureCategory);
+  if (transitionLoading.value && isApiRoute(route.path)) scheduleTransitionLoadingEnd();
 });
 
 onUnmounted(() => {
+  window.removeEventListener(TRANSITION_LOADING_EVENT, handleTransitionLoading);
+  window.removeEventListener(TRANSITION_LOADING_END_EVENT, handleTransitionLoadingEnd);
+  if (transitionLoadingTimer !== null) window.clearTimeout(transitionLoadingTimer);
   stopFeatureCommand?.();
   stopFeatureCommand = null;
 });
 </script>
 
 <template>
-  <el-container class="app-shell" :style="managementThemeStyle">
+  <div v-if="transitionLoading" class="fullscreen-loading transition-loading" role="status" aria-live="polite">
+    <div class="fullscreen-loading-panel">
+      <span class="loading-ring" /><strong>正在加载 API Workbench</strong>
+      <span>配置已保存，正在恢复当前工作区</span>
+    </div>
+  </div>
+  <ApiWorkbenchPanel v-if="applicationMode === 'api'" @switch-skin="switchToSkin" />
+
+  <el-container v-else class="app-shell" :style="managementThemeStyle">
     <el-aside class="sidebar" width="252px">
       <div class="brand-block">
         <div class="brand-mark"><Monitor /></div>
@@ -121,9 +189,6 @@ onUnmounted(() => {
         </el-menu-item>
         <el-menu-item index="history">
           <el-icon><Document /></el-icon><span>版本记录</span>
-        </el-menu-item>
-        <el-menu-item v-if="featureUnlocked" index="feature">
-          <el-icon><Setting /></el-icon><span>功能</span>
         </el-menu-item>
       </el-menu>
       <div class="sidebar-session">
@@ -147,7 +212,7 @@ onUnmounted(() => {
       <el-header class="topbar" height="78px">
         <div class="topbar-title">
           <div class="breadcrumb">DREAM SKIN / {{ snapshot?.platform === "darwin" ? "MACOS" : "WINDOWS" }}</div>
-          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : activeView === "history" ? "版本记录" : "功能" }}</h1>
+          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : "版本记录" }}</h1>
         </div>
         <div class="top-actions">
           <div class="status-chip" :class="statusTone"><span class="status-dot" />{{ statusLabel }}</div>
@@ -195,7 +260,7 @@ onUnmounted(() => {
             <div class="feature-dialog-header">
               <div class="eyebrow">FEATURE ACCESS</div>
               <h3 id="feature-dialog-title">设置功能密钥</h3>
-              <p>验证后启用桌面端“功能”菜单。格式：sj 加 10000 到 99999；永久密钥：sj520。</p>
+              <p v-if="snapshot?.featurePermanent === true">验证后启用桌面端“功能”菜单。格式：sj 加 10000 到 99999；永久密钥：sj520。</p>
             </div>
             <el-form class="feature-key-form" @submit.prevent="submitFeatureKey">
               <el-form-item label="功能密钥">
@@ -203,7 +268,7 @@ onUnmounted(() => {
               </el-form-item>
               <div class="feature-dialog-actions">
                 <el-button @click="featureKeyDialogVisible = false">取消</el-button>
-                <el-button v-if="featureUnlocked" type="warning" plain :loading="featureKeySubmitting" @click="restoreFeatureAccess">恢复功能</el-button>
+                <el-button v-if="featureUnlocked" type="warning" plain :loading="featureKeySubmitting" @click="restoreFeatureAccess">撤销</el-button>
                 <el-button type="primary" :loading="featureKeySubmitting" @click="submitFeatureKey">验证并启用</el-button>
               </div>
             </el-form>
@@ -213,7 +278,6 @@ onUnmounted(() => {
         <OverviewPanel v-if="activeView === 'overview'" />
         <SessionsPanel v-else-if="activeView === 'sessions'" />
         <VersionHistoryPanel v-else-if="activeView === 'history'" />
-        <FeaturePanel v-else :category="featureCategory" @update:category="featureCategory = $event" />
       </el-main>
     </el-container>
   </el-container>

@@ -67,6 +67,7 @@ svg { display: block; width: 18px; height: 18px; }
 .nav-menu .el-menu-item.is-active::before { position: absolute; left: 0; width: 3px; height: 22px; border-radius: 0 3px 3px 0; background: var(--primary); content: ''; }
 .nav-menu .el-menu-item small { position: absolute; right: 14px; color: var(--quiet); font-size: 12px; }
 .nav-menu .el-menu-item.is-active small { color: var(--primary); }
+#app .el-menu { background: transparent; }
 .sidebar-session { margin-top: auto; padding: 22px 24px 25px; border-top: 1px solid var(--line); }
 .sidebar-session .nav-label { padding: 0 0 13px; }
 .session-summary { display: grid; grid-template-columns: 9px 1fr; gap: 7px 10px; align-items: center; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
@@ -307,6 +308,7 @@ code { color: var(--primary-dark); font-family: "Segoe UI", Arial, sans-serif; f
 .feature-key-form .el-form-item { margin-bottom: 18px; }
 .feature-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
 .feature-page { max-width: 980px; }
+.feature-page-api { max-width: none; }
 .feature-page-header { display: flex; justify-content: space-between; gap: 28px; align-items: flex-end; padding-bottom: 30px; border-bottom: 1px solid var(--line); }
 .feature-page-header h2 { margin-top: 8px; }
 .feature-page-header p { margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.7; }
