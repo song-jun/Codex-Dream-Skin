@@ -4,18 +4,28 @@
   交互边界：导航与全局操作调用工作台控制器，主题和会话内容交给子组件。
 -->
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref } from "vue";
+import { ElMessage } from "element-plus";
 import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, WarningFilled } from "@element-plus/icons-vue";
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
 import VersionHistoryPanel from "./VersionHistoryPanel.vue";
+import FeaturePanel from "./FeaturePanel.vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
 import packageJson from "../../package.json";
 
 const appVersion = packageJson.version;
+type FeatureCategory = "api" | "skin";
+const featureKeyDialogVisible = ref(false);
+const featureKey = ref("");
+const featureKeySubmitting = ref(false);
+const featureCategory = ref<FeatureCategory>("skin");
+let stopFeatureCommand: (() => void) | null = null;
 
 const {
   activeView,
   snapshot,
+  featureUnlocked,
   loading,
   errorMessage,
   installationMissing,
@@ -37,6 +47,59 @@ const {
   restoreConfirmVisible,
   confirmRestore,
 } = useWorkbenchContext();
+
+function openFeatureKeyDialog() {
+  featureKey.value = "";
+  featureKeyDialogVisible.value = true;
+}
+
+async function submitFeatureKey() {
+  if (!window.dreamSkin || !featureKey.value.trim() || featureKeySubmitting.value) return;
+  featureKeySubmitting.value = true;
+  try {
+    const result = await window.dreamSkin.activateFeature(featureKey.value.trim());
+    if (snapshot.value) snapshot.value = { ...snapshot.value, featureUnlocked: result.featureUnlocked };
+    featureKeyDialogVisible.value = false;
+    featureKey.value = "";
+    ElMessage.success("功能菜单已启用。");
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "功能密钥无效。");
+  } finally {
+    featureKeySubmitting.value = false;
+  }
+}
+
+async function restoreFeatureAccess() {
+  if (!window.dreamSkin || featureKeySubmitting.value) return;
+  featureKeySubmitting.value = true;
+  try {
+    const result = await window.dreamSkin.deactivateFeature();
+    if (snapshot.value) snapshot.value = { ...snapshot.value, featureUnlocked: result.featureUnlocked };
+    if (activeView.value === "feature") selectView("overview");
+    featureKeyDialogVisible.value = false;
+    featureKey.value = "";
+    ElMessage.success("功能菜单已隐藏。");
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "恢复功能菜单失败。");
+  } finally {
+    featureKeySubmitting.value = false;
+  }
+}
+
+function openFeatureCategory(category: FeatureCategory) {
+  if (!featureUnlocked.value) return;
+  featureCategory.value = category;
+  selectView("feature");
+}
+
+onMounted(() => {
+  if (window.dreamSkin) stopFeatureCommand = window.dreamSkin.onFeatureCommand(openFeatureCategory);
+});
+
+onUnmounted(() => {
+  stopFeatureCommand?.();
+  stopFeatureCommand = null;
+});
 </script>
 
 <template>
@@ -59,6 +122,9 @@ const {
         <el-menu-item index="history">
           <el-icon><Document /></el-icon><span>版本记录</span>
         </el-menu-item>
+        <el-menu-item v-if="featureUnlocked" index="feature">
+          <el-icon><Setting /></el-icon><span>功能</span>
+        </el-menu-item>
       </el-menu>
       <div class="sidebar-session">
         <div class="nav-label">当前状态</div>
@@ -68,7 +134,12 @@ const {
         </div>
         <div class="guard-line"><span class="guard-mark" />本机 CDP 连接</div>
         <div class="guard-line"><span class="guard-mark" />官方 Codex 窗口</div>
-        <div class="sidebar-version">v{{ appVersion }}</div>
+        <div class="sidebar-version-row">
+          <span>v{{ appVersion }}</span>
+          <el-tooltip content="设置功能密钥" placement="right">
+            <el-button class="sidebar-settings-button" :icon="Setting" circle aria-label="设置功能密钥" @click="openFeatureKeyDialog" />
+          </el-tooltip>
+        </div>
       </div>
     </el-aside>
 
@@ -76,7 +147,7 @@ const {
       <el-header class="topbar" height="78px">
         <div class="topbar-title">
           <div class="breadcrumb">DREAM SKIN / {{ snapshot?.platform === "darwin" ? "MACOS" : "WINDOWS" }}</div>
-          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : "版本记录" }}</h1>
+          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : activeView === "history" ? "版本记录" : "功能" }}</h1>
         </div>
         <div class="top-actions">
           <div class="status-chip" :class="statusTone"><span class="status-dot" />{{ statusLabel }}</div>
@@ -118,10 +189,31 @@ const {
             </div>
           </section>
         </div>
+        <div v-if="featureKeyDialogVisible" class="restore-dialog-backdrop" role="presentation" @click.self="featureKeyDialogVisible = false">
+          <section class="feature-dialog" role="dialog" aria-modal="true" aria-labelledby="feature-dialog-title">
+            <button class="restore-dialog-close" type="button" aria-label="关闭" @click="featureKeyDialogVisible = false"><Close /></button>
+            <div class="feature-dialog-header">
+              <div class="eyebrow">FEATURE ACCESS</div>
+              <h3 id="feature-dialog-title">设置功能密钥</h3>
+              <p>验证后启用桌面端“功能”菜单。格式：sj 加 10000 到 99999；永久密钥：sj520。</p>
+            </div>
+            <el-form class="feature-key-form" @submit.prevent="submitFeatureKey">
+              <el-form-item label="功能密钥">
+                <el-input v-model="featureKey" type="password" show-password maxlength="16" autocomplete="off" placeholder="请输入功能密钥" @keyup.enter="submitFeatureKey" />
+              </el-form-item>
+              <div class="feature-dialog-actions">
+                <el-button @click="featureKeyDialogVisible = false">取消</el-button>
+                <el-button v-if="featureUnlocked" type="warning" plain :loading="featureKeySubmitting" @click="restoreFeatureAccess">恢复功能</el-button>
+                <el-button type="primary" :loading="featureKeySubmitting" @click="submitFeatureKey">验证并启用</el-button>
+              </div>
+            </el-form>
+          </section>
+        </div>
 
         <OverviewPanel v-if="activeView === 'overview'" />
         <SessionsPanel v-else-if="activeView === 'sessions'" />
-        <VersionHistoryPanel v-else />
+        <VersionHistoryPanel v-else-if="activeView === 'history'" />
+        <FeaturePanel v-else :category="featureCategory" @update:category="featureCategory = $event" />
       </el-main>
     </el-container>
   </el-container>

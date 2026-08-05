@@ -163,3 +163,10 @@ Codex renderer.
 
 Run it from the repository with `cd desktop-app`, `npm install`, and `npm run
 dev`. Packaging is opt-in with `npm run build`.
+
+The desktop app's optional `功能` menu is enabled through the settings button
+next to the displayed app version. Feature access accepts `sj` plus a five-digit
+number from `10000` to `99999`, or the permanent key `sj520`. Only the unlocked
+state is stored at Electron's user-data path in `feature-access.json`; the key
+itself is not persisted. The API feature surface is read-only and does not
+modify Codex provider, Base URL, or API key settings.

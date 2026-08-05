@@ -26,7 +26,7 @@ import type {
 } from "../types";
 import { analyzeImagePalette, type ImagePalette } from "../image-palette";
 
-type ViewName = "overview" | "sessions" | "history";
+type ViewName = "overview" | "sessions" | "history" | "feature";
 type ThemeMode = "light" | "dark";
 type CodexSessionGroup = {
   key: string;
@@ -47,6 +47,7 @@ type ThemeSettings = {
 export type WorkbenchContext = {
   activeView: Ref<ViewName>;
   snapshot: Ref<Snapshot | null>;
+  featureUnlocked: ComputedRef<boolean>;
   loading: Ref<boolean>;
   currentAction: Ref<string>;
   errorMessage: Ref<string>;
@@ -170,6 +171,7 @@ export function createWorkbench(): WorkbenchContext {
         : "is-offline",
   );
   const activeTheme = computed(() => snapshot.value?.active ?? null);
+  const featureUnlocked = computed(() => snapshot.value?.featureUnlocked === true);
   const themes = computed(() => snapshot.value?.themes ?? []);
   const codexSessions = computed(() => snapshot.value?.codexSessions ?? []);
   const installationMissing = computed(
@@ -427,6 +429,7 @@ export function createWorkbench(): WorkbenchContext {
 
   function selectView(key: string) {
     if (key === "overview" || key === "sessions" || key === "history") activeView.value = key;
+    if (key === "feature" && featureUnlocked.value) activeView.value = key;
   }
   function notifyThemeStart() {
     ElMessage.warning(
@@ -886,6 +889,7 @@ export function createWorkbench(): WorkbenchContext {
   return {
     activeView,
     snapshot,
+    featureUnlocked,
     loading,
     currentAction,
     errorMessage,

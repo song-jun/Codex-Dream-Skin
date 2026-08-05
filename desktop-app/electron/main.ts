@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type MenuItemConstructorOptions } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -15,6 +15,9 @@ const allowedSessionId = /^[0-9a-f-]{36}$/i
 const allowedColor = /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i
 const previewCache = new Map<string, { stamp: string; value: string | null }>()
 const runtimeFingerprintCache = new Map<string, string>()
+const featureKeyPattern = /^sj(?:[1-9]\d{4})$/i
+const permanentFeatureKey = 'sj520'
+let mainWindow: BrowserWindow | null = null
 
 type BridgeResult = Record<string, unknown>
 type ThemeRecord = { id: string; name: string; imagePath?: string; theme?: Record<string, unknown>; preview?: string | null }
@@ -24,6 +27,29 @@ function stateRoot(): string {
   return isWindows
     ? path.join(process.env.LOCALAPPDATA ?? path.join(process.env.USERPROFILE ?? '', 'AppData', 'Local'), 'CodexDreamSkin')
     : path.join(process.env.HOME ?? '', 'Library', 'Application Support', 'CodexDreamSkinStudio')
+}
+
+function featureAccessPath(): string { return path.join(app.getPath('userData'), 'feature-access.json') }
+
+function featureUnlocked(): boolean {
+  try {
+    const value = JSON.parse(readFileSync(featureAccessPath(), 'utf8')) as Record<string, unknown>
+    return value.unlocked === true
+  } catch { return false }
+}
+
+function validFeatureKey(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  const key = value.trim().toLowerCase()
+  return key === permanentFeatureKey || featureKeyPattern.test(key)
+}
+
+function unlockFeatures(): void {
+  atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: true })}\n`)
+}
+
+function lockFeatures(): void {
+  atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: false })}\n`)
 }
 
 function resourceRoot(): string { return app.isPackaged ? path.join(process.resourcesPath, 'platform') : path.resolve(here, '..', '..') }
@@ -352,6 +378,7 @@ function enrichWindowsSnapshot(raw: BridgeResult): BridgeResult {
   return {
     ...raw,
     version: app.getVersion(),
+    featureUnlocked: featureUnlocked(),
     installation: 'installed',
     active,
     themes,
@@ -489,68 +516,76 @@ function renameSavedTheme(id: string, name: string): void { const directory = sa
 function deleteSavedTheme(id: string): void { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); rmSync(directory, { recursive: true, force: false }) }
 
 function installApplicationMenu(): void {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {
-      label: '文件',
-      submenu: [
-        { label: '关闭窗口', role: 'close' },
-        { type: 'separator' },
-        { label: '退出', role: 'quit' },
-      ],
-    },
-    {
-      label: '编辑',
-      submenu: [
-        { label: '撤销', role: 'undo' },
-        { label: '重做', role: 'redo' },
-        { type: 'separator' },
-        { label: '剪切', role: 'cut' },
-        { label: '复制', role: 'copy' },
-        { label: '粘贴', role: 'paste' },
-        { label: '删除', role: 'delete' },
-        { type: 'separator' },
-        { label: '全选', role: 'selectAll' },
-      ],
-    },
-    {
-      label: '视图',
-      submenu: [
-        { label: '重新加载', role: 'reload' },
-        { label: '强制重新加载', role: 'forceReload' },
-        { label: '开发者工具', role: 'toggleDevTools' },
-        { type: 'separator' },
-        { label: '重置缩放', role: 'resetZoom' },
-        { label: '放大', role: 'zoomIn' },
-        { label: '缩小', role: 'zoomOut' },
-        { type: 'separator' },
-        { label: '全屏', role: 'togglefullscreen' },
-      ],
-    },
-    {
-      label: '窗口',
-      submenu: [
-        { label: '最小化', role: 'minimize' },
-        { label: '缩放', role: 'zoom' },
-        { label: '关闭', role: 'close' },
-      ],
-    },
-    {
-      label: '帮助',
-      submenu: [
-        {
-          label: '关于 Codex Dream Skin',
-          click: () => {
-            void dialog.showMessageBox({
-              type: 'info',
-              title: '关于 Codex Dream Skin',
-              message: 'Codex Dream Skin',
-              detail: `版本 v${app.getVersion()}`,
-            })
+  const template: MenuItemConstructorOptions[] = [
+      {
+        label: "文件",
+        submenu: [
+          { label: "关闭窗口", role: "close" },
+          { type: "separator" },
+          { label: "退出", role: "quit" },
+        ],
+      },
+      {
+        label: "编辑",
+        submenu: [
+          { label: "撤销", role: "undo" },
+          { label: "重做", role: "redo" },
+          { type: "separator" },
+          { label: "剪切", role: "cut" },
+          { label: "复制", role: "copy" },
+          { label: "粘贴", role: "paste" },
+          { label: "删除", role: "delete" },
+          { type: "separator" },
+          { label: "全选", role: "selectAll" },
+        ],
+      },
+      {
+        label: "视图",
+        submenu: [
+          { label: "重新加载", role: "reload" },
+          { label: "强制重新加载", role: "forceReload" },
+          { label: "开发者工具", role: "toggleDevTools" },
+          { type: "separator" },
+          { label: "重置缩放", role: "resetZoom" },
+          { label: "放大", role: "zoomIn" },
+          { label: "缩小", role: "zoomOut" },
+          { type: "separator" },
+          { label: "全屏", role: "togglefullscreen" },
+        ],
+      },
+      {
+        label: "窗口",
+        submenu: [
+          { label: "最小化", role: "minimize" },
+          { label: "缩放", role: "zoom" },
+          { label: "关闭", role: "close" },
+        ],
+      },
+      ...(featureUnlocked() ? [{
+        label: "功能",
+        submenu: [
+          { label: "API", click: () => mainWindow?.webContents.send('feature-command', 'api') },
+          { label: "Skin", click: () => mainWindow?.webContents.send('feature-command', 'skin') },
+        ],
+      }] : []),
+      {
+        label: "帮助",
+        submenu: [
+          {
+            label: "关于 Codex Dream Skin",
+            click: () => {
+              void dialog.showMessageBox({
+                type: "info",
+                title: "关于 Codex Dream Skin",
+                message: "Codex Dream Skin",
+                detail: `版本 v${app.getVersion()}`,
+              });
+            },
           },
-        },
-      ],
-    },
-  ]))
+        ],
+      },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 async function snapshot(): Promise<BridgeResult> {
@@ -559,6 +594,7 @@ async function snapshot(): Promise<BridgeResult> {
     return {
       platform: isMac ? 'darwin' : 'windows',
       version: app.getVersion(),
+      featureUnlocked: featureUnlocked(),
       session: 'uninstalled',
       installation: 'missing',
       codexRunning: false,
@@ -584,12 +620,14 @@ async function snapshot(): Promise<BridgeResult> {
     const image = typeof theme.image === 'string' ? path.resolve(path.dirname(activePath), theme.image) : ''
     active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) }
   } catch { /* no active theme yet */ }
-  return { ...raw, version: app.getVersion(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions }
+  return { ...raw, version: app.getVersion(), featureUnlocked: featureUnlocked(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions }
 }
 
 async function createWindow(): Promise<void> {
   const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico')
   const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: `Codex Dream Skin v${app.getVersion()}`, ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } })
+  mainWindow = window
+  window.on('closed', () => { if (mainWindow === window) mainWindow = null })
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL)
   else await window.loadFile(path.join(app.getAppPath(), 'dist-ui', 'index.html'))
 }
@@ -597,6 +635,17 @@ async function createWindow(): Promise<void> {
 app.whenReady().then(async () => {
   installApplicationMenu()
   ipcMain.handle('snapshot', snapshot)
+  ipcMain.handle('activate-feature', async (_event, key: unknown) => {
+    if (!validFeatureKey(key)) throw new Error('功能密钥无效。格式为 sj 加 10000 到 99999，或使用永久密钥 sj520。')
+    unlockFeatures()
+    installApplicationMenu()
+    return { featureUnlocked: true }
+  })
+  ipcMain.handle('deactivate-feature', () => {
+    lockFeatures()
+    installApplicationMenu()
+    return { featureUnlocked: false }
+  })
   ipcMain.handle('action', async (_event, action: string, values: string[] = []) => {
     const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore']
     if (!supported.includes(action)) throw new Error('不支持的操作。')

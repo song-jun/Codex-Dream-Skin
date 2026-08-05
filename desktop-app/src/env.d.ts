@@ -8,6 +8,9 @@ declare global {
       chooseImage: () => Promise<string | null>
       previewImage: (imagePath: string) => Promise<string>
       openStateFolder: () => Promise<boolean>
+      activateFeature: (key: string) => Promise<{ featureUnlocked: boolean }>
+      deactivateFeature: () => Promise<{ featureUnlocked: boolean }>
+      onFeatureCommand: (listener: (category: 'api' | 'skin') => void) => () => void
     }
   }
 }
