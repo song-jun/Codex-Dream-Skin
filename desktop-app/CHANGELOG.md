@@ -1,6 +1,12 @@
 # Changelog
 
-<!-- changelog:base 0415fdbef73d052797a155ea8cbead0f64cbba14 -->
+<!-- changelog:base f5a0d2d5dc4aecb604d88afd4b7e59a46a4b4c7f -->
+
+## [0.1.5] - 2026-08-05
+
+### 桌面端更新
+
+- this release bumps version to 0.1.4, adds comprehensive API workbench features, environment & token management, new electron APIs, updated changelog, and refactored application menu with feature gated options
 
 ## [0.1.4] - 2026-08-05
 

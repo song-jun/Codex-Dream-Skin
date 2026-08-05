@@ -461,6 +461,18 @@ function onClosed() {
   gap: 8px;
   flex-shrink: 0;
 }
+.env-toolbar-actions :deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.env-toolbar-actions :deep(.el-icon) {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1;
+}
 .env-table {
   margin-bottom: 12px;
 }

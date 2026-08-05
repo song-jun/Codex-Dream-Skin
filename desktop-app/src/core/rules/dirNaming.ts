@@ -11,7 +11,6 @@
  *   "用户管理"                      → "userMgmt"
  */
 
-import { pinyin } from "pinyin";
 import CN_DICT from "../dict";
 
 /**
@@ -59,8 +58,9 @@ for (const k of SORTED_KEYS) {
 /**
  * 内部使用：把一段连续中文翻译成英文单词数组
  */
-export function translateChinese(s: string): string[] {
+export async function translateChinese(s: string): Promise<string[]> {
   const out: string[] = [];
+  let pinyinFn: typeof import("pinyin").pinyin | undefined;
   let i = 0;
   while (i < s.length) {
     const candidates = KEYS_BY_FIRST_CHAR.get(s[i]);
@@ -84,7 +84,8 @@ export function translateChinese(s: string): string[] {
         j++;
       }
       const slice = s.slice(i, j);
-      const py = pinyin(slice, { style: "normal" });
+      pinyinFn ??= (await import("pinyin")).pinyin;
+      const py = pinyinFn(slice, { style: "normal" });
       for (const word of py) {
         if (word[0]) out.push(word[0]);
       }
@@ -118,7 +119,7 @@ export function toCamelCase(words: string[]): string {
  * 将 tag 转成**小驼峰**英文文件夹名（翻译中文 + 简洁）
  * 流程：取末段（最具体的模块名，避免祖先段重复）→ 字典翻译/拆词 → 去重保序 → camelCase
  */
-export function sanitizeForDirName(tag: string): string {
+export async function sanitizeForDirName(tag: string): Promise<string> {
   // 末段优先：取最后一段，但末段若是纯数字/单字符（无语义），向前推取第一个有意义段
   const segments = tag.split(/[\\/]/);
   let last = "";
@@ -141,7 +142,7 @@ export function sanitizeForDirName(tag: string): string {
     if (m[1]) {
       words.push(...splitAsciiWords(m[1]).map(w => w.toLowerCase()));
     } else if (m[2]) {
-      words.push(...translateChinese(m[2]));
+      words.push(...(await translateChinese(m[2])));
     }
   }
   // 去重保序，并把含内部大写的 camelCase 词（如 "projectMgr"）拆成 ["project","Mgr"]

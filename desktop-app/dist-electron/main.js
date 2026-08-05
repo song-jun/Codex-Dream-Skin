@@ -95,20 +95,31 @@ function parseApiEnv(text) {
     }
     return rows;
 }
-function readApiEnv() {
-    for (const file of [apiEnvFile(), apiEnvSourceFile()]) {
-        if (!existsSync(file))
-            continue;
-        try {
-            const rows = parseApiEnv(readFileSync(file, 'utf8'));
-            if (rows.length > 0)
-                return rows;
-        }
-        catch {
-            // 读取失败时继续尝试下一个配置来源。
-        }
+function readApiEnvFile(file) {
+    if (!existsSync(file))
+        return [];
+    try {
+        return parseApiEnv(readFileSync(file, 'utf8'));
     }
-    return [];
+    catch {
+        return [];
+    }
+}
+function readApiEnv() {
+    const primaryFile = apiEnvFile();
+    const primaryRows = readApiEnvFile(primaryFile);
+    const sourceFile = apiEnvSourceFile();
+    if (app.isPackaged && primaryFile !== sourceFile) {
+        const merged = new Map(readApiEnvFile(sourceFile).map((row) => [row.key, row]));
+        for (const row of primaryRows) {
+            const fallback = merged.get(row.key);
+            merged.set(row.key, !row.value.trim() && fallback?.value.trim()
+                ? { ...row, value: fallback.value, description: row.description || fallback.description }
+                : row);
+        }
+        return [...merged.values()];
+    }
+    return primaryRows.length > 0 ? primaryRows : readApiEnvFile(sourceFile);
 }
 function readApiEnvDefaults() {
     if (!existsSync(apiEnvExampleFile()))

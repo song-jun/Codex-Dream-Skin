@@ -143,7 +143,7 @@ export function useExport(opts: UseExportOptions) {
     const untagged = allEndpoints.filter((e) => !e.tag || e.tag.trim() === "");
 
     // 2) tag → 唯一英文目录名
-    const tagToDir = buildTagToDirMap(tagged);
+    const tagToDir = await buildTagToDirMap(tagged);
 
     // 3) 按 tag 分组（按目录名排序）
     const tagGroups = new Map<string, IEndpointInfo[]>();
@@ -176,7 +176,7 @@ export function useExport(opts: UseExportOptions) {
       const generatedAt = Date.now();
 
       // === 第一阶段：批量生成所有模块的代码（pure CPU，0 IPC）===
-      const generateOneModule = (
+      const generateOneModule = async (
         label: string,
         dirName: string,
         eps: IEndpointInfo[],
@@ -187,7 +187,7 @@ export function useExport(opts: UseExportOptions) {
             stepIndex,
             `${label} → ${dirName === "." ? "根目录" : dirName + "/"}`,
           );
-          const code = generateCodeForMultipleEndpoints(
+          const code = await generateCodeForMultipleEndpoints(
             docStore.doc!,
             eps,
             urlPrefix.value,
@@ -229,11 +229,11 @@ export function useExport(opts: UseExportOptions) {
         const tag = sortedTags[i];
         const eps = tagGroups.get(tag)!;
         const dirName = tagToDir.get(tag)!;
-        generateOneModule(tag, dirName, eps, i);
+        await generateOneModule(tag, dirName, eps, i);
         await sleep(0);
       }
       if (untagged.length > 0) {
-        generateOneModule("(无分组)", ".", untagged, sortedTags.length);
+        await generateOneModule("(无分组)", ".", untagged, sortedTags.length);
         await sleep(0);
       }
 

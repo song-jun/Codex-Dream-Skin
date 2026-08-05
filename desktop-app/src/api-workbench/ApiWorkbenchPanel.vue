@@ -32,7 +32,7 @@
             <el-icon><Monitor /></el-icon>
             <span>Codex Dream Skin</span>
           </el-button> -->
-          <el-button link type="primary" @click="openSettings">
+          <el-button class="settings-button" link type="primary" @click="openSettings">
             <el-icon><Setting /></el-icon>
             <span>设置</span>
           </el-button>
@@ -169,6 +169,18 @@ const openSettings = () => (settingsVisible.value = true);
 }
 .aside-footer :deep(.el-button) {
   color: #cbd5e1;
+}
+.aside-footer :deep(.settings-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.aside-footer :deep(.settings-button .el-icon) {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1;
 }
 .version {
   width: 100%;

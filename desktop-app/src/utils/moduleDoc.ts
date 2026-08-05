@@ -12,15 +12,15 @@ import type { IEndpointInfo } from "@/core/types";
  * tag → 英文目录名
  * 冲突处理：第二次出现同名时附加 _2，第三次 _3，以此类推
  */
-export function buildTagToDirMap(
+export async function buildTagToDirMap(
   endpoints: IEndpointInfo[],
-): Map<string, string> {
+): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   const usedNames = new Set<string>();
   for (const ep of endpoints) {
     const tag = ep.tag;
     if (!tag || map.has(tag)) continue;
-    let dirName = sanitizeForDirName(tag);
+    let dirName = await sanitizeForDirName(tag);
     let suffix = 2;
     const base = dirName;
     while (usedNames.has(dirName)) {

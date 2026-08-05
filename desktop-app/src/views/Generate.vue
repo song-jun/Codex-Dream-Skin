@@ -213,13 +213,13 @@ function onGenerate() {
   }
   if (isGenerating.value) return;
   isGenerating.value = true;
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
       const doc = docStore.doc!;
       generatedCode.value =
         mode.value === "single" && selectedEndpoints.value.length === 1
           ? generateCode(doc, selectedEndpoints.value[0], urlPrefix.value)
-          : generateCodeForMultipleEndpoints(doc, selectedEndpoints.value, urlPrefix.value);
+          : await generateCodeForMultipleEndpoints(doc, selectedEndpoints.value, urlPrefix.value);
       ElMessage.success(`已生成 ${selectedEndpoints.value.length} 个接口的代码`);
     } catch (e) {
       ElMessage.error("生成失败：" + (e instanceof Error ? e.message : String(e)));

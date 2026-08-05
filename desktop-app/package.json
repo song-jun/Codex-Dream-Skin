@@ -1,6 +1,6 @@
 {
   "name": "codex-dream-skin-desktop",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Codex Dream Skin desktop application",
   "author": "Codex Dream Skin",
   "private": true,
@@ -57,6 +57,7 @@
       "dist-ui",
       "dist-electron",
       "assets",
+      ".env",
       ".env.example"
     ],
     "extraResources": [

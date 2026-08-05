@@ -367,11 +367,11 @@ export function generateCode(
  * @param urlPrefix URL 前缀
  * @returns 生成的代码
  */
-export function generateCodeForMultipleEndpoints(
+export async function generateCodeForMultipleEndpoints(
   doc: IOpenAPIDocument,
   endpoints: IEndpointInfo[],
   urlPrefix: string,
-): IGeneratedCode {
+): Promise<IGeneratedCode> {
   if (endpoints.length === 0) {
     return { typeFile: "", indexFile: "" };
   }
@@ -394,7 +394,7 @@ export function generateCodeForMultipleEndpoints(
     const naming = generateNamingResult(doc, endpoint);
 
     // 对函数名做模块内去重：若已存在同名函数，按回退链生成可读后缀
-    const uniqueFunctionName = ensureUniqueFunctionName(
+    const uniqueFunctionName = await ensureUniqueFunctionName(
       naming.functionName,
       endpoint,
       usedFunctionNames,
@@ -465,11 +465,11 @@ export function generateCodeForMultipleEndpoints(
  * @param usedNames 已使用的函数名集合（会就地更新）
  * @returns 唯一函数名
  */
-function ensureUniqueFunctionName(
+async function ensureUniqueFunctionName(
   baseName: string,
   endpoint: IEndpointInfo,
   usedNames: Set<string>,
-): string {
+): Promise<string> {
   if (!usedNames.has(baseName)) {
     usedNames.add(baseName);
     return baseName;
@@ -529,7 +529,7 @@ function ensureUniqueFunctionName(
 
   // 3) summary → CN_DICT 大字典（translateChinese 走 max-match + pinyin 兜底），覆盖更全
   if (endpoint.summary) {
-    const dictWords = translateChinese(endpoint.summary);
+    const dictWords = await translateChinese(endpoint.summary);
     const dictSuffix = toPascalFromWords(dictWords);
     if (dictSuffix && dictSuffix.length >= 2) {
       const r = tryAdd(baseName + dictSuffix);

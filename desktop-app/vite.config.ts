@@ -33,19 +33,25 @@ export default defineConfig({
   build: {
     outDir: 'dist-ui',
     emptyOutDir: true,
-    chunkSizeWarningLimit: 1200,
+    // pinyin 携带全量汉字词典，作为按需加载的独立块保留构建提示余量。
+    chunkSizeWarningLimit: 6200,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes('node_modules')) return
-          if (id.includes('@element-plus/icons-vue')) return 'element-icons'
-          if (id.includes('highlight.js')) return 'highlight'
-          if (id.includes('element-plus')) return 'element-plus'
+          const normalizedId = id.replace(/\\/g, '/')
+
+          if (normalizedId.includes('/src/core/dict/')) return 'core-dictionary'
+          if (normalizedId.includes('/src/core/')) return 'core-generator'
+          if (normalizedId.includes('/node_modules/pinyin/')) return 'pinyin'
+          if (!normalizedId.includes('/node_modules/')) return
+          if (normalizedId.includes('/@element-plus/icons-vue/')) return 'element-icons'
+          if (normalizedId.includes('/highlight.js/')) return 'highlight'
+          if (normalizedId.includes('/element-plus/')) return 'element-plus'
           if (
-            id.includes('node_modules/vue') ||
-            id.includes('node_modules/pinia') ||
-            id.includes('node_modules/vue-router') ||
-            id.includes('node_modules/@vue')
+            normalizedId.includes('/node_modules/vue/') ||
+            normalizedId.includes('/node_modules/pinia/') ||
+            normalizedId.includes('/node_modules/vue-router/') ||
+            normalizedId.includes('/node_modules/@vue/')
           ) return 'vue-vendor'
         },
       },
