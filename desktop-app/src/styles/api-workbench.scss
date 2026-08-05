@@ -2,40 +2,41 @@
  * API Workbench 全局样式 / Design System
  * ============================================ */
 
-:root {
+.api-workbench-scope {
   /* === Brand === */
-  --brand-primary: #2563eb;
-  --brand-primary-hover: #1d4ed8;
-  --brand-primary-light: #dbeafe;
+  --brand-primary: #2457d6;
+  --brand-primary-hover: #163eac;
+  --brand-primary-light: #edf3ff;
 
   /* === Text === */
-  --text-primary: #111827;
-  --text-secondary: #475569;
-  --text-tertiary: #94a3b8;
+  --text-primary: #172033;
+  --text-secondary: #647084;
+  --text-tertiary: #8b95a5;
   --text-inverse: #ffffff;
 
   /* === Background === */
   --bg-page: #f5f7fa;
-  --bg-soft: #f8fafc;
+  --bg-sidebar: #edf1f6;
+  --bg-soft: #f8fafd;
   --bg-card: #ffffff;
-  --bg-hover: #f1f5f9;
-  --bg-code: #fafbfc;
+  --bg-hover: #e8edf5;
+  --bg-code: #f8fafd;
 
   /* === Border === */
-  --border-color: #e5e7eb;
-  --border-light: #f1f5f9;
-  --border-dark: #cbd5e1;
+  --border-color: #e1e6ee;
+  --border-light: #edf1f6;
+  --border-dark: #c5cedb;
 
   /* === Status === */
-  --success: #16a34a;
-  --warning: #ea580c;
-  --danger: #dc2626;
-  --info: #6b7280;
+  --success: #16875b;
+  --warning: #ad6c05;
+  --danger: #c43d4b;
+  --info: #647084;
 
   /* === Radius === */
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
   --radius-xl: 12px;
 
   /* === Spacing (4px 网格) === */
@@ -49,18 +50,18 @@
   --space-10: 40px;
 
   /* === Shadow === */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 1px 3px rgba(28, 43, 72, 0.06);
+  --shadow-md: 0 5px 16px rgba(30, 48, 80, 0.08);
+  --shadow-lg: 0 12px 32px rgba(30, 48, 80, 0.12);
 
   /* === Layout === */
-  --layout-aside-width: 220px;
-  --layout-header-height: 56px;
-  --layout-page-padding: 20px 24px;
+  --layout-aside-width: 252px;
+  --layout-header-height: 78px;
+  --layout-page-padding: 26px 30px;
 }
 
 /* === Base === */
-html, body, #app {
+.api-workbench-scope {
   height: 100%;
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
@@ -70,7 +71,6 @@ html, body, #app {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
 
 * {
   box-sizing: border-box;
@@ -370,4 +370,6 @@ html, body, #app {
 /* === Element Plus 微调 === */
 .el-button + .el-button {
   margin-left: var(--space-2);
+}
+
 }

@@ -43,7 +43,14 @@ export class ApiInvoker {
    * @param doc OpenAPI 文档（可选，用于字段注释）
    */
   constructor(baseUrl: string, token: string, timeout: number = INVOKE_TIMEOUT, doc?: IOpenAPIDocument) {
-    this.baseUrl = baseUrl.replace(/\/$/, ''); // 移除末尾斜杠
+    const parsedBaseUrl = new URL(baseUrl.trim());
+    if (parsedBaseUrl.protocol !== 'http:' && parsedBaseUrl.protocol !== 'https:') {
+      throw new Error('API 基础地址只支持 http 或 https');
+    }
+    if (parsedBaseUrl.username || parsedBaseUrl.password) {
+      throw new Error('API 基础地址不允许携带账号密码');
+    }
+    this.baseUrl = parsedBaseUrl.toString().replace(/\/$/, ''); // 移除末尾斜杠
     this.token = token;
     this.timeout = timeout;
     this.doc = doc || null;
@@ -66,13 +73,17 @@ export class ApiInvoker {
   buildUrl(path: string, pathParams: Record<string, string>): string {
     let resolvedPath = path;
 
+    if (/^[a-z][a-z\d+.-]*:/i.test(resolvedPath) || resolvedPath.startsWith('//')) {
+      throw new Error('接口路径必须是相对路径');
+    }
+
     // 替换路径参数 {paramName} -> 实际值
     for (const [paramName, paramValue] of Object.entries(pathParams)) {
       const placeholder = `{${paramName}}`;
       resolvedPath = resolvedPath.replace(placeholder, encodeURIComponent(paramValue));
     }
 
-    return `${this.baseUrl}${resolvedPath}`;
+    return `${this.baseUrl}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`;
   }
 
   /**

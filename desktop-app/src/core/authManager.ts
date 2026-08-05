@@ -4,7 +4,7 @@
  * 与 CLI 版差异：
  * - 不再使用 inquirer，所有需要用户输入的步骤都通过 Promise 抛出，
  *   由 UI 层（ElMessageBox / ElForm 等）处理后回调
- * - Token 持久化：优先使用 localStorage（key: 'apiWorkbench.token'）
+ * - Token 持久化：桌面端交给 Electron 安全存储，浏览器端使用 localStorage
  * - 业务逻辑、登录加密、错误处理保持与 CLI 版一致
  */
 import axios, { AxiosError } from 'axios';
@@ -13,6 +13,10 @@ import type { IInvokeConfig, IUserInfo, IAuthResult, ILoginCredentials, ILoginRe
 import { PWD_ENC_KEY, OAUTH_CLIENT_CREDENTIALS } from './env';
 
 const TOKEN_STORAGE_KEY = 'apiWorkbench.invokeToken';
+
+function isDesktopRuntime(): boolean {
+  return typeof window !== 'undefined' && typeof window.electronAPI?.loadToken === 'function';
+}
 
 function encryptPassword(password: string, key: string): string {
   const keyBytes = CryptoJS.enc.Utf8.parse(key);
@@ -24,6 +28,7 @@ function encryptPassword(password: string, key: string): string {
 }
 
 function readStoredToken(): string {
+  if (isDesktopRuntime()) return '';
   try {
     return localStorage.getItem(TOKEN_STORAGE_KEY) || '';
   } catch {
@@ -32,6 +37,7 @@ function readStoredToken(): string {
 }
 
 function writeStoredToken(token: string) {
+  if (isDesktopRuntime()) return;
   try {
     if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token);
     else localStorage.removeItem(TOKEN_STORAGE_KEY);

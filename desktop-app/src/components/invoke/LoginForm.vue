@@ -69,6 +69,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Key, SwitchButton, User } from '@element-plus/icons-vue';
 
 /**
  * 登录/登出展示与弹窗组件

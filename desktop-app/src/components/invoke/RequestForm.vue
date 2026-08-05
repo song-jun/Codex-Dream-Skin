@@ -93,6 +93,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Promotion } from '@element-plus/icons-vue';
 import type { IEndpointInfo, IParamDisplayInfo } from '@/core/types';
 import type { IRequestForm } from '@/composables/useInvoke';
 

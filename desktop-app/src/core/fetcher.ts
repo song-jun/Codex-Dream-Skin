@@ -7,6 +7,19 @@ import axios, { AxiosError } from 'axios';
 import { IFetchResult, IOpenAPIDocument } from './types';
 import { FETCH_TIMEOUT } from './env';
 
+const MAX_OPENAPI_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+function validateDocumentUrl(value: string): string {
+  const parsed = new URL(value.trim());
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('OpenAPI 地址只支持 http 或 https');
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error('OpenAPI 地址不允许携带账号密码');
+  }
+  return parsed.toString();
+}
+
 // 注意：不要把 FETCH_TIMEOUT 缓存到 const（否则 reloadEnv 后不生效）
 
 /**
@@ -52,8 +65,12 @@ export function validateOpenAPIDocument(data: unknown): data is IOpenAPIDocument
  */
 export async function fetchOpenAPIDocument(url: string): Promise<IFetchResult> {
   try {
-    const response = await axios.get(url, {
+    const requestUrl = validateDocumentUrl(url);
+    const response = await axios.get(requestUrl, {
       timeout: FETCH_TIMEOUT,
+      maxContentLength: MAX_OPENAPI_DOCUMENT_BYTES,
+      maxBodyLength: MAX_OPENAPI_DOCUMENT_BYTES,
+      responseType: 'json',
       headers: {
         'Accept': 'application/json',
       },

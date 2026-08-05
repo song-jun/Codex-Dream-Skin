@@ -93,6 +93,7 @@ import LoginForm from '@/components/invoke/LoginForm.vue';
 import RequestForm from '@/components/invoke/RequestForm.vue';
 import ResponsePanel from '@/components/invoke/ResponsePanel.vue';
 import { useInvoke } from '@/composables/useInvoke';
+import { ArrowDown, ArrowRight, Search } from '@element-plus/icons-vue';
 
 /**
  * Invoke 页面

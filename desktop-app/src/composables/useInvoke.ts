@@ -40,8 +40,7 @@ const TOKEN_STORAGE_KEY = 'apiWorkbench.invokeToken';
 async function readStoredToken(): Promise<string> {
   if (window.electronAPI?.loadToken) {
     try {
-      const t = await window.electronAPI.loadToken();
-      if (t) return t;
+      return await window.electronAPI.loadToken();
     } catch {
       /* ignore */
     }
@@ -58,9 +57,12 @@ async function persistToken(token: string | null): Promise<void> {
   if (token) {
     if (window.electronAPI?.saveToken) {
       try {
-        await window.electronAPI.saveToken(token);
+        const result = await window.electronAPI.saveToken(token);
+        if (!result.success) throw new Error(result.error || 'Token 保存失败');
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        return;
       } catch {
-        /* ignore */
+        throw new Error('Token 未能安全保存，请检查系统安全存储设置');
       }
     }
     try {
