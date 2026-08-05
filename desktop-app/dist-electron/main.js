@@ -25,6 +25,16 @@ const apiTokenFileName = 'api-workbench-token.enc';
 function normalizeApiPath(value) {
     return path.resolve(value);
 }
+function realApiPathIfExists(value) {
+    if (!existsSync(value))
+        return null;
+    try {
+        return fs.realpathSync.native(value);
+    }
+    catch {
+        return null;
+    }
+}
 function isApiPathInside(child, parent) {
     const relative = path.relative(normalizeApiPath(parent), normalizeApiPath(child));
     return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
@@ -48,7 +58,27 @@ function saveApiAllowedRoots() {
     writeFileSync(apiAllowedRootsFile(), `${JSON.stringify([...apiAllowedRoots], null, 2)}\n`, 'utf8');
 }
 function isApiPathAllowed(value) {
-    return [...apiAllowedRoots].some((root) => isApiPathInside(value, root));
+    if (typeof value !== 'string' || !value.trim())
+        return false;
+    const candidate = normalizeApiPath(value);
+    return [...apiAllowedRoots].some((root) => {
+        if (!isApiPathInside(candidate, root))
+            return false;
+        const realCandidate = realApiPathIfExists(candidate);
+        return !realCandidate || isApiPathInside(realCandidate, root);
+    });
+}
+function validateApiWritePath(value) {
+    if (typeof value !== 'string' || !isApiPathAllowed(value))
+        throw new Error('导出路径未授权');
+    const candidate = normalizeApiPath(value);
+    const parent = path.dirname(candidate);
+    const realParent = realApiPathIfExists(parent);
+    if (!realParent || !isApiPathAllowed(realParent))
+        throw new Error('导出目录无效或包含未授权的链接');
+    if (existsSync(candidate) && lstatSync(candidate).isSymbolicLink())
+        throw new Error('不支持写入符号链接文件');
+    return candidate;
 }
 function apiEnvFile() {
     return app.isPackaged ? path.join(app.getPath('userData'), apiEnvFileName) : apiEnvSourceFile();
@@ -929,7 +959,10 @@ app.whenReady().then(async () => {
         const result = await dialog.showOpenDialog(mainWindow, { title: '选择 API 导出目录', properties: ['openDirectory', 'createDirectory'], defaultPath });
         if (result.canceled || !result.filePaths[0])
             return null;
-        apiAllowedRoots.add(normalizeApiPath(result.filePaths[0]));
+        const selectedRoot = realApiPathIfExists(result.filePaths[0]);
+        if (!selectedRoot)
+            return null;
+        apiAllowedRoots.add(normalizeApiPath(selectedRoot));
         saveApiAllowedRoots();
         return result.filePaths[0];
     });
@@ -940,12 +973,14 @@ app.whenReady().then(async () => {
         return result.canceled ? null : result.filePath ?? null;
     });
     ipcMain.handle('fs:writeFile', async (_event, filePath, content) => {
-        if (typeof filePath !== 'string' || !isApiPathAllowed(filePath))
-            return { success: false, error: '导出路径未授权' };
         try {
-            fs.mkdirSync(path.dirname(filePath), { recursive: true });
-            writeFileSync(filePath, content ?? '', 'utf8');
-            return { success: true, path: filePath };
+            const safePath = typeof filePath === 'string' ? normalizeApiPath(filePath) : '';
+            if (!isApiPathAllowed(safePath))
+                return { success: false, error: '导出路径未授权' };
+            fs.mkdirSync(path.dirname(safePath), { recursive: true });
+            const validatedPath = validateApiWritePath(safePath);
+            writeFileSync(validatedPath, content ?? '', 'utf8');
+            return { success: true, path: validatedPath };
         }
         catch (error) {
             return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -954,13 +989,15 @@ app.whenReady().then(async () => {
     ipcMain.handle('fs:writeFiles', async (_event, items) => {
         if (!Array.isArray(items))
             return [];
-        if (items.some((item) => !item?.path || !isApiPathAllowed(item.path)))
+        if (items.some((item) => !item?.path || typeof item.path !== 'string' || !isApiPathAllowed(item.path)))
             return items.map((item) => ({ path: item?.path ?? '', success: false, error: '导出路径未授权' }));
         return Promise.all(items.map(async (item) => {
             try {
-                await fs.promises.mkdir(path.dirname(item.path), { recursive: true });
-                await fs.promises.writeFile(item.path, item.content ?? '', 'utf8');
-                return { path: item.path, success: true };
+                const safePath = normalizeApiPath(item.path);
+                await fs.promises.mkdir(path.dirname(safePath), { recursive: true });
+                const validatedPath = validateApiWritePath(safePath);
+                await fs.promises.writeFile(validatedPath, item.content ?? '', 'utf8');
+                return { path: validatedPath, success: true };
             }
             catch (error) {
                 return { path: item.path, success: false, error: error instanceof Error ? error.message : String(error) };
@@ -1019,12 +1056,10 @@ app.whenReady().then(async () => {
                 return { success: true };
             }
             fs.mkdirSync(app.getPath('userData'), { recursive: true });
-            if (safeStorage.isEncryptionAvailable()) {
-                fs.writeFileSync(apiTokenFile(), safeStorage.encryptString(token));
-                return { success: true, encrypted: true };
-            }
-            writeFileSync(apiTokenFile(), token, 'utf8');
-            return { success: true, encrypted: false };
+            if (!safeStorage.isEncryptionAvailable())
+                return { success: false, encrypted: false, error: '当前系统无法提供安全存储，Token 未保存' };
+            fs.writeFileSync(apiTokenFile(), safeStorage.encryptString(token), { mode: 0o600 });
+            return { success: true, encrypted: true };
         }
         catch (error) {
             return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -1034,8 +1069,9 @@ app.whenReady().then(async () => {
         try {
             if (!existsSync(apiTokenFile()))
                 return '';
-            const value = fs.readFileSync(apiTokenFile());
-            return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(value) : value.toString('utf8');
+            if (!safeStorage.isEncryptionAvailable())
+                return '';
+            return safeStorage.decryptString(fs.readFileSync(apiTokenFile()));
         }
         catch {
             return '';
