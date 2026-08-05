@@ -1,6 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell } from 'electron';
+import { config as loadDotenv } from 'dotenv';
 import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
 import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,10 +16,159 @@ const allowedSessionId = /^[0-9a-f-]{36}$/i;
 const allowedColor = /^(?:#[\da-f]{3,8}|(?:rgba?|hsla?|oklch|oklab)\([^;{}]{1,96}\)|var\(--[A-Za-z0-9_-]{1,80}\)|transparent)$/i;
 const previewCache = new Map();
 const runtimeFingerprintCache = new Map();
+const featureKeyPattern = /^sj(?:[1-9]\d{4})$/i;
+const permanentFeatureKey = 'sj520';
+let mainWindow = null;
+const apiAllowedRoots = new Set();
+const apiEnvFileName = 'api-workbench.env';
+const apiTokenFileName = 'api-workbench-token.enc';
+function normalizeApiPath(value) {
+    return path.resolve(value);
+}
+function isApiPathInside(child, parent) {
+    const relative = path.relative(normalizeApiPath(parent), normalizeApiPath(child));
+    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+function apiAllowedRootsFile() {
+    return path.join(app.getPath('userData'), 'api-workbench-allowed-roots.json');
+}
+function loadApiAllowedRoots() {
+    try {
+        const value = JSON.parse(readFileSync(apiAllowedRootsFile(), 'utf8'));
+        if (Array.isArray(value)) {
+            value.filter((item) => typeof item === 'string' && existsSync(item)).forEach((item) => apiAllowedRoots.add(normalizeApiPath(item)));
+        }
+    }
+    catch {
+        // 忽略损坏的授权记录，用户可重新选择导出目录。
+    }
+}
+function saveApiAllowedRoots() {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    writeFileSync(apiAllowedRootsFile(), `${JSON.stringify([...apiAllowedRoots], null, 2)}\n`, 'utf8');
+}
+function isApiPathAllowed(value) {
+    return [...apiAllowedRoots].some((root) => isApiPathInside(value, root));
+}
+function apiEnvFile() {
+    return app.isPackaged ? path.join(app.getPath('userData'), apiEnvFileName) : apiEnvSourceFile();
+}
+function apiEnvExampleFile() {
+    const candidates = [
+        path.join(here, '..', '.env.example'),
+        path.join(app.getAppPath(), '.env.example'),
+    ];
+    return candidates.find((file) => existsSync(file)) ?? candidates[0];
+}
+function apiEnvSourceFile() {
+    const candidates = [
+        path.join(here, '..', '.env'),
+        path.join(app.getAppPath(), '.env'),
+    ];
+    return candidates.find((file) => existsSync(file)) ?? candidates[0];
+}
+function parseApiEnv(text) {
+    const rows = [];
+    let description = '';
+    for (const rawLine of text.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line) {
+            description = '';
+            continue;
+        }
+        if (line.startsWith('#')) {
+            description = line.replace(/^#+\s*/, '');
+            continue;
+        }
+        const separator = line.indexOf('=');
+        if (separator <= 0) {
+            description = '';
+            continue;
+        }
+        const key = line.slice(0, separator).trim();
+        let value = line.slice(separator + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
+            value = value.slice(1, -1);
+        if (/^OPENAPI_[A-Z0-9_]+$/.test(key))
+            rows.push({ key, value, description });
+        description = '';
+    }
+    return rows;
+}
+function readApiEnv() {
+    for (const file of [apiEnvFile(), apiEnvSourceFile()]) {
+        if (!existsSync(file))
+            continue;
+        try {
+            const rows = parseApiEnv(readFileSync(file, 'utf8'));
+            if (rows.length > 0)
+                return rows;
+        }
+        catch {
+            // 读取失败时继续尝试下一个配置来源。
+        }
+    }
+    return [];
+}
+function readApiEnvDefaults() {
+    if (!existsSync(apiEnvExampleFile()))
+        return [];
+    try {
+        return parseApiEnv(readFileSync(apiEnvExampleFile(), 'utf8'));
+    }
+    catch {
+        return [];
+    }
+}
+function loadApiEnv() {
+    for (const row of readApiEnv())
+        process.env[row.key] = row.value;
+}
+function formatApiEnv(rows) {
+    return `${rows.flatMap((row) => [
+        ...(row.description?.trim() ? [`# ${row.description.trim()}`] : []),
+        `${row.key}=${/[\s"\\#]/.test(row.value) ? `"${row.value.replace(/"/g, '\\\"')}"` : row.value}`,
+    ]).join('\n')}\n`;
+}
+function loadDevelopmentConfig() {
+    if (!app.isPackaged)
+        loadDotenv({ path: apiEnvSourceFile(), override: false });
+}
+function apiTokenFile() {
+    return path.join(app.getPath('userData'), apiTokenFileName);
+}
 function stateRoot() {
     return isWindows
         ? path.join(process.env.LOCALAPPDATA ?? path.join(process.env.USERPROFILE ?? '', 'AppData', 'Local'), 'CodexDreamSkin')
         : path.join(process.env.HOME ?? '', 'Library', 'Application Support', 'CodexDreamSkinStudio');
+}
+function featureAccessPath() { return path.join(app.getPath('userData'), 'feature-access.json'); }
+function featureAccessState() {
+    try {
+        return JSON.parse(readFileSync(featureAccessPath(), 'utf8'));
+    }
+    catch {
+        return {};
+    }
+}
+function featureUnlocked() {
+    return featureAccessState().unlocked === true;
+}
+function featurePermanent() {
+    const value = featureAccessState();
+    return value.unlocked === true && value.permanent === true;
+}
+function validFeatureKey(value) {
+    if (typeof value !== 'string')
+        return false;
+    const key = value.trim().toLowerCase();
+    return key === permanentFeatureKey || featureKeyPattern.test(key);
+}
+function unlockFeatures(permanent) {
+    atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: true, permanent })}\n`);
+}
+function lockFeatures() {
+    atomicWrite(featureAccessPath(), `${JSON.stringify({ unlocked: false, permanent: false })}\n`);
 }
 function resourceRoot() { return app.isPackaged ? path.join(process.resourcesPath, 'platform') : path.resolve(here, '..', '..'); }
 function platformRoot() { return path.join(resourceRoot(), isWindows ? 'windows' : 'macos'); }
@@ -391,6 +542,8 @@ function enrichWindowsSnapshot(raw) {
     return {
         ...raw,
         version: app.getVersion(),
+        featureUnlocked: featureUnlocked(),
+        featurePermanent: featurePermanent(),
         installation: 'installed',
         active,
         themes,
@@ -564,68 +717,76 @@ function assertThemeTreeSafe(directory) {
 function renameSavedTheme(id, name) { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); const file = path.join(directory, 'theme.json'); const theme = JSON.parse(readFileSync(file, 'utf8')); theme.name = name; atomicWrite(file, `${JSON.stringify(theme, null, 2)}\n`); }
 function deleteSavedTheme(id) { const directory = savedThemeDirectory(id); assertThemeTreeSafe(directory); rmSync(directory, { recursive: true, force: false }); }
 function installApplicationMenu() {
-    Menu.setApplicationMenu(Menu.buildFromTemplate([
+    const template = [
         {
-            label: '文件',
+            label: "文件",
             submenu: [
-                { label: '关闭窗口', role: 'close' },
-                { type: 'separator' },
-                { label: '退出', role: 'quit' },
+                { label: "关闭窗口", role: "close" },
+                { type: "separator" },
+                { label: "退出", role: "quit" },
             ],
         },
         {
-            label: '编辑',
+            label: "编辑",
             submenu: [
-                { label: '撤销', role: 'undo' },
-                { label: '重做', role: 'redo' },
-                { type: 'separator' },
-                { label: '剪切', role: 'cut' },
-                { label: '复制', role: 'copy' },
-                { label: '粘贴', role: 'paste' },
-                { label: '删除', role: 'delete' },
-                { type: 'separator' },
-                { label: '全选', role: 'selectAll' },
+                { label: "撤销", role: "undo" },
+                { label: "重做", role: "redo" },
+                { type: "separator" },
+                { label: "剪切", role: "cut" },
+                { label: "复制", role: "copy" },
+                { label: "粘贴", role: "paste" },
+                { label: "删除", role: "delete" },
+                { type: "separator" },
+                { label: "全选", role: "selectAll" },
             ],
         },
         {
-            label: '视图',
+            label: "视图",
             submenu: [
-                { label: '重新加载', role: 'reload' },
-                { label: '强制重新加载', role: 'forceReload' },
-                { label: '开发者工具', role: 'toggleDevTools' },
-                { type: 'separator' },
-                { label: '重置缩放', role: 'resetZoom' },
-                { label: '放大', role: 'zoomIn' },
-                { label: '缩小', role: 'zoomOut' },
-                { type: 'separator' },
-                { label: '全屏', role: 'togglefullscreen' },
+                { label: "重新加载", role: "reload" },
+                { label: "强制重新加载", role: "forceReload" },
+                { label: "开发者工具", role: "toggleDevTools" },
+                { type: "separator" },
+                { label: "重置缩放", role: "resetZoom" },
+                { label: "放大", role: "zoomIn" },
+                { label: "缩小", role: "zoomOut" },
+                { type: "separator" },
+                { label: "全屏", role: "togglefullscreen" },
             ],
         },
         {
-            label: '窗口',
+            label: "窗口",
             submenu: [
-                { label: '最小化', role: 'minimize' },
-                { label: '缩放', role: 'zoom' },
-                { label: '关闭', role: 'close' },
+                { label: "最小化", role: "minimize" },
+                { label: "缩放", role: "zoom" },
+                { label: "关闭", role: "close" },
             ],
         },
+        ...(featureUnlocked() ? [{
+                label: "功能",
+                submenu: [
+                    { label: "API Workbench", click: () => mainWindow?.webContents.send('feature-command', 'api') },
+                    { label: "Skin", click: () => mainWindow?.webContents.send('feature-command', 'skin') },
+                ],
+            }] : []),
         {
-            label: '帮助',
+            label: "帮助",
             submenu: [
                 {
-                    label: '关于 Codex Dream Skin',
+                    label: "关于 Codex Dream Skin",
                     click: () => {
                         void dialog.showMessageBox({
-                            type: 'info',
-                            title: '关于 Codex Dream Skin',
-                            message: 'Codex Dream Skin',
+                            type: "info",
+                            title: "关于 Codex Dream Skin",
+                            message: "Codex Dream Skin",
                             detail: `版本 v${app.getVersion()}`,
                         });
                     },
                 },
             ],
         },
-    ]));
+    ];
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 async function snapshot() {
     const codexSessions = readCodexSessions();
@@ -633,6 +794,8 @@ async function snapshot() {
         return {
             platform: isMac ? 'darwin' : 'windows',
             version: app.getVersion(),
+            featureUnlocked: featureUnlocked(),
+            featurePermanent: featurePermanent(),
             session: 'uninstalled',
             installation: 'missing',
             codexRunning: false,
@@ -659,19 +822,40 @@ async function snapshot() {
         active = { id: String(theme.id ?? 'active'), name: String(theme.name ?? '当前主题'), imagePath: image, theme, preview: imagePreview(image) };
     }
     catch { /* no active theme yet */ }
-    return { ...raw, version: app.getVersion(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions };
+    return { ...raw, version: app.getVersion(), featureUnlocked: featureUnlocked(), featurePermanent: featurePermanent(), installation: 'installed', active, themes: localMacThemes(), connection: raw.connection ?? null, variables: readDreamArtVariables(), runtimeUpdateKind: runtimeUpdateKind(), codexSessions };
 }
 async function createWindow() {
     const icon = path.join(app.getAppPath(), 'assets', 'dream-skin.ico');
     const window = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1200, minHeight: 760, backgroundColor: '#f5f7fa', title: `Codex Dream Skin v${app.getVersion()}`, ...(existsSync(icon) ? { icon } : {}), webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
+    mainWindow = window;
+    window.on('closed', () => { if (mainWindow === window)
+        mainWindow = null; });
     if (process.env.VITE_DEV_SERVER_URL)
         await window.loadURL(process.env.VITE_DEV_SERVER_URL);
     else
         await window.loadFile(path.join(app.getAppPath(), 'dist-ui', 'index.html'));
+    if (!app.isPackaged && process.env.ELECTRON_OPEN_DEVTOOLS === 'true')
+        window.webContents.openDevTools({ mode: 'detach' });
 }
 app.whenReady().then(async () => {
+    loadDevelopmentConfig();
+    loadApiAllowedRoots();
+    loadApiEnv();
     installApplicationMenu();
     ipcMain.handle('snapshot', snapshot);
+    ipcMain.handle('activate-feature', async (_event, key) => {
+        if (!validFeatureKey(key))
+            throw new Error('功能密钥无效。格式为 sj 加 10000 到 99999，或使用永久密钥 sj520。');
+        const normalizedKey = String(key).trim().toLowerCase();
+        unlockFeatures(normalizedKey === permanentFeatureKey);
+        installApplicationMenu();
+        return { featureUnlocked: true, featurePermanent: normalizedKey === permanentFeatureKey };
+    });
+    ipcMain.handle('deactivate-feature', () => {
+        lockFeatures();
+        installApplicationMenu();
+        return { featureUnlocked: false, featurePermanent: false };
+    });
     ipcMain.handle('action', async (_event, action, values = []) => {
         const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore'];
         if (!supported.includes(action))
@@ -727,6 +911,136 @@ app.whenReady().then(async () => {
         return imageDataUrl(value);
     });
     ipcMain.handle('open-state-folder', async () => { await shell.openPath(stateRoot()); return true; });
+    ipcMain.handle('env:getOpenApi', () => Object.fromEntries(readApiEnv().map(({ key, value }) => [key, value])));
+    ipcMain.handle('dialog:selectDirectory', async (_event, defaultPath) => {
+        if (!mainWindow)
+            return null;
+        const result = await dialog.showOpenDialog(mainWindow, { title: '选择 API 导出目录', properties: ['openDirectory', 'createDirectory'], defaultPath });
+        if (result.canceled || !result.filePaths[0])
+            return null;
+        apiAllowedRoots.add(normalizeApiPath(result.filePaths[0]));
+        saveApiAllowedRoots();
+        return result.filePaths[0];
+    });
+    ipcMain.handle('dialog:saveFile', async (_event, options = {}) => {
+        if (!mainWindow)
+            return null;
+        const result = await dialog.showSaveDialog(mainWindow, { title: '保存 API 文件', ...options });
+        return result.canceled ? null : result.filePath ?? null;
+    });
+    ipcMain.handle('fs:writeFile', async (_event, filePath, content) => {
+        if (typeof filePath !== 'string' || !isApiPathAllowed(filePath))
+            return { success: false, error: '导出路径未授权' };
+        try {
+            fs.mkdirSync(path.dirname(filePath), { recursive: true });
+            writeFileSync(filePath, content ?? '', 'utf8');
+            return { success: true, path: filePath };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    });
+    ipcMain.handle('fs:writeFiles', async (_event, items) => {
+        if (!Array.isArray(items))
+            return [];
+        if (items.some((item) => !item?.path || !isApiPathAllowed(item.path)))
+            return items.map((item) => ({ path: item?.path ?? '', success: false, error: '导出路径未授权' }));
+        return Promise.all(items.map(async (item) => {
+            try {
+                await fs.promises.mkdir(path.dirname(item.path), { recursive: true });
+                await fs.promises.writeFile(item.path, item.content ?? '', 'utf8');
+                return { path: item.path, success: true };
+            }
+            catch (error) {
+                return { path: item.path, success: false, error: error instanceof Error ? error.message : String(error) };
+            }
+        }));
+    });
+    ipcMain.handle('env:load', () => {
+        const items = readApiEnv();
+        return { success: true, items: items.length > 0 ? items : readApiEnvDefaults(), path: apiEnvFile() };
+    });
+    ipcMain.handle('env:save', (_event, items) => {
+        if (!Array.isArray(items) || items.some((item) => !/^OPENAPI_[A-Z0-9_]+$/.test(item?.key ?? '')))
+            return { success: false, error: '环境变量名必须以 OPENAPI_ 开头' };
+        try {
+            const existing = new Map(readApiEnv().map((item) => [item.key, item.value]));
+            const protectedKeys = new Set(['OPENAPI_PWD_ENC_KEY', 'OPENAPI_OAUTH_CLIENT_ID', 'OPENAPI_OAUTH_CLIENT_SECRET']);
+            const normalizedItems = items.map((item) => ({
+                ...item,
+                value: protectedKeys.has(item.key) && !item.value.trim() && existing.get(item.key)
+                    ? existing.get(item.key)
+                    : item.value,
+            }));
+            fs.mkdirSync(app.getPath('userData'), { recursive: true });
+            writeFileSync(apiEnvFile(), formatApiEnv(normalizedItems), 'utf8');
+            for (const key of Object.keys(process.env))
+                if (key.startsWith('OPENAPI_'))
+                    delete process.env[key];
+            loadApiEnv();
+            return { success: true, items: readApiEnv(), path: apiEnvFile() };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    });
+    ipcMain.handle('env:reset', () => {
+        try {
+            const items = readApiEnvDefaults();
+            fs.mkdirSync(app.getPath('userData'), { recursive: true });
+            writeFileSync(apiEnvFile(), formatApiEnv(items), 'utf8');
+            for (const key of Object.keys(process.env))
+                if (key.startsWith('OPENAPI_'))
+                    delete process.env[key];
+            for (const item of items)
+                process.env[item.key] = item.value;
+            return { success: true, items, path: apiEnvFile() };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    });
+    ipcMain.handle('token:save', (_event, token) => {
+        try {
+            if (!token) {
+                if (existsSync(apiTokenFile()))
+                    fs.unlinkSync(apiTokenFile());
+                return { success: true };
+            }
+            fs.mkdirSync(app.getPath('userData'), { recursive: true });
+            if (safeStorage.isEncryptionAvailable()) {
+                fs.writeFileSync(apiTokenFile(), safeStorage.encryptString(token));
+                return { success: true, encrypted: true };
+            }
+            writeFileSync(apiTokenFile(), token, 'utf8');
+            return { success: true, encrypted: false };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    });
+    ipcMain.handle('token:load', () => {
+        try {
+            if (!existsSync(apiTokenFile()))
+                return '';
+            const value = fs.readFileSync(apiTokenFile());
+            return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(value) : value.toString('utf8');
+        }
+        catch {
+            return '';
+        }
+    });
+    ipcMain.handle('token:clear', () => {
+        try {
+            if (existsSync(apiTokenFile()))
+                fs.unlinkSync(apiTokenFile());
+            return { success: true };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    });
+    ipcMain.handle('shell:openPath', (_event, value) => isApiPathAllowed(value) ? shell.openPath(value) : '打开路径未授权');
     await createWindow();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0)
         void createWindow(); });
