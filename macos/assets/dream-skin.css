@@ -869,6 +869,31 @@ html.codex-dream-skin .composer-surface-chrome {
 
 /* 输入框::before：移除原生伪元素 */
 html.codex-dream-skin .composer-surface-chrome::before { content: none !important; }
+/* New Codex: visible fill is _ComposerLayoutBody_. Root is a layout wrapper only.
+   Do not put border on Root — that created the extra 1px outline on home. */
+html.codex-dream-skin [class*="_ComposerLayoutRoot_"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin [class*="_ComposerLayoutBody_"] {
+  color: var(--ds-text) !important;
+  background: rgb(var(--ds-panel-rgb) / .94) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] {
+  background: rgb(var(--ds-panel-rgb) / .94) !important;
+}
+
+html.codex-dream-skin[data-dream-art-wide="true"] [class*="_ComposerLayoutBody_"],
+html.codex-dream-skin[data-dream-art-wide="true"] [class*="_ComposerHomeUtilityBar_"] {
+  background: var(--ds-immersive-composer-solid) !important;
+  backdrop-filter: none !important;
+}
+
 
 /* 宽图沉浸态：宽图也可承载首页，原生hero保留但图整窗铺一次 */
 /* A wide image can carry the home screen too. The native hero remains live,
@@ -1066,24 +1091,32 @@ html.codex-dream-skin[data-dream-shell="light"][data-dream-art-wide="true"]
 
 /* 工具栏/输入框次要按钮：弱化文字色 */
 html.codex-dream-skin .dream-skin-home-utility button,
+html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] button,
+html.codex-dream-skin [class*="_ComposerLayoutBody_"] button:not([class~="bg-token-foreground"]),
 html.codex-dream-skin .composer-surface-chrome button:not([class~="bg-token-foreground"]) {
   color: var(--ds-muted) !important;
 }
 
 /* 工具栏/输入框按钮svg：跟随currentColor */
 html.codex-dream-skin .dream-skin-home-utility button svg,
+html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] button svg,
+html.codex-dream-skin [class*="_ComposerLayoutBody_"] button svg,
 html.codex-dream-skin .composer-surface-chrome button svg {
   color: currentColor !important;
 }
 
 /* 工具栏/输入框按钮子元素：跟随currentColor */
 html.codex-dream-skin .dream-skin-home-utility button *,
+html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] button *,
+html.codex-dream-skin [class*="_ComposerLayoutBody_"] button:not([class~="bg-token-foreground"]) *,
 html.codex-dream-skin .composer-surface-chrome button:not([class~="bg-token-foreground"]) * {
   color: currentColor !important;
 }
 
 /* 工具栏/输入框按钮悬停：强调色软背景 */
 html.codex-dream-skin .dream-skin-home-utility button:hover,
+html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] button:hover,
+html.codex-dream-skin [class*="_ComposerLayoutBody_"] button:not([class~="bg-token-foreground"]):hover,
 html.codex-dream-skin .composer-surface-chrome button:not([class~="bg-token-foreground"]):hover {
   color: var(--ds-text) !important;
   background: rgb(var(--ds-accent-rgb) / .10) !important;

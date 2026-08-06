@@ -72,6 +72,22 @@ assert.match(
 );
 assert.match(
   css,
+  /\[class\*="_ComposerLayoutRoot_"\]\s*\{[\s\S]{0,160}border:\s*0 !important;/,
+  "New Codex composer root must stay borderless so home does not gain an extra outline.",
+);
+assert.match(
+  css,
+  /\[class\*="_ComposerLayoutBody_"\]\s*\{[\s\S]{0,220}background:\s*rgb\(var\(--ds-panel-rgb\) \/ \.94\) !important;/,
+  "New Codex composer body must own the readable fill formerly on composer-surface-chrome.",
+);
+assert.match(
+  css,
+  /data-dream-art-wide="true"\] \[class\*="_ComposerLayoutBody_"\][\s\S]{0,120}background:\s*var\(--ds-immersive-composer-solid\) !important;/,
+  "Wide artwork must restyle the new composer body with the solid immersive fill.",
+);
+
+assert.match(
+  css,
   /--ds-immersive-composer-solid:\s*rgb\(var\(--ds-panel-rgb\) \/ \.74\);/,
   "The light composer should retain enough transparency to reveal the selected artwork.",
 );
