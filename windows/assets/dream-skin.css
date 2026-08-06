@@ -1374,6 +1374,44 @@ html.codex-dream-skin.dream-art-wide:has(main.main-surface) main.main-surface .t
   box-shadow: none !important;
 }
 
+/* 首页项目工具条与输入框使用同一实底，避免背景图穿透。 */
+html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] {
+  background: var(--dream-composer-bg) !important;
+}
+
+/* 发送图标的路径可能保留原生描边色，统一跟随高对比按钮前景色。 */
+html.codex-dream-skin main.main-surface:not(.dream-home-shell) [class*="_ComposerLayoutBody_"] button[class~="bg-token-foreground"] {
+  color: #FFFFFF !important;
+  background: var(--dream-send-bg) !important;
+  opacity: 1 !important;
+}
+
+html.codex-dream-skin main.main-surface:not(.dream-home-shell) [class*="_ComposerLayoutBody_"] button[class~="bg-token-foreground"] svg,
+html.codex-dream-skin main.main-surface:not(.dream-home-shell) [class*="_ComposerLayoutBody_"] button[class~="bg-token-foreground"] svg * {
+  color: #FFFFFF !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+}
+
+html.codex-dream-skin button[aria-label="停止"],
+html.codex-dream-skin button[aria-label*="发送"],
+html.codex-dream-skin button[aria-label*="Send"] {
+  color: #FFFFFF !important;
+  background: var(--dream-send-bg) !important;
+  opacity: 1 !important;
+}
+
+html.codex-dream-skin button[aria-label="停止"] svg,
+html.codex-dream-skin button[aria-label="停止"] svg *,
+html.codex-dream-skin button[aria-label*="发送"] svg,
+html.codex-dream-skin button[aria-label*="发送"] svg *,
+html.codex-dream-skin button[aria-label*="Send"] svg,
+html.codex-dream-skin button[aria-label*="Send"] svg * {
+  color: #FFFFFF !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+}
+
 /* Preserve the standard-art shell divider after clearing wide surfaces. */
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell) aside.app-shell-left-panel,
 html.codex-dream-skin.dream-art-wide:is(.dream-task-ambient, .dream-task-banner):has(main.main-surface:not(.dream-home-shell)) aside.app-shell-left-panel {

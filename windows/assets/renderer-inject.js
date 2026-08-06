@@ -141,7 +141,7 @@
   const existingStyle = document.getElementById(STYLE_ID);
   if (existingStyle) {
     existingStyle.textContent = cssText;
-    existingStyle.dataset.dreamVersion = "7";
+    existingStyle.dataset.dreamVersion = "13";
   }
 
   const analyzeArt = () => new Promise((resolve) => {
@@ -517,9 +517,9 @@
       style.id = STYLE_ID;
       (document.head || root).appendChild(style);
     }
-    if (style.dataset.dreamVersion !== "7") {
+    if (style.dataset.dreamVersion !== "13") {
       style.textContent = cssText;
-      style.dataset.dreamVersion = "7";
+      style.dataset.dreamVersion = "13";
     }
 
     const homeMarker = document.querySelector('[data-testid="home-icon"]') ||
@@ -533,7 +533,9 @@
       candidate.classList.toggle("dream-home", candidate === home);
       candidate.classList.toggle("dream-task", candidate !== home);
     }
-    const utilityBars = new Set(home ? home.querySelectorAll('[class*="_homeUtilityBar_"]') : []);
+    const utilityBars = new Set(home
+      ? home.querySelectorAll('[class*="_homeUtilityBar_"], [class*="_HomeUtilityBar_"]')
+      : []);
     for (const candidate of document.querySelectorAll(`.${HOME_UTILITY_CLASS}`)) {
       if (!utilityBars.has(candidate)) candidate.classList.remove(HOME_UTILITY_CLASS);
     }
