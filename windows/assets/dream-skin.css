@@ -6,7 +6,7 @@
 :root.codex-dream-skin {
   color-scheme: light;
   /* 输入框（composer）底色 —— Codex 官方深色背景色，集中放成变量方便统一改。
-     只用于 .composer-surface-chrome / .dream-home-utility，不用作整窗底色。 */
+     用于 .composer-surface-chrome、[class*='_ComposerLayoutBody_']、.dream-home-utility / HomeUtilityBar，不用作整窗底色。 */
   --dream-composer-bg: var(--dream-surface-raised);
   /* 遮罩强度：浅色和暗色分别控制，0 为透明，1 为原始强度。 */
   --dream-mask-opacity-light: .70;
@@ -51,7 +51,8 @@
 /* 主题变量 · 暗色（.dream-theme-dark）。覆盖浅色变量，对应 Codex 暗色外观。 */
 :root.codex-dream-skin.dream-theme-dark {
   color-scheme: dark;
-  --dream-composer-bg: #2B2C42;
+  --dream-composer-bg: var(--dream-accent-soft);
+  /* --dream-composer-bg: #2B2C42; */
   --dream-mask-opacity-dark: .50;
   --dream-mask-opacity-active: var(--dream-mask-opacity-dark);
   --dream-mask-color: #2B2C42;
@@ -1375,6 +1376,22 @@ html.codex-dream-skin.dream-art-wide:has(main.main-surface) main.main-surface .t
 }
 
 /* 首页项目工具条与输入框使用同一实底，避免背景图穿透。 */
+
+/* New Codex: visible fill is _ComposerLayoutBody_. Root is a layout wrapper only.
+   Do not put border on Root — that created the extra 1px outline on home. */
+html.codex-dream-skin [class*="_ComposerLayoutRoot_"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html.codex-dream-skin [class*="_ComposerLayoutBody_"] {
+  color: var(--dream-text) !important;
+  background: var(--dream-composer-bg) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
 html.codex-dream-skin [class*="_ComposerHomeUtilityBar_"] {
   background: var(--dream-composer-bg) !important;
 }

@@ -1,6 +1,6 @@
 {
   "name": "codex-dream-skin-desktop",
-  "version": "0.1.6",
+  "version": "0.1.13",
   "description": "Codex Dream Skin desktop application",
   "author": "Codex Dream Skin",
   "private": true,
@@ -82,6 +82,10 @@
     "mac": {
       "target": "dmg",
       "artifactName": "Codex-Dream-Skin-${version}.${ext}"
-    }
+    },
+    "electronDist": "node_modules/electron/dist"
+  },
+  "config": {
+    "electron_mirror": "https://npmmirror.com/mirrors/electron/"
   }
 }
