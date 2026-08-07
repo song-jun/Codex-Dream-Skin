@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('status', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'start', 'pause', 'resume', 'restore')][string]$Action,
+  [Parameter(Mandatory = $true)][ValidateSet('status', 'codex-status', 'start-codex', 'stop-codex', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'start', 'pause', 'resume', 'restore')][string]$Action,
   [string]$ThemeId,
   [string]$ThemeName,
   [string]$ImagePath,
@@ -30,6 +30,34 @@ if (-not (Test-Path -LiteralPath $common) -or -not (Test-Path -LiteralPath $them
 }
 . $common
 . $themeScript
+
+if ($Action -in @('codex-status', 'start-codex', 'stop-codex')) {
+  $codex = Get-DreamSkinCodexInstall
+  if ($Action -eq 'start-codex') {
+    $null = Start-DreamSkinCodex -Codex $codex
+    $deadline = (Get-Date).AddSeconds(5)
+    while ((Get-DreamSkinCodexProcesses -Codex $codex).Count -eq 0 -and (Get-Date) -lt $deadline) {
+      Start-Sleep -Milliseconds 100
+    }
+  } elseif ($Action -eq 'stop-codex') {
+    # Explicit UI request: skip the shared graceful-close timeout.
+    foreach ($item in Get-DreamSkinCodexProcesses -Codex $codex) {
+      Stop-Process -Id ([int]$item.ProcessId) -Force -ErrorAction SilentlyContinue
+    }
+    $deadline = (Get-Date).AddSeconds(1)
+    while ((Get-DreamSkinCodexProcesses -Codex $codex).Count -gt 0 -and (Get-Date) -lt $deadline) {
+      Start-Sleep -Milliseconds 50
+    }
+    if ((Get-DreamSkinCodexProcesses -Codex $codex).Count -gt 0) { throw 'Codex could not be stopped safely.' }
+  }
+  $result = [pscustomobject]@{
+    ok = $true
+    action = $Action
+    codexRunning = (Get-DreamSkinCodexProcesses -Codex $codex).Count -gt 0
+  }
+  $result | ConvertTo-Json -Compress
+  exit 0
+}
 
 $stateRoot = Join-Path $env:LOCALAPPDATA 'CodexDreamSkin'
 $paths = Get-DreamSkinThemePaths -StateRoot $stateRoot
@@ -63,12 +91,13 @@ function Get-Snapshot {
     $codex = Get-DreamSkinCodexInstall
     $codexRunning = (Get-DreamSkinCodexProcesses -Codex $codex).Count -gt 0
   } catch {}
-  $session = if ($paused) { 'paused' } elseif ($null -ne $state) { 'active' } else { 'off' }
+  $injectorAlive = Test-DreamSkinInjectorAlive
+  $session = if (-not $codexRunning) { 'off' } elseif ($paused) { 'paused' } elseif ($injectorAlive) { 'active' } elseif ($null -ne $state) { 'stale' } else { 'off' }
   return [pscustomobject]@{
     platform = 'windows'
     session = $session
     codexRunning = $codexRunning
-    injectorAlive = ($null -ne $state)
+    injectorAlive = $injectorAlive
     port = if ($state -and $state.port) { [int]$state.port } else { 9335 }
     active = $active
     themes = $saved

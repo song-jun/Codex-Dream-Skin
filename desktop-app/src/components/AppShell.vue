@@ -7,7 +7,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, WarningFilled } from "@element-plus/icons-vue";
+import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, SwitchButton, WarningFilled } from "@element-plus/icons-vue";
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
 import VersionHistoryPanel from "./VersionHistoryPanel.vue";
@@ -220,6 +220,12 @@ onUnmounted(() => {
             <el-button class="icon-button" :icon="Refresh" circle @click="refresh(true)" />
           </el-tooltip>
           <el-button class="secondary-button" :icon="FolderOpened" @click="openStateFolder">打开状态目录</el-button>
+          <el-button
+            class="secondary-button"
+            :icon="SwitchButton"
+            type="danger"
+            @click="runAction(snapshot?.codexRunning ? 'stop-codex' : 'start-codex', [], snapshot?.codexRunning ? 'Codex 已关闭。' : 'Codex 已开启。')"
+          >{{ snapshot?.codexRunning ? "关闭 Codex" : "开启 Codex" }}</el-button>
         </div>
       </el-header>
 

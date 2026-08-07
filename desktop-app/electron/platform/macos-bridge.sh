@@ -9,7 +9,29 @@ if [ -d "$HERE/../macos/scripts" ]; then ROOT="$(cd "$HERE/../macos" && pwd -P)"
 INSTALLED="$HOME/.codex/codex-dream-skin-studio"
 if [ -x "$INSTALLED/scripts/start-dream-skin-macos.sh" ]; then ROOT="$INSTALLED"; fi
 
+codex_is_running() {
+  /usr/bin/pgrep -x ChatGPT >/dev/null 2>&1 || /usr/bin/pgrep -x Codex >/dev/null 2>&1
+}
+
 case "$ACTION" in
+  codex-status)
+    if codex_is_running; then
+      printf '{"codexRunning":true}\n'
+    else
+      printf '{"codexRunning":false}\n'
+    fi
+    ;;
+  start-codex)
+    /usr/bin/open -a Codex 2>/dev/null || /usr/bin/open -a ChatGPT
+    for _ in {1..30}; do
+      codex_is_running && break
+      /bin/sleep 0.1
+    done
+    ;;
+  stop-codex)
+    /usr/bin/osascript -e 'tell application "Codex" to quit' 2>/dev/null || true
+    /usr/bin/osascript -e 'tell application "ChatGPT" to quit' 2>/dev/null || true
+    ;;
   status)
     exec "$ROOT/scripts/status-dream-skin-macos.sh" --json
     ;;

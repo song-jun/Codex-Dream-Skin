@@ -63,7 +63,7 @@ const {
     </div>
     <div class="hero-actions">
       <el-button v-if="installationMissing" type="primary" :icon="Setting" @click="installDreamSkin">安装 Dream Skin 运行时</el-button>
-      <el-button v-else type="primary" :icon="RefreshRight" @click="runAction('start', [], 'Codex Dream Skin 已启动或重启。')">启动 / 重启</el-button>
+      <el-button v-else type="primary" :icon="RefreshRight" @click="runAction('start', [], 'Codex Dream Skin 已启动或重启。')">启动 / 重启皮肤</el-button>
       <el-button v-if="canPause" class="warning-button" :icon="VideoPause" @click="runAction('pause', [], '皮肤已暂停，Codex 保持运行。')">暂停皮肤</el-button>
       <el-button v-else-if="canResume" class="resume-button" type="primary" plain :icon="VideoPlay" @click="runAction('resume', [], '皮肤已恢复。')">恢复皮肤</el-button>
       <el-button v-if="!installationMissing" class="danger-button" :icon="SwitchButton" @click="restoreSkin">恢复官方外观</el-button>

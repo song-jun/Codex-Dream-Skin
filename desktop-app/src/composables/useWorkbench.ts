@@ -422,6 +422,8 @@ export function createWorkbench(): WorkbenchContext {
           "rename-theme": "正在修改主题名称",
           "delete-theme": "正在删除主题",
           "open-state-folder": "正在打开状态目录",
+          "start-codex": "正在开启 Codex",
+          "stop-codex": "正在关闭 Codex",
           install: "正在安装 Dream Skin 运行时",
         }) as Record<string, string>
       )[currentAction.value] ?? "正在处理，请稍候",
