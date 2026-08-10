@@ -221,7 +221,6 @@ onUnmounted(() => {
           </el-tooltip>
           <el-button class="secondary-button" :icon="FolderOpened" @click="openStateFolder">打开状态目录</el-button>
           <el-button
-            class="secondary-button"
             :icon="SwitchButton"
             type="danger"
             @click="runAction(snapshot?.codexRunning ? 'stop-codex' : 'start-codex', [], snapshot?.codexRunning ? 'Codex 已关闭。' : 'Codex 已开启。')"

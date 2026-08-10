@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- changelog:base 9e54cd4433fe368915ae4d2faa538523eb6570c6 -->
+<!-- changelog:base 6037fc3af194a1c22221d0d00150f9f4e1f9c7c4 -->
+
+## [0.1.29] - 2026-08-10
+
+### 桌面端更新
+
+- 新增start-codex和stop-codex操作支持，扩展IPC支持的动作列表
+- 修复snapshot函数在未安装运行时也能正确获取Codex运行状态
+- 扩展runBridge以支持codex-status动作
+- 更新CHANGELOG日志
 
 ## [0.1.28] - 2026-08-10
 
