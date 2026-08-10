@@ -538,7 +538,7 @@ async function runBridge(action, values = []) {
         return parseJsonOutput((await execute('powershell.exe', args)).stdout);
     }
     const result = await execute('/bin/bash', [script, action, ...values]);
-    return action === 'status' ? parseJsonOutput(result.stdout) : { ok: true, action, message: result.stdout.trim() };
+    return action === 'status' || action === 'codex-status' ? parseJsonOutput(result.stdout) : { ok: true, action, message: result.stdout.trim() };
 }
 function imagePreview(imagePath) {
     if (typeof imagePath !== 'string' || !imagePath)
@@ -832,6 +832,13 @@ function installApplicationMenu() {
 async function snapshot() {
     const codexSessions = readCodexSessions();
     if (!isRuntimeInstalled()) {
+        let codexRunning = false;
+        try {
+            codexRunning = (await runBridge('codex-status')).codexRunning === true;
+        }
+        catch {
+            // 未安装官方 Codex 或无法读取进程状态时，保留未运行状态。
+        }
         return {
             platform: isMac ? 'darwin' : 'windows',
             version: app.getVersion(),
@@ -839,7 +846,7 @@ async function snapshot() {
             featurePermanent: featurePermanent(),
             session: 'uninstalled',
             installation: 'missing',
-            codexRunning: false,
+            codexRunning,
             injectorAlive: false,
             port: isWindows ? 9335 : 9341,
             active: null,
@@ -898,14 +905,14 @@ app.whenReady().then(async () => {
         return { featureUnlocked: false, featurePermanent: false };
     });
     ipcMain.handle('action', async (_event, action, values = []) => {
-        const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore'];
+        const supported = ['install', 'use-theme', 'save-theme', 'set-image', 'update-theme', 'rename-theme', 'delete-theme', 'delete-codex-session', 'start', 'pause', 'resume', 'restore', 'start-codex', 'stop-codex'];
         if (!supported.includes(action))
             throw new Error('不支持的操作。');
         if (action === 'install') {
             await installRuntime();
             return snapshot();
         }
-        if (!isRuntimeInstalled() && action !== 'delete-codex-session')
+        if (!isRuntimeInstalled() && !['delete-codex-session', 'start-codex', 'stop-codex'].includes(action))
             throw new Error('Dream Skin 运行时尚未安装，请先安装后再执行此操作。');
         if (action === 'use-theme' && (!values[0] || !allowedThemeId.test(values[0])))
             throw new Error('主题 ID 无效。');
@@ -934,7 +941,7 @@ app.whenReady().then(async () => {
             return snapshot();
         }
         const result = await runBridge(action, values);
-        const refreshActions = ['use-theme', 'save-theme', 'set-image', 'update-theme', 'start', 'pause', 'resume', 'restore'];
+        const refreshActions = ['use-theme', 'save-theme', 'set-image', 'update-theme', 'start', 'pause', 'resume', 'restore', 'start-codex', 'stop-codex'];
         if (!refreshActions.includes(action))
             return result;
         if (isWindows && result.snapshot && typeof result.snapshot === 'object' && !Array.isArray(result.snapshot)) {
