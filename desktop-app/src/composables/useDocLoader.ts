@@ -27,6 +27,7 @@ export interface JsonParseHistoryItem {
   content: string;
   updatedAt: string;
   title: string;
+  sourceName?: string;
   endpointCount: number;
 }
 
@@ -316,10 +317,10 @@ export function useDocLoader() {
     return ok;
   }
 
-  function loadFromJson(text: string) {
+  function loadFromJson(text: string, sourceName?: string) {
     const ok = docStore.loadFromJson(text);
     if (ok) {
-      recordJsonHistory();
+      recordJsonHistory(sourceName);
       ElMessage.success("JSON 解析成功");
     } else {
       ElMessage.error(docStore.error || "解析失败");
@@ -328,19 +329,20 @@ export function useDocLoader() {
   }
 
   /** 记录成功解析的 JSON，并以规范化内容覆盖当天的重复记录。 */
-  function recordJsonHistory() {
+  function recordJsonHistory(sourceName?: string) {
     const content = docStore.rawJson;
     if (!content || !docStore.doc) return;
     const now = new Date();
     const title =
       typeof docStore.doc.info?.title === "string" && docStore.doc.info.title.trim()
         ? docStore.doc.info.title.trim()
-        : "未命名 OpenAPI 文档";
+        : "默认模块";
     const item: JsonParseHistoryItem = {
       id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
       content,
       updatedAt: now.toISOString(),
       title,
+      sourceName: sourceName?.trim() || undefined,
       endpointCount: docStore.endpoints.length,
     };
     jsonHistory.value = [
@@ -352,7 +354,19 @@ export function useDocLoader() {
 
   /** 点击历史记录后使用同一套校验和解析流程重新加载。 */
   function loadHistoryItem(item: JsonParseHistoryItem) {
-    return loadFromJson(item.content);
+    return loadFromJson(item.content, item.sourceName || item.title);
+  }
+
+  /** 删除一条 JSON 解析历史，并立即同步到本地存储。 */
+  function deleteJsonHistoryItem(id: string) {
+    jsonHistory.value = jsonHistory.value.filter((item) => item.id !== id);
+    saveJsonHistory(jsonHistory.value);
+  }
+
+  /** 清空当天的全部 JSON 解析历史。 */
+  function clearJsonHistory() {
+    jsonHistory.value = [];
+    saveJsonHistory(jsonHistory.value);
   }
 
   function prettyJson(text: string): string | null {
@@ -431,6 +445,8 @@ export function useDocLoader() {
     tab,
     prettyJson,
     loadHistoryItem,
+    deleteJsonHistoryItem,
+    clearJsonHistory,
     // 加载 / 解析
     loadFromUrl,
     loadFromJson,

@@ -67,10 +67,26 @@
               >
                 <span :class="methodClass(ep.method)">{{ ep.method.toUpperCase() }}</span>
                 <span class="ep-summary">{{ ep.summary || ep.path }}</span>
-                <el-button size="small" link type="primary" class="ep-copy" @click.stop="copyEndpoint(ep)">
-                  <el-icon><CopyDocument /></el-icon>
-                  <span>复制</span>
-                </el-button>
+                <el-dropdown
+                  trigger="hover"
+                  @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)"
+                >
+                  <el-button size="small" link type="primary" class="ep-copy" @click.stop>
+                    <el-icon><CopyDocument /></el-icon>
+                    <span>复制</span>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item
+                        v-for="option in endpointCopyOptions"
+                        :key="option.action"
+                        :command="option.action"
+                      >
+                        {{ option.label }}
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </el-checkbox>
             </div>
             <div v-else class="endpoint-vlist-wrap">
@@ -79,6 +95,26 @@
                   <input type="checkbox" class="ep-checkbox" :checked="isSelected(ep)" @change="toggleSelect(ep)" />
                   <span :class="methodClass(ep.method)">{{ ep.method.toUpperCase() }}</span>
                   <span class="ep-summary">{{ ep.summary || ep.path }}</span>
+                  <el-dropdown
+                    trigger="hover"
+                    @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)"
+                  >
+                    <el-button size="small" link type="primary" class="ep-copy" @click.stop>
+                      <el-icon><CopyDocument /></el-icon>
+                      <span>复制</span>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item
+                          v-for="option in endpointCopyOptions"
+                          :key="option.action"
+                          :command="option.action"
+                        >
+                          {{ option.label }}
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </label>
               </VirtualList>
             </div>
@@ -96,11 +132,14 @@ import { computed } from "vue";
 import { ElMessage } from "element-plus";
 import { Search, ArrowDown, ArrowRight, CopyDocument } from "@element-plus/icons-vue";
 import VirtualList from "@/components/VirtualList.vue";
-import { useConfigStore } from "@/stores/config";
 import { useDocStore } from "@/stores/doc";
 import { methodClass } from "@/types/http";
-import { copyToClipboard } from "@/utils/clipboard";
 import { batchUpdateSet } from "@/utils/batchUpdate";
+import { useEndpointCopy } from "@/composables/useEndpointCopy";
+import {
+  endpointCopyOptions,
+  type EndpointCopyAction,
+} from "@/components/generate/endpointCopyOptions";
 import type { IEndpointInfo } from "@/core/types";
 import type { TagGroup } from "@/composables/useEndpointFilter";
 
@@ -122,8 +161,8 @@ const emit = defineEmits<{
   (e: "update:selectAll", v: boolean): void;
 }>();
 
-const configStore = useConfigStore();
 const docStore = useDocStore();
+const { copyEndpoint } = useEndpointCopy();
 
 function isSelected(ep: IEndpointInfo): boolean {
   return props.selected.some((s) => s.path === ep.path && s.method === ep.method);
@@ -210,14 +249,10 @@ function onToggleTagSelect(t: TagGroup, checked: boolean) {
 function toggleTag(name: string) {
   emit("update:expandedTags", { ...props.expandedTags, [name]: !props.expandedTags[name] });
 }
-function buildCurl(ep: IEndpointInfo): string {
-  const base =
-    configStore.config.baseUrl ||
-    (docStore.sourceUrl ? new URL(docStore.sourceUrl).origin : "https://your-host");
-  return `curl -X ${ep.method.toUpperCase()} '${base.replace(/\/$/, "")}${ep.path}'`;
-}
-async function copyEndpoint(ep: IEndpointInfo) {
-  await copyToClipboard(buildCurl(ep), `已复制：${ep.method.toUpperCase()} ${ep.path}`);
+/** 校验 Element Plus 下拉菜单命令并执行对应复制操作。 */
+async function onCopyCommand(ep: IEndpointInfo, action: unknown) {
+  if (action !== "title" && action !== "endpoint" && action !== "curl") return;
+  await copyEndpoint(ep, action as EndpointCopyAction);
 }
 </script>
 

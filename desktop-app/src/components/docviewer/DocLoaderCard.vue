@@ -213,6 +213,8 @@
         <JsonParseHistoryPanel
           :items="jsonHistory"
           @select="emit('historyParse', $event)"
+          @delete="emit('historyDelete', $event)"
+          @clear="emit('historyClear')"
         />
       </div>
       <el-alert
@@ -247,7 +249,6 @@ import {
 } from "@element-plus/icons-vue";
 import JsonParseHistoryPanel from "@/components/docviewer/JsonParseHistoryPanel.vue";
 import type { DocTab, JsonParseHistoryItem } from "@/composables/useDocLoader";
-
 const props = defineProps<{
   urlValue: string;
   presetUrls: string[];
@@ -265,20 +266,16 @@ const props = defineProps<{
   onUrlHistoryDel: (h: string) => void;
   onToggleFavorite: () => void;
 }>();
-
 const emit = defineEmits<{
   (e: "update:urlValue", v: string): void;
   (e: "load"): void;
   (e: "parse"): void;
   (e: "format"): void;
   (e: "generate"): void;
-  /** 选中历史 JSON，父级负责解析并跳转。 */
   (e: "historyParse", item: JsonParseHistoryItem): void;
-  // 文件已读取完成，text 交给父级解析；parent 拿到的就是最终要 parse 的内容
-  (
-    e: "fileLoaded",
-    payload: { name: string; text: string; size: number },
-  ): void;
+  (e: "historyDelete", id: string): void;
+  (e: "historyClear"): void;
+  (e: "fileLoaded", payload: { name: string; text: string; size: number }): void;
 }>();
 
 const tabLocal = ref<DocTab>("json");

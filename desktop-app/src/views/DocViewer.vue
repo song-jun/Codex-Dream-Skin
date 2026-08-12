@@ -42,6 +42,8 @@
           @format="onFormatJson"
           @file-loaded="onFileLoaded"
           @history-parse="onHistoryParse"
+          @history-delete="deleteJsonHistoryItem"
+          @history-clear="clearJsonHistory"
           @generate="goTo('/generate')"
         />
       </el-col>
@@ -108,6 +110,8 @@ const {
   loadFromUrl,
   loadFromJson,
   loadHistoryItem,
+  deleteJsonHistoryItem,
+  clearJsonHistory,
   prettyJson,
   clearAll,
   copyCurl,
@@ -158,15 +162,19 @@ function onFormatJson() {
  * 这里只负责解析：把读到的 text 喂给 docStore。
  */
 function onFileLoaded(payload: { name: string; text: string; size: number }) {
-  const ok = loadFromJson(payload.text);
-  if (ok) goTo("/generate");
+  loadFromJson(payload.text, payload.name);
 }
 
 /** 点击历史记录后重新解析，成功时进入代码生成页面。 */
-function onHistoryParse(item: JsonParseHistoryItem) {
+async function onHistoryParse(item: JsonParseHistoryItem) {
   setEditorValue(item.content);
   const ok = loadHistoryItem(item);
-  if (ok) goTo("/generate");
+  if (ok) {
+    await router.push({ name: "api-workbench-generate" });
+    if (route.path !== "/api-workbench/generate") {
+      window.location.hash = "#/api-workbench/generate";
+    }
+  }
 }
 
 function goTo(path: string) {
