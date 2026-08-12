@@ -30,6 +30,7 @@
           :error-msg="errorMsg"
           :has-loaded="!!docStore.doc"
           :url-history="urlHistory"
+          :json-history="jsonHistory"
           :is-favorite="isFavorite"
           :on-url-blur="onUrlBlur"
           :on-url-select-change="onUrlSelectChange"
@@ -40,6 +41,7 @@
           @parse="onLoadJson"
           @format="onFormatJson"
           @file-loaded="onFileLoaded"
+          @history-parse="onHistoryParse"
           @generate="goTo('/generate')"
         />
       </el-col>
@@ -73,6 +75,7 @@ import { ref, watch } from "vue";
 import { Delete } from "@element-plus/icons-vue";
 import router from "@/router";
 import { useDocLoader } from "@/composables/useDocLoader";
+import type { JsonParseHistoryItem } from "@/composables/useDocLoader";
 import DocLoaderCard from "@/components/docviewer/DocLoaderCard.vue";
 import DocViewerCard from "@/components/docviewer/DocViewerCard.vue";
 // 仅用主题色（.hljs-attr / .hljs-string / .hljs-number / .hljs-literal）
@@ -95,6 +98,7 @@ const {
   highlightLines,
   tagGroups,
   urlHistory,
+  jsonHistory,
   isFavorite,
   onUrlBlur,
   onUrlSelectChange,
@@ -103,6 +107,7 @@ const {
   toggleFavorite,
   loadFromUrl,
   loadFromJson,
+  loadHistoryItem,
   prettyJson,
   clearAll,
   copyCurl,
@@ -137,7 +142,8 @@ async function onLoadUrl() {
 }
 
 function onLoadJson() {
-  loadFromJson(getEditorValue());
+  const ok = loadFromJson(getEditorValue());
+  if (ok) goTo("/generate");
 }
 
 function onFormatJson() {
@@ -152,7 +158,15 @@ function onFormatJson() {
  * 这里只负责解析：把读到的 text 喂给 docStore。
  */
 function onFileLoaded(payload: { name: string; text: string; size: number }) {
-  loadFromJson(payload.text);
+  const ok = loadFromJson(payload.text);
+  if (ok) goTo("/generate");
+}
+
+/** 点击历史记录后重新解析，成功时进入代码生成页面。 */
+function onHistoryParse(item: JsonParseHistoryItem) {
+  setEditorValue(item.content);
+  const ok = loadHistoryItem(item);
+  if (ok) goTo("/generate");
 }
 
 function goTo(path: string) {

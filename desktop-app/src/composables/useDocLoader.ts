@@ -19,7 +19,16 @@ import { formatJson } from "@/utils/formatJson";
 import type { IEndpointInfo, IOpenAPIDocument } from "@/core/types";
 
 export type DocViewTab = "list" | "raw";
-export type DocTab = "url" | "json";
+export type DocTab = "json" | "url" | "history";
+
+/** 当日成功解析的 OpenAPI JSON 历史记录。 */
+export interface JsonParseHistoryItem {
+  id: string;
+  content: string;
+  updatedAt: string;
+  title: string;
+  endpointCount: number;
+}
 
 export interface TagGroup {
   name: string;
@@ -28,6 +37,8 @@ export interface TagGroup {
 
 const HISTORY_KEY = "apiWorkbench.docUrlHistory";
 const FAV_KEY = "apiWorkbench.docUrlFavorites";
+const JSON_HISTORY_KEY = "apiWorkbench.jsonParseHistory";
+const JSON_HISTORY_LIMIT = 20;
 
 /** localStorage 安全读取（数组内只保留 string） */
 function loadList(key: string): string[] {
@@ -44,6 +55,53 @@ function loadList(key: string): string[] {
 function saveList(key: string, list: string[]) {
   try {
     localStorage.setItem(key, JSON.stringify(list));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+/** 将日期转换为本地日期键，避免 UTC 跨日时显示错误的当天记录。 */
+function getLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** 从本地存储读取当天有效的 JSON 解析历史。 */
+function loadJsonHistory(): JsonParseHistoryItem[] {
+  try {
+    const raw = localStorage.getItem(JSON_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const today = getLocalDateKey(new Date());
+    return parsed
+      .filter((item): item is JsonParseHistoryItem => {
+        if (!item || typeof item !== "object") return false;
+        const value = item as Partial<JsonParseHistoryItem>;
+        if (
+          typeof value.id !== "string" ||
+          typeof value.content !== "string" ||
+          typeof value.updatedAt !== "string" ||
+          typeof value.title !== "string" ||
+          typeof value.endpointCount !== "number"
+        ) {
+          return false;
+        }
+        const updatedAt = new Date(value.updatedAt);
+        return !Number.isNaN(updatedAt.getTime()) && getLocalDateKey(updatedAt) === today;
+      })
+      .slice(0, JSON_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+/** 持久化 JSON 历史；存储不可用时保留本次会话的内存记录。 */
+function saveJsonHistory(items: JsonParseHistoryItem[]) {
+  try {
+    localStorage.setItem(JSON_HISTORY_KEY, JSON.stringify(items));
   } catch {
     /* ignore quota */
   }
@@ -68,7 +126,7 @@ export function useDocLoader() {
   const urlValue = ref<string>(DEFAULT_API_URL[0] || "");
   // 注：JSON 编辑器内容由 DocLoaderCard 完全非受控管理（getValue/setValue），
   //     composable 不持有任何 draft 状态，避免每次按键触发响应式追踪
-  const tab = ref<DocTab>("url");
+  const tab = ref<DocTab>("json");
 
   // ===== 查看卡片本地状态 =====
   const activeTab = ref<DocViewTab>("list");
@@ -94,6 +152,7 @@ export function useDocLoader() {
   // ===== URL 历史 / 收藏（持久化到 localStorage）=====
   const urlHistory = ref<string[]>(loadList(HISTORY_KEY));
   const favorites = ref<string[]>(loadList(FAV_KEY));
+  const jsonHistory = ref<JsonParseHistoryItem[]>(loadJsonHistory());
 
   // 预设地址（来自 .env OPENAPI_DEFAULT_API_URL）
   // 注意：DEFAULT_API_URL 是模块级 let，computed 追踪不到引用变化
@@ -260,11 +319,40 @@ export function useDocLoader() {
   function loadFromJson(text: string) {
     const ok = docStore.loadFromJson(text);
     if (ok) {
+      recordJsonHistory();
       ElMessage.success("JSON 解析成功");
     } else {
       ElMessage.error(docStore.error || "解析失败");
     }
     return ok;
+  }
+
+  /** 记录成功解析的 JSON，并以规范化内容覆盖当天的重复记录。 */
+  function recordJsonHistory() {
+    const content = docStore.rawJson;
+    if (!content || !docStore.doc) return;
+    const now = new Date();
+    const title =
+      typeof docStore.doc.info?.title === "string" && docStore.doc.info.title.trim()
+        ? docStore.doc.info.title.trim()
+        : "未命名 OpenAPI 文档";
+    const item: JsonParseHistoryItem = {
+      id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+      content,
+      updatedAt: now.toISOString(),
+      title,
+      endpointCount: docStore.endpoints.length,
+    };
+    jsonHistory.value = [
+      item,
+      ...jsonHistory.value.filter((historyItem) => historyItem.content !== content),
+    ].slice(0, JSON_HISTORY_LIMIT);
+    saveJsonHistory(jsonHistory.value);
+  }
+
+  /** 点击历史记录后使用同一套校验和解析流程重新加载。 */
+  function loadHistoryItem(item: JsonParseHistoryItem) {
+    return loadFromJson(item.content);
   }
 
   function prettyJson(text: string): string | null {
@@ -332,6 +420,7 @@ export function useDocLoader() {
     // URL 历史 / 收藏
     urlHistory,
     favorites,
+    jsonHistory,
     onUrlBlur,
     onUrlSelectChange,
     onUrlHistorySelect,
@@ -341,6 +430,7 @@ export function useDocLoader() {
     // JSON 编辑
     tab,
     prettyJson,
+    loadHistoryItem,
     // 加载 / 解析
     loadFromUrl,
     loadFromJson,

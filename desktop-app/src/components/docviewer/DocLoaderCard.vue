@@ -13,8 +13,9 @@
 
     <div class="card-toolbar">
       <el-tabs v-model="tabLocal">
-        <el-tab-pane label="URL 拉取" name="url" />
         <el-tab-pane label="JSON 编辑" name="json" />
+        <el-tab-pane label="URL 拉取" name="url" />
+        <el-tab-pane label="历史 JSON" name="history" />
       </el-tabs>
     </div>
 
@@ -208,6 +209,12 @@
           </el-button>
         </div>
       </div>
+      <div v-show="tabLocal === 'history'">
+        <JsonParseHistoryPanel
+          :items="jsonHistory"
+          @select="emit('historyParse', $event)"
+        />
+      </div>
       <el-alert
         v-if="hasError"
         :title="errorMsg"
@@ -238,6 +245,8 @@ import {
   FolderOpened,
   Document,
 } from "@element-plus/icons-vue";
+import JsonParseHistoryPanel from "@/components/docviewer/JsonParseHistoryPanel.vue";
+import type { DocTab, JsonParseHistoryItem } from "@/composables/useDocLoader";
 
 const props = defineProps<{
   urlValue: string;
@@ -248,6 +257,7 @@ const props = defineProps<{
   errorMsg: string;
   hasLoaded: boolean;
   urlHistory: string[];
+  jsonHistory: JsonParseHistoryItem[];
   isFavorite: (url: string) => boolean;
   onUrlBlur: () => void;
   onUrlSelectChange: (v: string) => void;
@@ -262,6 +272,8 @@ const emit = defineEmits<{
   (e: "parse"): void;
   (e: "format"): void;
   (e: "generate"): void;
+  /** 选中历史 JSON，父级负责解析并跳转。 */
+  (e: "historyParse", item: JsonParseHistoryItem): void;
   // 文件已读取完成，text 交给父级解析；parent 拿到的就是最终要 parse 的内容
   (
     e: "fileLoaded",
@@ -269,7 +281,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const tabLocal = ref<"url" | "json">("url");
+const tabLocal = ref<DocTab>("json");
 
 const urlModel = computed<string>({
   get: () => props.urlValue,
