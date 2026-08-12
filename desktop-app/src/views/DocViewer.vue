@@ -44,7 +44,7 @@
           @history-parse="onHistoryParse"
           @history-delete="deleteJsonHistoryItem"
           @history-clear="clearJsonHistory"
-          @generate="goTo('/generate')"
+          @generate="navigateToGenerate"
         />
       </el-col>
 
@@ -147,7 +147,7 @@ async function onLoadUrl() {
 
 function onLoadJson() {
   const ok = loadFromJson(getEditorValue());
-  if (ok) goTo("/generate");
+  if (ok) navigateToGenerate();
 }
 
 function onFormatJson() {
@@ -166,19 +166,23 @@ function onFileLoaded(payload: { name: string; text: string; size: number }) {
 }
 
 /** 点击历史记录后重新解析，成功时进入代码生成页面。 */
-async function onHistoryParse(item: JsonParseHistoryItem) {
+function onHistoryParse(item: JsonParseHistoryItem) {
   setEditorValue(item.content);
   const ok = loadHistoryItem(item);
-  if (ok) {
-    await router.push({ name: "api-workbench-generate" });
-    if (route.path !== "/api-workbench/generate") {
-      window.location.hash = "#/api-workbench/generate";
-    }
-  }
+  if (ok) navigateToGenerate();
 }
 
-function goTo(path: string) {
-  router.push(`/api-workbench${path}`);
+/**
+ * API Workbench 使用 Hash 路由；所有进入代码生成页的入口统一写 Hash，
+ * 让 Electron 渲染进程和 Vue Router 在同一个路由源上切换视图。
+ */
+function navigateToGenerate() {
+  const target = "#/api-workbench/generate";
+  if (window.location.hash !== target) {
+    window.location.hash = target;
+    return;
+  }
+  void router.replace({ name: "api-workbench-generate" });
 }
 
 // 外部清空（清空文档按钮）→ 编辑器也要清空
