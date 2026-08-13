@@ -14,11 +14,16 @@ export interface TagGroup {
 export function useEndpointFilter(
   endpointsRef: Ref<IEndpointInfo[]>,
   searchTextDebounced: Ref<string>,
+  newEndpointKeysRef?: Ref<Set<string>>,
+  showOnlyNewRef?: Ref<boolean>,
+  missingEndpointsRef?: Ref<IEndpointInfo[]>,
+  missingEndpointKeysRef?: Ref<Set<string>>,
+  showOnlyMissingRef?: Ref<boolean>,
 ) {
   /** 全部 tag 分组（按 tag 名排序） */
   const tagGroups = computed<TagGroup[]>(() => {
     const map = new Map<string, IEndpointInfo[]>();
-    for (const ep of endpointsRef.value) {
+    for (const ep of [...endpointsRef.value, ...(missingEndpointsRef?.value ?? [])]) {
       const key = ep.tag || "";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(ep);
@@ -31,15 +36,19 @@ export function useEndpointFilter(
   /** 搜索后的 tag 分组（接口按 summary/path/tag 命中搜索词） */
   const filteredTags = computed<TagGroup[]>(() => {
     const q = searchTextDebounced.value.trim().toLowerCase();
-    if (!q) return tagGroups.value;
     return tagGroups.value
       .map((t) => ({
         name: t.name,
         endpoints: t.endpoints.filter(
           (e) =>
-            (e.summary || "").toLowerCase().includes(q) ||
-            e.path.toLowerCase().includes(q) ||
-            t.name.toLowerCase().includes(q),
+            (!showOnlyNewRef?.value ||
+              newEndpointKeysRef?.value.has(`${e.method.toUpperCase()}\u0000${e.path}`)) &&
+            (!showOnlyMissingRef?.value ||
+              missingEndpointKeysRef?.value.has(`${e.method.toUpperCase()}\u0000${e.path}`)) &&
+            (!q ||
+              (e.summary || "").toLowerCase().includes(q) ||
+              e.path.toLowerCase().includes(q) ||
+              t.name.toLowerCase().includes(q)),
         ),
       }))
       .filter((t) => t.endpoints.length > 0);

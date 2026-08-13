@@ -22,20 +22,38 @@
               type="info"
               >v{{ doc.info.version }}</el-tag
             >
+            <el-tag v-if="newEndpointKeys.length > 0" size="small" type="success"
+              >{{ docViewerUi.newEndpointCount }} {{ newEndpointKeys.length }}</el-tag
+            >
+            <el-tag v-if="missingEndpointKeys.length > 0" size="small" type="danger"
+              >{{ docViewerUi.missingEndpointCount }} {{ missingEndpointKeys.length }}</el-tag
+            >
           </div>
         </div>
-        <el-input
-          :model-value="searchText"
-          @update:model-value="(v: string) => emit('update:searchText', v)"
-          placeholder="搜索接口 (summary/path)"
-          size="default"
-          clearable
-          style="width: 240px"
-        >
-          <template #prefix
-            ><el-icon><Search /></el-icon
-          ></template>
-        </el-input>
+        <div class="header-controls">
+          <el-checkbox
+            v-if="newEndpointKeys.length > 0"
+            :model-value="showOnlyNew"
+            @update:model-value="(value: boolean) => emit('update:showOnlyNew', value)"
+          >{{ docViewerUi.showOnlyNew }}</el-checkbox>
+          <el-checkbox
+            v-if="missingEndpointKeys.length > 0"
+            :model-value="showOnlyMissing"
+            @update:model-value="(value: boolean) => emit('update:showOnlyMissing', value)"
+          >{{ docViewerUi.showOnlyMissing }}</el-checkbox>
+          <el-input
+            :model-value="searchText"
+            @update:model-value="(v: string) => emit('update:searchText', v)"
+            placeholder="搜索接口 (summary/path)"
+            size="default"
+            clearable
+            class="endpoint-search"
+          >
+            <template #prefix
+              ><el-icon><Search /></el-icon
+            ></template>
+          </el-input>
+        </div>
       </div>
     </template>
 
@@ -79,6 +97,8 @@
               }}</span>
               <span class="ep-summary">{{ ep.summary || ep.path }}</span>
               <span class="ep-path">{{ ep.path }}</span>
+              <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
+              <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
               <el-dropdown trigger="hover" @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)">
                 <el-button size="small" link type="primary" class="ep-copy" @click.stop>
                   <el-icon><CopyDocument /></el-icon>
@@ -162,6 +182,11 @@ const props = defineProps<{
   selectedTag: string;
   searchText: string;
   showOnlyMine: boolean;
+  newEndpointKeys: string[];
+  missingEndpointKeys: string[];
+  missingEndpoints: IEndpointInfo[];
+  showOnlyNew: boolean;
+  showOnlyMissing: boolean;
   rawJson: string;
   highlightLines: string[];
   tagGroups: TagGroup[];
@@ -175,27 +200,55 @@ const emit = defineEmits<{
   (e: "update:expandedTags", v: Record<string, boolean>): void;
   (e: "update:searchText", v: string): void;
   (e: "update:showOnlyMine", v: boolean): void;
+  (e: "update:showOnlyNew", v: boolean): void;
+  (e: "update:showOnlyMissing", v: boolean): void;
 }>();
 
 const endpointCount = computed(() => props.endpoints.length);
 const { copyEndpoint } = useEndpointCopy();
+const newEndpointKeySet = computed(() => new Set(props.newEndpointKeys));
+const missingEndpointKeySet = computed(() => new Set(props.missingEndpointKeys));
 
-/** 按 searchText 过滤后的 tag 分组 */
+/** 将当前接口和基线缺失接口合并为同一套分组，供列表和筛选复用。 */
+const displayTagGroups = computed<TagGroup[]>(() => {
+  const groups = new Map<string, IEndpointInfo[]>();
+  for (const group of props.tagGroups) groups.set(group.name, [...group.endpoints]);
+  for (const endpoint of props.missingEndpoints) {
+    const endpoints = groups.get(endpoint.tag) ?? [];
+    endpoints.push(endpoint);
+    groups.set(endpoint.tag, endpoints);
+  }
+  return Array.from(groups.entries()).map(([name, endpoints]) => ({ name, endpoints }));
+});
+
+/** 按搜索关键字与新增筛选条件过滤接口分组。 */
 const filteredTags = computed<TagGroup[]>(() => {
   const q = props.searchText.trim().toLowerCase();
-  if (!q) return props.tagGroups;
-  return props.tagGroups
+  return displayTagGroups.value
     .map((t) => ({
       name: t.name,
       endpoints: t.endpoints.filter(
         (e) =>
-          (e.summary || "").toLowerCase().includes(q) ||
-          e.path.toLowerCase().includes(q) ||
-          t.name.toLowerCase().includes(q),
+          (!props.showOnlyNew || isNewEndpoint(e)) &&
+          (!props.showOnlyMissing || isMissingEndpoint(e)) &&
+          (!q ||
+            (e.summary || "").toLowerCase().includes(q) ||
+            e.path.toLowerCase().includes(q) ||
+            t.name.toLowerCase().includes(q)),
       ),
     }))
     .filter((t) => t.endpoints.length > 0);
 });
+
+/** 判断接口是否属于本次刷新中新出现的接口。 */
+function isNewEndpoint(endpoint: IEndpointInfo): boolean {
+  return newEndpointKeySet.value.has(`${endpoint.method.toUpperCase()}\u0000${endpoint.path}`);
+}
+
+/** 判断接口是否存在于上次基线、但已从当前文档移除。 */
+function isMissingEndpoint(endpoint: IEndpointInfo): boolean {
+  return missingEndpointKeySet.value.has(`${endpoint.method.toUpperCase()}\u0000${endpoint.path}`);
+}
 
 function methodClass(method: string) {
   return ["method-tag", `method-${method.toLowerCase()}`];
@@ -235,6 +288,15 @@ function copyRawJson(): void {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+}
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.endpoint-search {
+  width: 240px;
 }
 .card-title {
   font-size: 14px;

@@ -29,6 +29,7 @@
           :has-error="hasError"
           :error-msg="errorMsg"
           :has-loaded="!!docStore.doc"
+          :source-file-name="docStore.sourceFileName"
           :url-history="urlHistory"
           :json-history="jsonHistory"
           :custom-domain="customDomain"
@@ -72,6 +73,13 @@
           :search-text="searchText"
           @update:search-text="(v) => (searchText = v)"
           :show-only-mine="showOnlyMine"
+          :new-endpoint-keys="newEndpointKeys"
+          :missing-endpoint-keys="missingEndpointKeys"
+          :missing-endpoints="missingEndpoints"
+          :show-only-new="showOnlyNewEndpoints"
+          @update:show-only-new="(value) => { showOnlyNewEndpoints = value; if (value) showOnlyMissingEndpoints = false }"
+          :show-only-missing="showOnlyMissingEndpoints"
+          @update:show-only-missing="(value) => { showOnlyMissingEndpoints = value; if (value) showOnlyNewEndpoints = false }"
           :raw-json="docStore.rawJson"
           :highlight-lines="highlightLines"
           :tag-groups="tagGroups"
@@ -89,6 +97,7 @@ import { Delete } from "@element-plus/icons-vue";
 import router from "@/router";
 import { useDocLoader } from "@/composables/useDocLoader";
 import type { JsonParseHistoryItem } from "@/composables/useDocLoader";
+import { getFileEndpointSnapshotKey } from "@/core/endpointDiff";
 import DocLoaderCard from "@/components/docviewer/DocLoaderCard.vue";
 import DocViewerCard from "@/components/docviewer/DocViewerCard.vue";
 // 仅用主题色（.hljs-attr / .hljs-string / .hljs-number / .hljs-literal）
@@ -108,6 +117,11 @@ const {
   selectedTag,
   searchText,
   showOnlyMine,
+  newEndpointKeys,
+  missingEndpointKeys,
+  missingEndpoints,
+  showOnlyNewEndpoints,
+  showOnlyMissingEndpoints,
   highlightLines,
   tagGroups,
   urlHistory,
@@ -186,7 +200,7 @@ function onFormatJson() {
  * 这里只负责解析：把读到的 text 喂给 docStore。
  */
 function onFileLoaded(payload: { name: string; text: string; size: number }) {
-  loadFromJson(payload.text, payload.name);
+  loadFromJson(payload.text, payload.name, getFileEndpointSnapshotKey(payload.name));
 }
 
 /** 点击历史记录后重新解析，成功时进入代码生成页面。 */

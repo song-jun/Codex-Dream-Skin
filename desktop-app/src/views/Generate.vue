@@ -34,11 +34,17 @@
             :select-all="selectAll"
             :filtered-tags="filteredTags"
             :filtered-endpoint-count="filteredEndpointCount"
+            :new-endpoint-keys="docStore.newEndpointKeys"
+            :missing-endpoint-keys="docStore.missingEndpointKeys"
+            :show-only-new="docStore.showOnlyNewEndpoints"
+            :show-only-missing="docStore.showOnlyMissingEndpoints"
             @update:mode="(v) => (mode = v)"
             @update:search-text="(v) => (searchText = v)"
             @update:selected="(v) => (selectedEndpoints = v)"
             @update:expanded-tags="(v) => (expandedTags = v)"
             @update:select-all="(v) => (selectAll = v)"
+            @update:show-only-new="(value) => { docStore.showOnlyNewEndpoints = value; if (value) docStore.showOnlyMissingEndpoints = false }"
+            @update:show-only-missing="(value) => { docStore.showOnlyMissingEndpoints = value; if (value) docStore.showOnlyNewEndpoints = false }"
           />
         </el-col>
         <el-col :span="15" class="generate-col">
@@ -147,6 +153,11 @@ onMounted(() => {
 const { filteredTags, filteredCount: filteredEndpointCount } = useEndpointFilter(
   computed(() => docStore.endpoints),
   searchTextDebounced,
+  computed(() => new Set(docStore.newEndpointKeys)),
+  computed(() => docStore.showOnlyNewEndpoints),
+  computed(() => docStore.missingEndpoints),
+  computed(() => new Set(docStore.missingEndpointKeys)),
+  computed(() => docStore.showOnlyMissingEndpoints),
 );
 const { isSaving, onSave, onSaveAll } = useExport({
   selectedEndpoints,

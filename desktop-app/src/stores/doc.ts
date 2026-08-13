@@ -8,9 +8,15 @@ import { formatJson } from '@/utils/formatJson';
 export const useDocStore = defineStore('doc', () => {
   const doc = ref<IOpenAPIDocument | null>(null);
   const sourceUrl = ref<string>('');
+  const sourceFileName = ref<string>('');
   const rawJson = ref<string>('');
   const loading = ref(false);
   const error = ref<string>('');
+  const newEndpointKeys = ref<string[]>([]);
+  const missingEndpointKeys = ref<string[]>([]);
+  const missingEndpoints = ref<IEndpointInfo[]>([]);
+  const showOnlyNewEndpoints = ref(false);
+  const showOnlyMissingEndpoints = ref(false);
 
   const endpoints = computed<IEndpointInfo[]>(() => (doc.value ? parseEndpoints(doc.value) : []));
   const tags = computed<string[]>(() => (doc.value ? extractTags(doc.value) : []));
@@ -33,6 +39,7 @@ export const useDocStore = defineStore('doc', () => {
       }
       doc.value = res.data;
       sourceUrl.value = url;
+      sourceFileName.value = '';
       rawJson.value = formatJson(res.data);
       return true;
     } catch (e) {
@@ -43,7 +50,13 @@ export const useDocStore = defineStore('doc', () => {
     }
   }
 
-  function loadFromJson(json: string) {
+  /**
+   * 解析 OpenAPI JSON，并保留来自本地文件时的文件名供工作台展示。
+   * @param json 待解析的 OpenAPI JSON 文本。
+   * @param fileName 本地导入文件名；手动编辑或历史记录解析时不传。
+   * @returns 是否成功解析为 OpenAPI 3.x 文档。
+   */
+  function loadFromJson(json: string, fileName?: string) {
     if (!json || !json.trim()) {
       error.value = '请粘贴或输入 OpenAPI JSON';
       return false;
@@ -61,6 +74,7 @@ export const useDocStore = defineStore('doc', () => {
       }
       doc.value = parsed;
       sourceUrl.value = '';
+      sourceFileName.value = fileName?.trim() || '';
       rawJson.value = formatJson(parsed);
       error.value = '';
       return true;
@@ -70,23 +84,54 @@ export const useDocStore = defineStore('doc', () => {
     }
   }
 
+  /**
+   * 将已校验的快照文档恢复到工作区，不重新触发接口差异对比。
+   * @param document 从接口快照读取的完整 OpenAPI 文档。
+   * @param fileName 本地文件快照的显示名称；远程快照不传。
+   */
+  function loadSnapshot(document: IOpenAPIDocument, fileName?: string) {
+    doc.value = document;
+    sourceUrl.value = '';
+    sourceFileName.value = fileName?.trim() || '';
+    rawJson.value = formatJson(document);
+    error.value = '';
+    newEndpointKeys.value = [];
+    missingEndpointKeys.value = [];
+    missingEndpoints.value = [];
+    showOnlyNewEndpoints.value = false;
+    showOnlyMissingEndpoints.value = false;
+  }
+
   function clear() {
     doc.value = null;
     sourceUrl.value = '';
+    sourceFileName.value = '';
     rawJson.value = '';
     error.value = '';
+    newEndpointKeys.value = [];
+    missingEndpointKeys.value = [];
+    missingEndpoints.value = [];
+    showOnlyNewEndpoints.value = false;
+    showOnlyMissingEndpoints.value = false;
   }
 
   return {
     doc,
     sourceUrl,
+    sourceFileName,
     rawJson,
     loading,
     error,
+    newEndpointKeys,
+    missingEndpointKeys,
+    missingEndpoints,
+    showOnlyNewEndpoints,
+    showOnlyMissingEndpoints,
     endpoints,
     tags,
     loadFromUrl,
     loadFromJson,
+    loadSnapshot,
     clear
   };
 });

@@ -3,6 +3,9 @@
     <template #header>
       <div class="card-header">
         <span class="card-title">加载文档</span>
+        <span v-if="sourceFileName" class="source-file-name" :title="sourceFileName">
+          {{ sourceFileName }}
+        </span>
         <el-tag v-if="hasLoaded" size="small" type="success">
           <el-icon><Check /></el-icon>
           <span>已加载</span>
@@ -191,6 +194,7 @@ const props = defineProps<{
   hasError: boolean;
   errorMsg: string;
   hasLoaded: boolean;
+  sourceFileName: string;
   urlHistory: string[];
   jsonHistory: JsonParseHistoryItem[];
   customDomain: string;
@@ -387,9 +391,19 @@ defineExpose({ getValue, setValue, clearEditor });
   width: 100%;
 }
 .card-title {
+  flex-shrink: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary, #111827);
+}
+.source-file-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--el-color-primary, #409eff);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .card-toolbar :deep(.el-tabs__header) {
   margin: 0;

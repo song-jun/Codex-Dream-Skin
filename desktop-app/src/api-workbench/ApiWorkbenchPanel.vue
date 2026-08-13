@@ -27,10 +27,14 @@
             <el-icon><Promotion /></el-icon>
             <span>调用接口</span>
           </el-menu-item>
+          <el-menu-item index="/api-workbench/snapshots">
+            <el-icon><Files /></el-icon>
+            <span>接口快照</span>
+          </el-menu-item>
         </el-menu>
         <div class="sidebar-context">
           <span class="context-label">当前文档</span>
-          <strong>{{ docStore.doc?.info?.title || "尚未加载" }}</strong>
+          <strong>{{ docStore.sourceFileName || docStore.doc?.info?.title || "尚未加载" }}</strong>
           <span class="context-meta">{{ docStore.doc ? `${docStore.endpoints.length} 个接口` : "等待 OpenAPI 文档" }}</span>
         </div>
         <div class="aside-footer">
@@ -75,7 +79,7 @@
               </div>
             </transition>
             <el-tag v-if="docStore.doc" type="success" size="small">
-              文档已加载：{{ docStore.doc.info?.title || "N/A" }}
+              文档已加载：{{ docStore.sourceFileName || docStore.doc.info?.title || "N/A" }}
             </el-tag>
             <el-tag v-else type="info" size="small">未加载文档</el-tag>
           </div>
@@ -101,6 +105,7 @@ import { useDocStore } from "@/stores/doc";
 import { useExportStore } from "@/stores/export";
 import {
   Document,
+  Files,
   Loading,
   MagicStick,
   Monitor,

@@ -9,12 +9,14 @@
  *       loadFromUrl）被调用时接收或返回文本，不参与每次按键的响应式追踪。
  */
 import { ref, computed, watch, onBeforeUnmount } from "vue";
+import { storeToRefs } from "pinia";
 import { ElMessage } from "element-plus";
 import { useRoute } from "vue-router";
 import { useDocStore } from "@/stores/doc";
 import { useConfigStore } from "@/stores/config";
 import { DEFAULT_API_URL } from "@/core/env";
 import { copyToClipboard } from "@/utils/clipboard";
+import { getFileEndpointSnapshotKey, updateEndpointSnapshot } from "@/core/endpointDiff";
 import { formatJson } from "@/utils/formatJson";
 import { recordError, showFriendlyError } from "@/utils/errorRecords";
 import {
@@ -129,6 +131,13 @@ function isValidUrl(s: string) {
 export function useDocLoader() {
   const route = useRoute();
   const docStore = useDocStore();
+  const {
+    newEndpointKeys,
+    missingEndpointKeys,
+    missingEndpoints,
+    showOnlyNewEndpoints,
+    showOnlyMissingEndpoints,
+  } = storeToRefs(docStore);
   const configStore = useConfigStore();
 
   // ===== 加载卡片本地状态 =====
@@ -327,7 +336,22 @@ export function useDocLoader() {
     const ok = await docStore.loadFromUrl(u);
     if (ok) {
       friendlyErrorMsg.value = "";
-      ElMessage.success("文档加载成功");
+      const serviceUrl = docStore.sourceUrl;
+      const diff = serviceUrl && docStore.doc
+        ? updateEndpointSnapshot(serviceUrl, docStore.endpoints, docStore.doc)
+        : null;
+      newEndpointKeys.value = diff?.newKeys ?? [];
+      missingEndpointKeys.value = diff?.missingKeys ?? [];
+      missingEndpoints.value = diff?.missingEndpoints ?? [];
+      showOnlyNewEndpoints.value = newEndpointKeys.value.length > 0;
+      showOnlyMissingEndpoints.value = !showOnlyNewEndpoints.value && missingEndpointKeys.value.length > 0;
+      ElMessage.success(
+        newEndpointKeys.value.length > 0
+          ? `文档加载成功，发现 ${newEndpointKeys.value.length} 个新增接口`
+          : missingEndpointKeys.value.length > 0
+            ? `文档加载成功，发现 ${missingEndpointKeys.value.length} 个缺失接口`
+          : "文档加载成功",
+      );
     } else {
       friendlyErrorMsg.value = "文档加载失败，请检查地址后重试。";
       showFriendlyError(docStore.error || "加载失败", "加载 OpenAPI 文档", friendlyErrorMsg.value);
@@ -375,13 +399,33 @@ export function useDocLoader() {
     }
   }
 
-  function loadFromJson(text: string, sourceName?: string) {
+  /**
+   * 解析 JSON 文档；仅本地文件导入传入 snapshotKey，以文件名追踪新增接口。
+   * @param text 待解析的 OpenAPI JSON 文本。
+   * @param sourceName 用于 JSON 历史显示的来源名称。
+   * @param snapshotKey 本地文件的稳定对比键，未提供时不执行差异追踪。
+   */
+  function loadFromJson(text: string, sourceName?: string, snapshotKey?: string) {
     friendlyErrorMsg.value = "";
-    const ok = docStore.loadFromJson(text);
+    const ok = docStore.loadFromJson(text, snapshotKey ? sourceName : undefined);
     if (ok) {
       friendlyErrorMsg.value = "";
+      const diff = snapshotKey && docStore.doc
+        ? updateEndpointSnapshot(snapshotKey, docStore.endpoints, docStore.doc)
+        : null;
+      newEndpointKeys.value = diff?.newKeys ?? [];
+      missingEndpointKeys.value = diff?.missingKeys ?? [];
+      missingEndpoints.value = diff?.missingEndpoints ?? [];
+      showOnlyNewEndpoints.value = newEndpointKeys.value.length > 0;
+      showOnlyMissingEndpoints.value = !showOnlyNewEndpoints.value && missingEndpointKeys.value.length > 0;
       recordJsonHistory(sourceName);
-      ElMessage.success("JSON 解析成功");
+      ElMessage.success(
+        newEndpointKeys.value.length > 0
+          ? `JSON 解析成功，发现 ${newEndpointKeys.value.length} 个新增接口`
+          : missingEndpointKeys.value.length > 0
+            ? `JSON 解析成功，发现 ${missingEndpointKeys.value.length} 个缺失接口`
+          : "JSON 解析成功",
+      );
     } else {
       friendlyErrorMsg.value = "JSON 解析失败，请检查文档格式后重试。";
       showFriendlyError(docStore.error || "解析失败", "解析 OpenAPI JSON", friendlyErrorMsg.value);
@@ -488,6 +532,11 @@ export function useDocLoader() {
     selectedTag,
     searchText,
     showOnlyMine,
+    newEndpointKeys,
+    missingEndpointKeys,
+    missingEndpoints,
+    showOnlyNewEndpoints,
+    showOnlyMissingEndpoints,
     highlightLines,
     tagGroups,
     selectedEndpoint,

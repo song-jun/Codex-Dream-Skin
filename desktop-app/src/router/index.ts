@@ -33,6 +33,12 @@ const router = createRouter({
       component: () => import("../views/Invoke.vue"),
       meta: { title: "调用接口" },
     },
+    {
+      path: "/api-workbench/snapshots",
+      name: "api-workbench-snapshots",
+      component: () => import("../views/EndpointSnapshots.vue"),
+      meta: { title: "接口快照" },
+    },
   ],
 });
 

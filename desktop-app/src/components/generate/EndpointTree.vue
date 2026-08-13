@@ -3,7 +3,11 @@
     <template #header>
       <div class="card-header">
         <span class="card-title">选择接口</span>
-        <el-tag size="small" type="info">{{ filteredTags.length }} 个分组 · 共 {{ filteredEndpointCount }} 个</el-tag>
+        <div class="header-meta">
+          <el-tag v-if="newEndpointKeys.length > 0" size="small" type="success">{{ docViewerUi.newEndpointCount }} {{ newEndpointKeys.length }}</el-tag>
+          <el-tag v-if="missingEndpointKeys.length > 0" size="small" type="danger">{{ docViewerUi.missingEndpointCount }} {{ missingEndpointKeys.length }}</el-tag>
+          <el-tag size="small" type="info">{{ filteredTags.length }} 个分组 · 共 {{ filteredEndpointCount }} 个</el-tag>
+        </div>
       </div>
     </template>
 
@@ -28,6 +32,16 @@
     </div>
 
     <div class="card-toolbar card-toolbar-row">
+      <el-checkbox
+        v-if="newEndpointKeys.length > 0"
+        :model-value="showOnlyNew"
+        @update:model-value="(value: boolean) => $emit('update:showOnlyNew', value)"
+      >{{ docViewerUi.showOnlyNew }}</el-checkbox>
+      <el-checkbox
+        v-if="missingEndpointKeys.length > 0"
+        :model-value="showOnlyMissing"
+        @update:model-value="(value: boolean) => $emit('update:showOnlyMissing', value)"
+      >{{ docViewerUi.showOnlyMissing }}</el-checkbox>
       <el-checkbox
         v-if="mode === 'module'"
         :model-value="isAllFilteredSelected"
@@ -67,6 +81,8 @@
               >
                 <span :class="methodClass(ep.method)">{{ ep.method.toUpperCase() }}</span>
                 <span class="ep-summary">{{ ep.summary || ep.path }}</span>
+                <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
+                <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
                 <el-dropdown
                   trigger="hover"
                   @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)"
@@ -95,6 +111,8 @@
                   <input type="checkbox" class="ep-checkbox" :checked="isSelected(ep)" @change="toggleSelect(ep)" />
                   <span :class="methodClass(ep.method)">{{ ep.method.toUpperCase() }}</span>
                   <span class="ep-summary">{{ ep.summary || ep.path }}</span>
+                  <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
+                  <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
                   <el-dropdown
                     trigger="hover"
                     @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)"
@@ -136,6 +154,7 @@ import { useDocStore } from "@/stores/doc";
 import { methodClass } from "@/types/http";
 import { batchUpdateSet } from "@/utils/batchUpdate";
 import { useEndpointCopy } from "@/composables/useEndpointCopy";
+import { docViewerUi } from "@/components/docviewer/docViewerUi";
 import {
   endpointCopyOptions,
   type EndpointCopyAction,
@@ -151,6 +170,10 @@ const props = defineProps<{
   selectAll: boolean;
   filteredTags: TagGroup[];
   filteredEndpointCount: number;
+  newEndpointKeys: string[];
+  missingEndpointKeys: string[];
+  showOnlyNew: boolean;
+  showOnlyMissing: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -159,10 +182,24 @@ const emit = defineEmits<{
   (e: "update:selected", v: IEndpointInfo[]): void;
   (e: "update:expandedTags", v: Record<string, boolean>): void;
   (e: "update:selectAll", v: boolean): void;
+  (e: "update:showOnlyNew", v: boolean): void;
+  (e: "update:showOnlyMissing", v: boolean): void;
 }>();
 
 const docStore = useDocStore();
 const { copyEndpoint } = useEndpointCopy();
+const newEndpointKeySet = computed(() => new Set(props.newEndpointKeys));
+const missingEndpointKeySet = computed(() => new Set(props.missingEndpointKeys));
+
+/** 判断接口是否属于本次刷新中新出现的接口。 */
+function isNewEndpoint(endpoint: IEndpointInfo): boolean {
+  return newEndpointKeySet.value.has(`${endpoint.method.toUpperCase()}\u0000${endpoint.path}`);
+}
+
+/** 判断接口是否仅存在于上次基线中。 */
+function isMissingEndpoint(endpoint: IEndpointInfo): boolean {
+  return missingEndpointKeySet.value.has(`${endpoint.method.toUpperCase()}\u0000${endpoint.path}`);
+}
 
 function isSelected(ep: IEndpointInfo): boolean {
   return props.selected.some((s) => s.path === ep.path && s.method === ep.method);
@@ -260,7 +297,8 @@ async function onCopyCommand(ep: IEndpointInfo, action: unknown) {
 .endpoint-tree { height: 100%; display: flex; flex-direction: column; }
 .endpoint-tree :deep(.el-card__header) { padding: 12px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
 .endpoint-tree :deep(.el-card__body) { flex: 1; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-.card-header { display: flex; align-items: center; justify-content: space-between; }
+.card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.header-meta { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
 .card-title { font-size: 14px; font-weight: 600; color: var(--text-primary, #111827); }
 .card-toolbar { padding: 8px 16px; border-bottom: 1px solid var(--border-light, #f1f5f9); }
 .card-toolbar-row { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
@@ -275,12 +313,12 @@ async function onCopyCommand(ep: IEndpointInfo, action: unknown) {
 .tag-name { flex: 1; font-weight: 500; font-size: 13px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag-endpoints { padding: 6px 12px 8px; background: #fff; }
 .endpoint-vlist-wrap { height: 240px; border: 1px solid var(--border-light, #f1f5f9); border-radius: 4px; }
-.endpoint-row-v { display: grid; grid-template-columns: 14px 48px minmax(0, 1fr) max-content; align-items: center; gap: 8px; width: 100%; cursor: pointer; }
+.endpoint-row-v { display: grid; grid-template-columns: 14px 48px minmax(0, 1fr) max-content max-content; align-items: center; gap: 8px; width: 100%; cursor: pointer; }
 .endpoint-row-v:hover { background: #f8fafc; }
 .ep-checkbox { flex-shrink: 0; width: 14px; height: 14px; cursor: pointer; }
 .ep-copy { min-width: 52px; margin: 0; font-size: 12px; }
 .endpoint-item { display: flex !important; align-items: center; gap: 8px; margin-bottom: 4px; white-space: normal; height: auto !important; padding: 4px 0; width: 100%; }
-.endpoint-item :deep(.el-checkbox__label) { display: grid; grid-template-columns: 48px minmax(0, 1fr) max-content; align-items: center; width: auto; min-width: 0; flex: 1; gap: 8px; white-space: normal; }
+.endpoint-item :deep(.el-checkbox__label) { display: grid; grid-template-columns: 48px minmax(0, 1fr) max-content max-content; align-items: center; width: auto; min-width: 0; flex: 1; gap: 8px; white-space: normal; }
 .endpoint-item :deep(.el-checkbox__label > .el-dropdown) { justify-self: end; }
 .method-tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; color: #fff; min-width: 48px; text-align: center; flex-shrink: 0; }
 /* .method-get/post/put/patch/delete 颜色统一在 styles/main.css 中定义（设计系统） */
