@@ -33,7 +33,11 @@
       </el-select>
     </el-form-item>
     <div class="custom-swagger-actions">
-      <el-button type="primary" :loading="isFetching" @click="emit('fetchServices')">
+      <el-button
+        type="primary"
+        :loading="isFetching"
+        @click="emit('fetchServices')"
+      >
         <el-icon><Connection /></el-icon>
         <span>{{ customSwaggerLoaderUi.fetchServices }}</span>
       </el-button>
@@ -47,7 +51,11 @@
         <el-icon><Download /></el-icon>
         <span>{{ customSwaggerLoaderUi.loadDocument }}</span>
       </el-button>
-      <el-button type="primary" :disabled="!hasLoaded" @click="emit('generate')">
+      <el-button
+        type="primary"
+        :disabled="!hasLoaded"
+        @click="emit('generate')"
+      >
         <el-icon><MagicStick /></el-icon>
         <span>{{ customSwaggerLoaderUi.generateCode }}</span>
       </el-button>
@@ -87,8 +95,20 @@ const emit = defineEmits<{
 }>();
 </script>
 
-<style scoped>
-.custom-swagger-form { max-width: 560px; }
-.custom-swagger-service { width: 100%; }
-.custom-swagger-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+<style scoped lang="scss">
+.custom-swagger-form {
+  max-width: 560px;
+}
+.custom-swagger-service {
+  width: 100%;
+}
+.custom-swagger-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  .el-button + .el-button {
+    margin-left: 0;
+  }
+}
 </style>

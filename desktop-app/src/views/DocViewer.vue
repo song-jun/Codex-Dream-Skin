@@ -229,10 +229,13 @@ watch(
 );
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .doc-main {
   height: calc(100% - 80px);
   min-height: 0;
+  :deep(.el-tabs__item) {
+    padding: 0 10px;
+  }
 }
 .doc-col {
   height: 100%;

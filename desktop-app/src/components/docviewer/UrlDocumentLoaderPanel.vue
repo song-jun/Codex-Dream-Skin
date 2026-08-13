@@ -50,9 +50,11 @@
       </div>
     </el-form-item>
     <el-form-item>
-      <el-button type="primary" :loading="isLoading" @click="emit('load')"><el-icon><Download /></el-icon><span>拉取文档</span></el-button>
-      <el-button type="primary" :loading="isLoading" :disabled="!hasLoaded" @click="emit('generate')"><el-icon><MagicStick /></el-icon><span>生成代码</span></el-button>
-      <el-button :disabled="!urlValue" @click="emit('update:urlValue', '')"><el-icon><Refresh /></el-icon><span>清空</span></el-button>
+      <div class="url-actions">
+        <el-button type="primary" :loading="isLoading" @click="emit('load')"><el-icon><Download /></el-icon><span>拉取文档</span></el-button>
+        <el-button type="primary" :loading="isLoading" :disabled="!hasLoaded" @click="emit('generate')"><el-icon><MagicStick /></el-icon><span>生成代码</span></el-button>
+        <el-button :disabled="!urlValue" @click="emit('update:urlValue', '')"><el-icon><Refresh /></el-icon><span>清空</span></el-button>
+      </div>
     </el-form-item>
   </el-form>
 </template>
@@ -82,7 +84,7 @@ const emit = defineEmits<{
 }>();
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .url-input-wrap { display: flex; align-items: center; width: 100%; gap: 8px; }
 .url-select { flex: 1; min-width: 0; }
 .url-history-item { display: inline-flex; align-items: center; width: 100%; max-width: 480px; gap: 6px; }
@@ -91,4 +93,6 @@ const emit = defineEmits<{
 .empty-favorite-icon, .url-history-del { color: #c0c4cc; }
 .url-history-del { cursor: pointer; }
 .url-history-del:hover, .clear-history { color: #f56c6c; }
+.url-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.url-actions .el-button+.el-button { margin-left: 0; }
 </style>

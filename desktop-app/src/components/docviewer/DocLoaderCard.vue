@@ -13,7 +13,7 @@
 
     <div class="card-toolbar">
       <el-tabs v-model="tabLocal">
-        <el-tab-pane label="自定义" name="custom" />
+        <el-tab-pane label="Swagger 自定义" name="custom" />
         <el-tab-pane label="JSON 编辑" name="json" />
         <el-tab-pane label="历史 JSON" name="history" />
         <el-tab-pane label="URL 拉取" name="url" />
@@ -362,7 +362,7 @@ function clearEditor(): void {
 defineExpose({ getValue, setValue, clearEditor });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .card-full {
   height: 100%;
   display: flex;
@@ -507,6 +507,9 @@ defineExpose({ getValue, setValue, clearEditor });
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  .el-button+.el-button {
+    margin-left: 0;
+  }
 }
 .json-drop-zone {
   position: relative;
