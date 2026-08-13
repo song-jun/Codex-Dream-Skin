@@ -140,6 +140,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Delete, Plus, RefreshLeft } from '@element-plus/icons-vue';
 import { useConfigStore } from '@/stores/config';
 import { reloadEnv } from '@/core/env';
+import { recordError } from '@/utils/errorRecords';
 
 // localStorage 集中存储 key（避免 OPENAPI_* 污染顶层 namespace）
 const ENV_STORAGE_KEY = 'apiWorkbench:env';
@@ -347,11 +348,13 @@ async function onSaveEnv() {
       emit('saved');
     } else {
       stopTransitionLoading();
-      envError.value = res?.error || '保存失败';
+      recordError(res?.error || '保存失败', '保存环境变量');
+      envError.value = '保存失败，请检查配置后重试。';
     }
   } catch (err) {
     stopTransitionLoading();
-    envError.value = err instanceof Error ? err.message : String(err);
+    recordError(err, '保存环境变量');
+    envError.value = '保存失败，请稍后重试。';
   } finally {
     envSaving.value = false;
   }
@@ -424,10 +427,12 @@ async function onResetEnv() {
       visible.value = false;
       emit('saved');
     } else {
-      envError.value = res.error || '重置失败';
+      recordError(res.error || '重置失败', '重置环境变量');
+      envError.value = '重置失败，请稍后重试。';
     }
   } catch (err) {
-    envError.value = err instanceof Error ? err.message : String(err);
+    recordError(err, '重置环境变量');
+    envError.value = '重置失败，请稍后重试。';
   } finally {
     envSaving.value = false;
   }

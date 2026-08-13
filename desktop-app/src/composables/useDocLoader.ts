@@ -16,6 +16,7 @@ import { useConfigStore } from "@/stores/config";
 import { DEFAULT_API_URL } from "@/core/env";
 import { copyToClipboard } from "@/utils/clipboard";
 import { formatJson } from "@/utils/formatJson";
+import { recordError, showFriendlyError } from "@/utils/errorRecords";
 import type { IEndpointInfo, IOpenAPIDocument } from "@/core/types";
 
 export type DocViewTab = "list" | "raw";
@@ -125,6 +126,7 @@ export function useDocLoader() {
 
   // ===== 加载卡片本地状态 =====
   const urlValue = ref<string>(DEFAULT_API_URL[0] || "");
+  const friendlyErrorMsg = ref<string>("");
   // 注：JSON 编辑器内容由 DocLoaderCard 完全非受控管理（getValue/setValue），
   //     composable 不持有任何 draft 状态，避免每次按键触发响应式追踪
   const tab = ref<DocTab>("json");
@@ -308,22 +310,28 @@ export function useDocLoader() {
   // ===== 加载 / 解析 / 格式化 =====
   async function loadFromUrl(url?: string) {
     const u = url ?? urlValue.value;
+    friendlyErrorMsg.value = "";
     const ok = await docStore.loadFromUrl(u);
     if (ok) {
+      friendlyErrorMsg.value = "";
       ElMessage.success("文档加载成功");
     } else {
-      ElMessage.error(docStore.error || "加载失败");
+      friendlyErrorMsg.value = "文档加载失败，请检查地址后重试。";
+      showFriendlyError(docStore.error || "加载失败", "加载 OpenAPI 文档", friendlyErrorMsg.value);
     }
     return ok;
   }
 
   function loadFromJson(text: string, sourceName?: string) {
+    friendlyErrorMsg.value = "";
     const ok = docStore.loadFromJson(text);
     if (ok) {
+      friendlyErrorMsg.value = "";
       recordJsonHistory(sourceName);
       ElMessage.success("JSON 解析成功");
     } else {
-      ElMessage.error(docStore.error || "解析失败");
+      friendlyErrorMsg.value = "JSON 解析失败，请检查文档格式后重试。";
+      showFriendlyError(docStore.error || "解析失败", "解析 OpenAPI JSON", friendlyErrorMsg.value);
     }
     return ok;
   }
@@ -374,8 +382,8 @@ export function useDocLoader() {
       const parsed = JSON.parse(text);
       return formatJson(parsed);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      ElMessage.error("JSON 不合法：" + msg);
+      recordError(e, "格式化 OpenAPI JSON");
+      ElMessage.error("JSON 格式不正确，请检查内容后重试。");
       return null;
     }
   }
@@ -419,8 +427,8 @@ export function useDocLoader() {
     presetUrls,
     isLoading: computed(() => docStore.loading),
     isParsing: computed(() => docStore.loading),
-    hasError: computed(() => !!docStore.error),
-    errorMsg: computed(() => docStore.error || ""),
+    hasError: computed(() => !!friendlyErrorMsg.value),
+    errorMsg: computed(() => friendlyErrorMsg.value),
     activeTab,
     listCollapseAll,
     expandedTags,

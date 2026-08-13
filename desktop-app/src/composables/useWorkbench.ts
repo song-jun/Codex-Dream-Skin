@@ -25,8 +25,9 @@ import type {
   ThemeRecord,
 } from "../types";
 import { analyzeImagePalette, type ImagePalette } from "../image-palette";
+import { recordError, showFriendlyError } from "../utils/errorRecords";
 
-type ViewName = "overview" | "sessions" | "history";
+type ViewName = "overview" | "sessions" | "history" | "errors";
 type ThemeMode = "light" | "dark";
 type CodexSessionGroup = {
   key: string;
@@ -430,7 +431,7 @@ export function createWorkbench(): WorkbenchContext {
   );
 
   function selectView(key: string) {
-    if (key === "overview" || key === "sessions" || key === "history") activeView.value = key;
+    if (key === "overview" || key === "sessions" || key === "history" || key === "errors") activeView.value = key;
   }
   function notifyThemeStart() {
     ElMessage.warning(
@@ -516,8 +517,8 @@ export function createWorkbench(): WorkbenchContext {
       syncThemeDefaults();
       hydrateThemeSettings();
     } catch (error) {
-      errorMessage.value =
-        error instanceof Error ? error.message : "无法读取 Dream Skin 状态。";
+      recordError(error, "读取 Dream Skin 状态");
+      errorMessage.value = "无法读取 Dream Skin 状态，请稍后重试。";
     } finally {
       if (showLoading) {
         loading.value = false;
@@ -540,9 +541,8 @@ export function createWorkbench(): WorkbenchContext {
       hydrateThemeSettings();
       ElMessage.success(message);
     } catch (error) {
-      const messageText = error instanceof Error ? error.message : "操作失败。";
-      errorMessage.value = messageText;
-      ElMessage.error(messageText);
+      errorMessage.value = "操作未完成，请稍后重试。";
+      showFriendlyError(error, `执行操作：${action}`, errorMessage.value);
     } finally {
       loading.value = false;
       currentAction.value = "";
@@ -674,9 +674,8 @@ export function createWorkbench(): WorkbenchContext {
       hydrateThemeSettings();
       ElMessage.success(message);
     } catch (error) {
-      errorMessage.value =
-        error instanceof Error ? error.message : "外观参数更新失败。";
-      ElMessage.error(errorMessage.value);
+      errorMessage.value = "外观参数更新失败，请稍后重试。";
+      showFriendlyError(error, "更新主题外观参数", errorMessage.value);
     } finally {
       loading.value = false;
       currentAction.value = "";
@@ -748,9 +747,8 @@ export function createWorkbench(): WorkbenchContext {
         ElMessage.info("背景图片已选择，点击“应用”后更新 Codex。");
       }
     } catch (error) {
-      errorMessage.value =
-        error instanceof Error ? error.message : "背景图片选择失败。";
-      ElMessage.error(errorMessage.value);
+      errorMessage.value = "背景图片选择失败，请稍后重试。";
+      showFriendlyError(error, "选择背景图片", errorMessage.value);
     } finally {
       loading.value = false;
       currentAction.value = "";

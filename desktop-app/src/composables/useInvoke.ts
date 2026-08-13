@@ -11,6 +11,7 @@
  */
 import { ref, computed, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { recordError, showFriendlyError } from '@/utils/errorRecords';
 import { useConfigStore } from '@/stores/config';
 import { useDocStore } from '@/stores/doc';
 import type {
@@ -333,7 +334,7 @@ export function useInvoke() {
         tokenInput.value = '';
         ElMessage.success('登录成功');
       } else {
-        ElMessage.error(res.error || '登录失败');
+        showFriendlyError(res.error || '登录失败', '登录接口', '登录失败，请检查账号或服务状态后重试。');
       }
     } finally {
       loginLoading.value = false;
@@ -380,11 +381,13 @@ export function useInvoke() {
       if (res.success) {
         ElMessage.success(`请求成功 (${res.responseTime}ms)`);
       } else {
-        error.value = res.error || '请求失败';
+        recordError(res.error || '请求失败', '调用接口');
+        error.value = '请求未完成，请检查接口配置后重试。';
         ElMessage.error(error.value);
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e);
+      recordError(e, '调用接口');
+      error.value = '请求未完成，请检查接口配置后重试。';
       ElMessage.error(error.value);
     } finally {
       isInvoking.value = false;

@@ -249,6 +249,7 @@ import {
 } from "@element-plus/icons-vue";
 import JsonParseHistoryPanel from "@/components/docviewer/JsonParseHistoryPanel.vue";
 import type { DocTab, JsonParseHistoryItem } from "@/composables/useDocLoader";
+import { recordError } from "@/utils/errorRecords";
 const props = defineProps<{
   urlValue: string;
   presetUrls: string[];
@@ -279,12 +280,10 @@ const emit = defineEmits<{
 }>();
 
 const tabLocal = ref<DocTab>("json");
-
 const urlModel = computed<string>({
   get: () => props.urlValue,
   set: (v) => emit("update:urlValue", v),
 });
-
 function clearUrl() {
   emit("update:urlValue", "");
 }
@@ -356,6 +355,7 @@ async function readAndLoadFile(file: File) {
   try {
     text = await readFileAsText(file);
   } catch (e) {
+    recordError(e, "读取 OpenAPI JSON 文件");
     ElMessage.error(`读取文件失败：${file.name}`);
     return;
   }

@@ -92,6 +92,7 @@ import { useDocStore } from "@/stores/doc";
 import { useExportStore } from "@/stores/export";
 import type { IGeneratedCode } from "@/core/types";
 import { generateCode, generateCodeForMultipleEndpoints } from "@/core/generator";
+import { showFriendlyError } from "@/utils/errorRecords";
 import { inferUrlPrefixFromApiUrl, DEFAULT_URL_PREFIX } from "@/core/env";
 import { escapeHtml } from "@/utils/escapeHtml";
 import { copyToClipboard } from "@/utils/clipboard";
@@ -222,7 +223,7 @@ function onGenerate() {
           : await generateCodeForMultipleEndpoints(doc, selectedEndpoints.value, urlPrefix.value);
       ElMessage.success(`已生成 ${selectedEndpoints.value.length} 个接口的代码`);
     } catch (e) {
-      ElMessage.error("生成失败：" + (e instanceof Error ? e.message : String(e)));
+      showFriendlyError(e, "生成代码", "代码生成失败，请检查接口配置后重试。");
       generatedCode.value = null;
     } finally {
       isGenerating.value = false;

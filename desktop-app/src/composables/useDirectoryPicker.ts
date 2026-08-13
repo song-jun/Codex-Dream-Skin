@@ -5,6 +5,7 @@
  */
 import { ref } from "vue";
 import { ElMessage } from "element-plus";
+import { showFriendlyError } from "@/utils/errorRecords";
 
 export type WriteItem = { path: string; content: string };
 export type WriteResult = { path: string; success: boolean; error?: string };
@@ -56,9 +57,7 @@ export async function writeItemsToDir(items: WriteItem[]): Promise<WriteOutcome>
     const results = await window.electronAPI.writeFiles(fullItems);
     const failed = results.filter((r) => !r.success);
     if (failed.length > 0) {
-      ElMessage.error(
-        `部分文件保存失败：${failed.map((f) => f.path).join(", ")}`,
-      );
+      showFriendlyError(failed, "保存生成文件", "部分文件保存失败，请检查目录权限后重试。");
       return { success: false, dir };
     }
     return { success: true, dir };
@@ -80,7 +79,7 @@ export async function writeItemsToDir(items: WriteItem[]): Promise<WriteOutcome>
       }
       return { success: true, dir: "(已选目录)" };
     } catch (e) {
-      ElMessage.error("保存失败：" + (e instanceof Error ? e.message : String(e)));
+      showFriendlyError(e, "保存生成文件", "保存失败，请检查目录权限后重试。");
       return { success: false };
     }
   }
@@ -106,7 +105,7 @@ export async function writeItemsToDir(items: WriteItem[]): Promise<WriteOutcome>
       return { success: true, dir: "(已选目录)" };
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) {
-        ElMessage.error("保存失败：" + (e instanceof Error ? e.message : String(e)));
+        showFriendlyError(e, "保存生成文件", "保存失败，请检查目录权限后重试。");
       }
       return { success: false };
     }

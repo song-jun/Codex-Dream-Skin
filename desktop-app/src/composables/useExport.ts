@@ -17,6 +17,7 @@ import {
   buildModulesMapDoc,
 } from "@/utils/moduleDoc";
 import { sleep } from "@/utils/sleep";
+import { recordError } from "@/utils/errorRecords";
 import {
   pickOutputDir,
   writeItemsToDir,
@@ -103,9 +104,10 @@ export function useExport(opts: UseExportOptions) {
         });
       }
     } catch (err) {
+      recordError(err, "保存生成代码");
       ElNotification.error({
         title: "✗ 保存失败",
-        message: err instanceof Error ? err.message : String(err),
+        message: "请检查目录权限后重试。",
         duration: 4500,
         position: "bottom-right",
         offset: 20,
@@ -214,10 +216,11 @@ export function useExport(opts: UseExportOptions) {
           // 注意：成功通知**不在这里发**，等写盘确认成功后再发
         } catch (e) {
           failCount++;
+          recordError(e, `生成模块：${label}`);
           console.error(`[一键全部导出] ✗ ${label} 生成失败：`, e);
           ElNotification.error({
             title: `✗ ${label}`,
-            message: `生成失败：${e instanceof Error ? e.message : String(e)}`,
+            message: "生成失败，请检查接口配置后重试。",
             duration: 4000,
             position: "bottom-right",
             offset: 20,
@@ -303,9 +306,10 @@ export function useExport(opts: UseExportOptions) {
         const detail = moduleFails
           .map((f) => `${f.path.split("/").pop()}: ${f.error}`)
           .join("\n");
+        recordError(detail, `写盘模块：${s.tag}`);
         ElNotification.error({
           title: `✗ 写盘失败：${s.tag}`,
-          message: detail,
+          message: "部分文件写入失败，请检查目录权限后重试。",
           duration: 6000,
           position: "bottom-right",
           offset: 20,

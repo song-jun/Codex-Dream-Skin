@@ -7,13 +7,15 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, SwitchButton, WarningFilled } from "@element-plus/icons-vue";
+import { Close, CollectionTag, Document, FolderOpened, Monitor, Refresh, RefreshRight, Setting, SwitchButton, WarningFilled, Warning } from "@element-plus/icons-vue";
 import OverviewPanel from "./OverviewPanel.vue";
 import SessionsPanel from "./SessionsPanel.vue";
 import VersionHistoryPanel from "./VersionHistoryPanel.vue";
+import ErrorRecordsPanel from "./ErrorRecordsPanel.vue";
 import ApiWorkbenchPanel from "../api-workbench/ApiWorkbenchPanel.vue";
 import { useWorkbenchContext } from "../composables/useWorkbench";
 import packageJson from "../../package.json";
+import { showFriendlyError } from "@/utils/errorRecords";
 
 const appVersion = packageJson.version;
 type ApplicationMode = "skin" | "api";
@@ -108,7 +110,7 @@ async function submitFeatureKey() {
     featureKey.value = "";
     ElMessage.success("功能菜单已启用。");
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "功能密钥无效。");
+    showFriendlyError(error, "启用功能密钥", "功能密钥验证失败，请检查后重试。");
   } finally {
     featureKeySubmitting.value = false;
   }
@@ -124,7 +126,7 @@ async function restoreFeatureAccess() {
     featureKey.value = "";
     ElMessage.success("功能菜单已隐藏。");
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "撤销菜单失败。");
+    showFriendlyError(error, "撤销功能菜单", "功能菜单撤销失败，请稍后重试。");
   } finally {
     featureKeySubmitting.value = false;
   }
@@ -190,6 +192,9 @@ onUnmounted(() => {
         <el-menu-item index="history">
           <el-icon><Document /></el-icon><span>版本记录</span>
         </el-menu-item>
+        <el-menu-item index="errors">
+          <el-icon><Warning /></el-icon><span>错误记录</span>
+        </el-menu-item>
       </el-menu>
       <div class="sidebar-session">
         <div class="nav-label">当前状态</div>
@@ -212,7 +217,7 @@ onUnmounted(() => {
       <el-header class="topbar" height="78px">
         <div class="topbar-title">
           <div class="breadcrumb">DREAM SKIN / {{ snapshot?.platform === "darwin" ? "MACOS" : "WINDOWS" }}</div>
-          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : "版本记录" }}</h1>
+          <h1>{{ activeView === "overview" ? "主题控制" : activeView === "sessions" ? "Codex 会话" : activeView === "history" ? "版本记录" : "错误记录" }}</h1>
         </div>
         <div class="top-actions">
           <div class="status-chip" :class="statusTone"><span class="status-dot" />{{ statusLabel }}</div>
@@ -283,6 +288,7 @@ onUnmounted(() => {
         <OverviewPanel v-if="activeView === 'overview'" />
         <SessionsPanel v-else-if="activeView === 'sessions'" />
         <VersionHistoryPanel v-else-if="activeView === 'history'" />
+        <ErrorRecordsPanel v-else-if="activeView === 'errors'" />
       </el-main>
     </el-container>
   </el-container>

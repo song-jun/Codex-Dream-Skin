@@ -6,8 +6,10 @@ import './styles.css'
 import './styles/api-workbench.scss'
 import App from './App.vue'
 import router from './router'
+import { registerGlobalErrorRecording } from './utils/errorRecords'
 
 async function bootstrap() {
+  registerGlobalErrorRecording()
   window.__RUNTIME_ENV__ = window.__RUNTIME_ENV__ || {}
   if (window.electronAPI?.getOpenApiEnv) {
     try {
