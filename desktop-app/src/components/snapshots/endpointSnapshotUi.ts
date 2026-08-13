@@ -9,6 +9,7 @@ export const endpointSnapshotUi = {
   legacySnapshot: "该历史快照未保存完整文档，请重新加载一次原文档后再使用生成代码。",
   empty: "暂无接口快照",
   endpointCount: "接口",
+  previousSnapshot: "上次快照",
   updatedAt: "更新时间",
   unknownUpdatedAt: "历史快照",
   filePrefix: "本地文件",

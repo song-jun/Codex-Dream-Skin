@@ -20,7 +20,12 @@
       <article v-for="snapshot in snapshots" :key="snapshot.key" class="snapshot-item">
         <div class="snapshot-main">
           <span class="snapshot-kind">{{ getSnapshotKind(snapshot.key) }}</span>
-          <strong :title="getSnapshotName(snapshot.key)">{{ getSnapshotName(snapshot.key) }}</strong>
+          <div class="snapshot-name">
+            <strong :title="getSnapshotName(snapshot.key)">{{ getSnapshotName(snapshot.key) }}</strong>
+            <span v-if="snapshot.previousSnapshotKey" class="previous-snapshot" :title="getSnapshotName(snapshot.previousSnapshotKey)">
+              {{ endpointSnapshotUi.previousSnapshot }}：{{ getSnapshotName(snapshot.previousSnapshotKey) }}
+            </span>
+          </div>
           <span>{{ snapshot.endpointCount }} {{ endpointSnapshotUi.endpointCount }}</span>
           <span :title="endpointSnapshotUi.updatedAt">{{ formatEndpointSnapshotTime(snapshot.updatedAt) }}</span>
         </div>
@@ -122,7 +127,9 @@ function clearSnapshots(): void {
 .snapshot-main { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto minmax(188px, auto); align-items: center; gap: 12px; min-width: 0; width: 100%; }
 .snapshot-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .snapshot-kind { color: var(--text-secondary); font-size: 12px; }
-.snapshot-main strong { overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; white-space: nowrap; }
+.snapshot-name { display: grid; gap: 2px; min-width: 0; }
+.snapshot-name strong { overflow: hidden; color: var(--text-primary); text-overflow: ellipsis; white-space: nowrap; }
+.previous-snapshot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--el-color-primary, #409eff); font-size: 12px; }
 .snapshot-main > span:not(.snapshot-kind) { color: var(--text-secondary); font-size: 13px; white-space: nowrap; }
 @media (max-width: 720px) { .snapshot-page { padding: 20px; } .snapshot-header { display: grid; } .snapshot-item { align-items: flex-end; } .snapshot-main { grid-template-columns: minmax(0, 1fr) auto; } .snapshot-kind { grid-column: 1 / -1; } .snapshot-main > span:last-child { grid-column: 1 / -1; } }
 </style>

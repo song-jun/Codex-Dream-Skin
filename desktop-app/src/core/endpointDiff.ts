@@ -16,6 +16,8 @@ interface EndpointSnapshotEntry {
   updatedAt: string;
   endpoints: EndpointSnapshotItem[];
   document?: IOpenAPIDocument;
+  /** 本次快照实际用于对比的上一份快照键。 */
+  previousSnapshotKey?: string;
 }
 
 /** 按服务地址保存的接口快照集合。 */
@@ -29,6 +31,8 @@ export interface EndpointSnapshotRecord {
   endpointCount: number;
   updatedAt: string;
   hasDocument: boolean;
+  /** 快照列表展示的上一份对比快照键。 */
+  previousSnapshotKey?: string;
 }
 
 /** 当前文档相对上次成功加载版本的接口差异。 */
@@ -36,6 +40,7 @@ export interface EndpointDiff {
   newKeys: string[];
   missingKeys: string[];
   missingEndpoints: IEndpointInfo[];
+  baselineKey: string;
 }
 
 /** 没有可复用基线时使用的空差异，防止界面延续上一份文件的筛选状态。 */
@@ -155,10 +160,14 @@ function parseSnapshotEntry(value: unknown): EndpointSnapshotEntry | null {
   const document = !Array.isArray(value) && value && typeof value === "object"
     ? (value as Partial<EndpointSnapshotEntry>).document
     : undefined;
+  const previousSnapshotKey = !Array.isArray(value) && value && typeof value === "object"
+    ? (value as Partial<EndpointSnapshotEntry>).previousSnapshotKey
+    : undefined;
   return {
     updatedAt: typeof updatedAt === "string" && !Number.isNaN(Date.parse(updatedAt)) ? updatedAt : "",
     endpoints,
     ...(isValidSnapshotDocument(document) ? { document } : {}),
+    ...(typeof previousSnapshotKey === "string" && previousSnapshotKey ? { previousSnapshotKey } : {}),
   };
 }
 
@@ -250,6 +259,7 @@ export function listEndpointSnapshots(): EndpointSnapshotRecord[] {
       endpointCount: entry.endpoints.length,
       updatedAt: entry.updatedAt,
       hasDocument: !!entry.document,
+      previousSnapshotKey: entry.previousSnapshotKey,
     }))
     .sort((left, right) => getSnapshotTimestamp(right.updatedAt) - getSnapshotTimestamp(left.updatedAt));
 }
@@ -295,9 +305,12 @@ export function updateEndpointSnapshot(
   serviceUrl: string,
   endpoints: IEndpointInfo[],
   document?: IOpenAPIDocument,
+  /** 本地相近文件的历史快照键；仅用于比较，最终仍以当前地址写入。 */
+  baselineKey?: string,
 ): EndpointDiff {
   const snapshots = loadEndpointSnapshots();
-  const previous = snapshots[serviceUrl];
+  const resolvedBaselineKey = baselineKey && snapshots[baselineKey] ? baselineKey : serviceUrl;
+  const previous = snapshots[resolvedBaselineKey];
   const currentByKey = new Map<string, EndpointSnapshotItem>();
   for (const endpoint of endpoints) {
     const snapshot = toSnapshotItem(endpoint);
@@ -315,7 +328,7 @@ export function updateEndpointSnapshot(
     if (!currentByKey.has(key)) missingItems.push(item);
   }
   const retainedEntries = Object.entries(snapshots)
-    .filter(([url]) => url !== serviceUrl)
+    .filter(([url]) => url !== serviceUrl && url !== resolvedBaselineKey)
     .slice(0, ENDPOINT_SNAPSHOT_SERVICE_LIMIT - 1);
 
   saveEndpointSnapshots({
@@ -323,6 +336,7 @@ export function updateEndpointSnapshot(
       updatedAt: new Date().toISOString(),
       endpoints: [...currentByKey.values()],
       ...(document ? { document } : {}),
+      ...(previous ? { previousSnapshotKey: resolvedBaselineKey } : {}),
     },
     ...Object.fromEntries(retainedEntries),
   });
@@ -330,6 +344,8 @@ export function updateEndpointSnapshot(
     newKeys,
     missingKeys: missingItems.map((item) => item.key),
     missingEndpoints: missingItems.map(toMissingEndpoint),
+    // 首次导入没有历史差异，但已建立可追溯的初始快照，界面也应显示其基线来源。
+    baselineKey: previous ? resolvedBaselineKey : "",
   };
 }
 
@@ -342,11 +358,22 @@ export function updateEndpointSnapshot(
  * @returns 可传入 updateEndpointSnapshot 的本地文件基线键。
  */
 export function getFileEndpointSnapshotKey(fileName: string): string {
-  const exactKey = `${FILE_SNAPSHOT_PREFIX}${fileName}`;
+  return `${FILE_SNAPSHOT_PREFIX}${fileName}`;
+}
+
+/**
+ * 查找本地 JSON 文件可复用的历史差异基线。
+ * 同名文件优先；未命中时才按受限同名前缀匹配最近快照。
+ * @param fileName 当前选择的 JSON 文件名。
+ * @returns 历史快照键；没有匹配项时为空字符串。
+ */
+export function findFileEndpointSnapshotBaselineKey(fileName: string): string {
+  const exactKey = getFileEndpointSnapshotKey(fileName);
   const snapshots = loadEndpointSnapshots();
+  if (snapshots[exactKey]) return exactKey;
   const comparableKey = Object.keys(snapshots).find((key) => {
     if (!key.startsWith(FILE_SNAPSHOT_PREFIX)) return false;
     return hasComparableFileNamePrefix(fileName, key.slice(FILE_SNAPSHOT_PREFIX.length));
   });
-  return comparableKey || exactKey;
+  return comparableKey || "";
 }

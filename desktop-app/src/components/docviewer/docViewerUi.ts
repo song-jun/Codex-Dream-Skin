@@ -8,4 +8,5 @@ export const docViewerUi = {
   missingEndpoint: "缺失",
   missingEndpointCount: "缺失接口",
   showOnlyMissing: "仅看缺失",
+  comparedSnapshot: "对比快照",
 } as const;

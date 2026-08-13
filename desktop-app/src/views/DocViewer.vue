@@ -76,6 +76,7 @@
           :new-endpoint-keys="newEndpointKeys"
           :missing-endpoint-keys="missingEndpointKeys"
           :missing-endpoints="missingEndpoints"
+          :compared-snapshot-key="comparedSnapshotKey"
           :show-only-new="showOnlyNewEndpoints"
           @update:show-only-new="(value) => { showOnlyNewEndpoints = value; if (value) showOnlyMissingEndpoints = false }"
           :show-only-missing="showOnlyMissingEndpoints"
@@ -97,7 +98,10 @@ import { Delete } from "@element-plus/icons-vue";
 import router from "@/router";
 import { useDocLoader } from "@/composables/useDocLoader";
 import type { JsonParseHistoryItem } from "@/composables/useDocLoader";
-import { getFileEndpointSnapshotKey } from "@/core/endpointDiff";
+import {
+  findFileEndpointSnapshotBaselineKey,
+  getFileEndpointSnapshotKey,
+} from "@/core/endpointDiff";
 import DocLoaderCard from "@/components/docviewer/DocLoaderCard.vue";
 import DocViewerCard from "@/components/docviewer/DocViewerCard.vue";
 // 仅用主题色（.hljs-attr / .hljs-string / .hljs-number / .hljs-literal）
@@ -120,6 +124,7 @@ const {
   newEndpointKeys,
   missingEndpointKeys,
   missingEndpoints,
+  comparedSnapshotKey,
   showOnlyNewEndpoints,
   showOnlyMissingEndpoints,
   highlightLines,
@@ -200,7 +205,9 @@ function onFormatJson() {
  * 这里只负责解析：把读到的 text 喂给 docStore。
  */
 function onFileLoaded(payload: { name: string; text: string; size: number }) {
-  loadFromJson(payload.text, payload.name, getFileEndpointSnapshotKey(payload.name));
+  const snapshotKey = getFileEndpointSnapshotKey(payload.name);
+  const baselineKey = findFileEndpointSnapshotBaselineKey(payload.name);
+  loadFromJson(payload.text, payload.name, snapshotKey, baselineKey);
 }
 
 /** 点击历史记录后重新解析，成功时进入代码生成页面。 */

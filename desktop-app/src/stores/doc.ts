@@ -15,6 +15,7 @@ export const useDocStore = defineStore('doc', () => {
   const newEndpointKeys = ref<string[]>([]);
   const missingEndpointKeys = ref<string[]>([]);
   const missingEndpoints = ref<IEndpointInfo[]>([]);
+  const comparedSnapshotKey = ref<string>('');
   const showOnlyNewEndpoints = ref(false);
   const showOnlyMissingEndpoints = ref(false);
 
@@ -98,6 +99,7 @@ export const useDocStore = defineStore('doc', () => {
     newEndpointKeys.value = [];
     missingEndpointKeys.value = [];
     missingEndpoints.value = [];
+    comparedSnapshotKey.value = '';
     showOnlyNewEndpoints.value = false;
     showOnlyMissingEndpoints.value = false;
   }
@@ -111,6 +113,7 @@ export const useDocStore = defineStore('doc', () => {
     newEndpointKeys.value = [];
     missingEndpointKeys.value = [];
     missingEndpoints.value = [];
+    comparedSnapshotKey.value = '';
     showOnlyNewEndpoints.value = false;
     showOnlyMissingEndpoints.value = false;
   }
@@ -125,6 +128,7 @@ export const useDocStore = defineStore('doc', () => {
     newEndpointKeys,
     missingEndpointKeys,
     missingEndpoints,
+    comparedSnapshotKey,
     showOnlyNewEndpoints,
     showOnlyMissingEndpoints,
     endpoints,

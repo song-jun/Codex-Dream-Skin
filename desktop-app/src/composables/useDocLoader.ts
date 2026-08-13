@@ -16,7 +16,7 @@ import { useDocStore } from "@/stores/doc";
 import { useConfigStore } from "@/stores/config";
 import { DEFAULT_API_URL } from "@/core/env";
 import { copyToClipboard } from "@/utils/clipboard";
-import { getFileEndpointSnapshotKey, updateEndpointSnapshot } from "@/core/endpointDiff";
+import { updateEndpointSnapshot } from "@/core/endpointDiff";
 import { formatJson } from "@/utils/formatJson";
 import { recordError, showFriendlyError } from "@/utils/errorRecords";
 import {
@@ -135,6 +135,7 @@ export function useDocLoader() {
     newEndpointKeys,
     missingEndpointKeys,
     missingEndpoints,
+    comparedSnapshotKey,
     showOnlyNewEndpoints,
     showOnlyMissingEndpoints,
   } = storeToRefs(docStore);
@@ -343,6 +344,7 @@ export function useDocLoader() {
       newEndpointKeys.value = diff?.newKeys ?? [];
       missingEndpointKeys.value = diff?.missingKeys ?? [];
       missingEndpoints.value = diff?.missingEndpoints ?? [];
+      comparedSnapshotKey.value = diff?.baselineKey ?? "";
       showOnlyNewEndpoints.value = newEndpointKeys.value.length > 0;
       showOnlyMissingEndpoints.value = !showOnlyNewEndpoints.value && missingEndpointKeys.value.length > 0;
       ElMessage.success(
@@ -405,17 +407,24 @@ export function useDocLoader() {
    * @param sourceName 用于 JSON 历史显示的来源名称。
    * @param snapshotKey 本地文件的稳定对比键，未提供时不执行差异追踪。
    */
-  function loadFromJson(text: string, sourceName?: string, snapshotKey?: string) {
+  function loadFromJson(
+    text: string,
+    sourceName?: string,
+    snapshotKey?: string,
+    /** 同名或同前缀历史文件的快照键，仅用于计算差异。 */
+    baselineKey?: string,
+  ) {
     friendlyErrorMsg.value = "";
     const ok = docStore.loadFromJson(text, snapshotKey ? sourceName : undefined);
     if (ok) {
       friendlyErrorMsg.value = "";
       const diff = snapshotKey && docStore.doc
-        ? updateEndpointSnapshot(snapshotKey, docStore.endpoints, docStore.doc)
+        ? updateEndpointSnapshot(snapshotKey, docStore.endpoints, docStore.doc, baselineKey)
         : null;
       newEndpointKeys.value = diff?.newKeys ?? [];
       missingEndpointKeys.value = diff?.missingKeys ?? [];
       missingEndpoints.value = diff?.missingEndpoints ?? [];
+      comparedSnapshotKey.value = diff?.baselineKey ?? "";
       showOnlyNewEndpoints.value = newEndpointKeys.value.length > 0;
       showOnlyMissingEndpoints.value = !showOnlyNewEndpoints.value && missingEndpointKeys.value.length > 0;
       recordJsonHistory(sourceName);
@@ -535,6 +544,7 @@ export function useDocLoader() {
     newEndpointKeys,
     missingEndpointKeys,
     missingEndpoints,
+    comparedSnapshotKey,
     showOnlyNewEndpoints,
     showOnlyMissingEndpoints,
     highlightLines,

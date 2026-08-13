@@ -28,6 +28,14 @@
             <el-tag v-if="missingEndpointKeys.length > 0" size="small" type="danger"
               >{{ docViewerUi.missingEndpointCount }} {{ missingEndpointKeys.length }}</el-tag
             >
+            <el-tag
+              v-if="comparedSnapshotName && (newEndpointKeys.length > 0 || missingEndpointKeys.length > 0)"
+              size="small"
+              type="warning"
+              :title="comparedSnapshotKey"
+            >
+              {{ docViewerUi.comparedSnapshot }}：{{ comparedSnapshotName }}
+            </el-tag>
           </div>
         </div>
         <div class="header-controls">
@@ -185,6 +193,7 @@ const props = defineProps<{
   newEndpointKeys: string[];
   missingEndpointKeys: string[];
   missingEndpoints: IEndpointInfo[];
+  comparedSnapshotKey: string;
   showOnlyNew: boolean;
   showOnlyMissing: boolean;
   rawJson: string;
@@ -208,6 +217,10 @@ const endpointCount = computed(() => props.endpoints.length);
 const { copyEndpoint } = useEndpointCopy();
 const newEndpointKeySet = computed(() => new Set(props.newEndpointKeys));
 const missingEndpointKeySet = computed(() => new Set(props.missingEndpointKeys));
+/** 将本地文件快照键转换为用户可读的来源名称。 */
+const comparedSnapshotName = computed(() => props.comparedSnapshotKey.startsWith("file:")
+  ? props.comparedSnapshotKey.slice("file:".length)
+  : props.comparedSnapshotKey);
 
 /** 将当前接口和基线缺失接口合并为同一套分组，供列表和筛选复用。 */
 const displayTagGroups = computed<TagGroup[]>(() => {
