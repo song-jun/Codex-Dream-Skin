@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('dreamSkin', {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getOpenApiEnv: () => ipcRenderer.invoke('env:getOpenApi'),
+  fetchJson: (url: string) => ipcRenderer.invoke('api:fetchJson', url),
   selectDirectory: (defaultPath?: string) => ipcRenderer.invoke('dialog:selectDirectory', defaultPath),
   saveFile: (options?: { defaultPath?: string; filters?: Electron.FileFilter[] }) => ipcRenderer.invoke('dialog:saveFile', options),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('fs:writeFile', filePath, content),

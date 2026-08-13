@@ -23,6 +23,26 @@ let mainWindow: BrowserWindow | null = null
 const apiAllowedRoots = new Set<string>()
 const apiEnvFileName = 'api-workbench.env'
 const apiTokenFileName = 'api-workbench-token.enc'
+const maxApiFetchBytes = 10 * 1024 * 1024
+
+/** 主进程代理 API 文档请求，避免渲染进程的跨域限制。 */
+async function fetchApiJson(value: unknown): Promise<unknown> {
+  if (typeof value !== 'string') throw new Error('API 文档地址无效。')
+  const requestUrl = new URL(value.trim())
+  if (!['http:', 'https:'].includes(requestUrl.protocol) || requestUrl.username || requestUrl.password) {
+    throw new Error('API 文档地址无效。')
+  }
+  const response = await fetch(requestUrl, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!response.ok) throw new Error(`API 文档请求失败：HTTP ${response.status}`)
+  const contentLength = Number(response.headers.get('content-length') || 0)
+  if (contentLength > maxApiFetchBytes) throw new Error('API 文档响应过大。')
+  const body = await response.arrayBuffer()
+  if (body.byteLength > maxApiFetchBytes) throw new Error('API 文档响应过大。')
+  return JSON.parse(new TextDecoder().decode(body)) as unknown
+}
 
 function normalizeApiPath(value: string): string {
   return path.resolve(value)
@@ -852,6 +872,7 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('open-state-folder', async () => { await shell.openPath(stateRoot()); return true })
   ipcMain.handle('env:getOpenApi', () => Object.fromEntries(readApiEnv().map(({ key, value }) => [key, value])))
+  ipcMain.handle('api:fetchJson', (_event, url: unknown) => fetchApiJson(url))
   ipcMain.handle('dialog:selectDirectory', async (_event, defaultPath?: string) => {
     if (!mainWindow) return null
     const result = await dialog.showOpenDialog(mainWindow, { title: '选择 API 导出目录', properties: ['openDirectory', 'createDirectory'], defaultPath })

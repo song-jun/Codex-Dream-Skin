@@ -79,16 +79,23 @@
               }}</span>
               <span class="ep-summary">{{ ep.summary || ep.path }}</span>
               <span class="ep-path">{{ ep.path }}</span>
-              <el-button
-                size="small"
-                link
-                type="primary"
-                class="ep-copy"
-                @click="emit('copy-curl', ep)"
-              >
-                <el-icon><CopyDocument /></el-icon>
-                <span>复制</span>
-              </el-button>
+              <el-dropdown trigger="hover" @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)">
+                <el-button size="small" link type="primary" class="ep-copy" @click.stop>
+                  <el-icon><CopyDocument /></el-icon>
+                  <span>复制</span>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="option in endpointCopyOptions"
+                      :key="option.action"
+                      :command="option.action"
+                    >
+                      {{ option.label }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </div>
         </div>
@@ -124,6 +131,11 @@ import {
   CopyDocument,
 } from "@element-plus/icons-vue";
 import VirtualList from "@/components/VirtualList.vue";
+import { useEndpointCopy } from "@/composables/useEndpointCopy";
+import {
+  endpointCopyOptions,
+  type EndpointCopyAction,
+} from "@/components/generate/endpointCopyOptions";
 import type { IOpenAPIDocument, IEndpointInfo } from "@/core/types";
 import type { TagGroup } from "@/composables/useDocLoader";
 
@@ -148,10 +160,10 @@ const emit = defineEmits<{
   (e: "update:expandedTags", v: Record<string, boolean>): void;
   (e: "update:searchText", v: string): void;
   (e: "update:showOnlyMine", v: boolean): void;
-  (e: "copy-curl", ep: IEndpointInfo): void;
 }>();
 
 const endpointCount = computed(() => props.endpoints.length);
+const { copyEndpoint } = useEndpointCopy();
 
 /** 按 searchText 过滤后的 tag 分组 */
 const filteredTags = computed<TagGroup[]>(() => {
@@ -172,6 +184,11 @@ const filteredTags = computed<TagGroup[]>(() => {
 
 function methodClass(method: string) {
   return ["method-tag", `method-${method.toLowerCase()}`];
+}
+
+/** 验证复制动作，并委托共用的接口复制逻辑执行。 */
+async function onCopyCommand(endpoint: IEndpointInfo, action: EndpointCopyAction) {
+  await copyEndpoint(endpoint, action);
 }
 </script>
 

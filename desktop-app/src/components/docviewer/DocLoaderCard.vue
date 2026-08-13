@@ -13,113 +13,49 @@
 
     <div class="card-toolbar">
       <el-tabs v-model="tabLocal">
+        <el-tab-pane label="自定义" name="custom" />
         <el-tab-pane label="JSON 编辑" name="json" />
-        <el-tab-pane label="URL 拉取" name="url" />
         <el-tab-pane label="历史 JSON" name="history" />
+        <el-tab-pane label="URL 拉取" name="url" />
       </el-tabs>
     </div>
 
     <div class="form-area">
-      <div v-show="tabLocal === 'url'">
-        <el-form label-position="top" size="default">
-          <el-form-item label="API 文档 URL">
-            <div class="url-input-wrap">
-              <el-select
-                v-model="urlModel"
-                class="url-select"
-                filterable
-                allow-create
-                default-first-option
-                clearable
-                placeholder="选择 .env 中的默认地址，或输入新 URL（自动记录到历史）"
-                @change="onUrlSelectChange"
-                @blur="onUrlBlur"
-              >
-                <template #prefix
-                  ><el-icon><Link /></el-icon
-                ></template>
-                <el-option
-                  v-for="u in presetUrls"
-                  :key="u"
-                  :label="u"
-                  :value="u"
-                />
-              </el-select>
-              <el-dropdown trigger="click" @command="onUrlHistorySelect">
-                <el-button :icon="ArrowDown" title="历史/收藏">
-                  <span>历史</span>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item
-                      v-for="h in urlHistory"
-                      :key="h"
-                      :command="h"
-                      :disabled="h === urlModel"
-                    >
-                      <span class="url-history-item">
-                        <el-icon v-if="isFavorite(h)" style="color: #e6a23c"
-                          ><StarFilled
-                        /></el-icon>
-                        <el-icon v-else style="color: #c0c4cc"
-                          ><Star
-                        /></el-icon>
-                        <span class="url-history-text">{{ h }}</span>
-                        <el-icon
-                          class="url-history-del"
-                          @click.stop="onUrlHistoryDel(h)"
-                          title="删除"
-                          ><Close
-                        /></el-icon>
-                      </span>
-                    </el-dropdown-item>
-                    <el-dropdown-item v-if="urlHistory.length === 0" disabled>
-                      暂无历史
-                    </el-dropdown-item>
-                    <el-dropdown-item
-                      v-if="urlHistory.length > 0"
-                      divided
-                      command="__clear__"
-                    >
-                      <span style="color: #f56c6c">清空历史</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-              <el-button
-                :type="isFavorite(urlModel) ? 'warning' : 'default'"
-                :icon="isFavorite(urlModel) ? StarFilled : Star"
-                :disabled="!urlModel"
-                @click="onToggleFavorite"
-                title="收藏"
-              />
-            </div>
-          </el-form-item>
-          <el-form-item>
-            <el-button
-              type="primary"
-              :loading="isLoading"
-              @click="emit('load')"
-            >
-              <el-icon><Download /></el-icon>
-              <span>拉取文档</span>
-            </el-button>
-            <el-button
-              type="primary"
-              :loading="isLoading"
-              :disabled="!hasLoaded"
-              @click="emit('generate')"
-            >
-              <el-icon><MagicStick /></el-icon>
-              <span>生成代码</span>
-            </el-button>
-            <el-button :disabled="!urlModel" @click="clearUrl">
-              <el-icon><Refresh /></el-icon>
-              <span>清空</span>
-            </el-button>
-          </el-form-item>
-        </el-form>
+      <div v-show="tabLocal === 'custom'">
+        <CustomSwaggerLoaderPanel
+          :domain="customDomain"
+          :config-path="customConfigPath"
+          :selected-service-url="customServiceUrl"
+          :services="customServices"
+          :is-fetching="isFetchingCustomServices"
+          :is-loading-document="isLoading"
+          :has-fetched="hasFetchedCustomServices"
+          :has-loaded="hasLoaded"
+          @update:domain="emit('update:customDomain', $event)"
+          @update:config-path="emit('update:customConfigPath', $event)"
+          @update:selected-service-url="emit('update:customServiceUrl', $event)"
+          @fetch-services="emit('fetchCustomServices')"
+          @load-document="emit('loadCustomDocument')"
+          @generate="emit('generate')"
+        />
       </div>
+      <UrlDocumentLoaderPanel
+        v-show="tabLocal === 'url'"
+        :url-value="urlValue"
+        :preset-urls="presetUrls"
+        :url-history="urlHistory"
+        :is-loading="isLoading"
+        :has-loaded="hasLoaded"
+        :is-favorite="isFavorite"
+        :on-url-blur="onUrlBlur"
+        :on-url-select-change="onUrlSelectChange"
+        :on-url-history-select="onUrlHistorySelect"
+        :on-url-history-del="onUrlHistoryDel"
+        :on-toggle-favorite="onToggleFavorite"
+        @update:url-value="emit('update:urlValue', $event)"
+        @load="emit('load')"
+        @generate="emit('generate')"
+      />
       <div v-show="tabLocal === 'json'">
         <div
           class="json-drop-zone"
@@ -230,16 +166,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { ElMessage } from "element-plus";
 import type { UploadFile, UploadRawFile } from "element-plus";
 import {
-  ArrowDown,
-  Star,
-  StarFilled,
-  Close,
-  Link,
-  Download,
   MagicStick,
   Refresh,
   Check,
@@ -248,7 +178,10 @@ import {
   Document,
 } from "@element-plus/icons-vue";
 import JsonParseHistoryPanel from "@/components/docviewer/JsonParseHistoryPanel.vue";
+import CustomSwaggerLoaderPanel from "@/components/docviewer/CustomSwaggerLoaderPanel.vue";
+import UrlDocumentLoaderPanel from "@/components/docviewer/UrlDocumentLoaderPanel.vue";
 import type { DocTab, JsonParseHistoryItem } from "@/composables/useDocLoader";
+import type { SwaggerServiceOption } from "@/core/swaggerConfig";
 import { recordError } from "@/utils/errorRecords";
 const props = defineProps<{
   urlValue: string;
@@ -260,6 +193,12 @@ const props = defineProps<{
   hasLoaded: boolean;
   urlHistory: string[];
   jsonHistory: JsonParseHistoryItem[];
+  customDomain: string;
+  customConfigPath: string;
+  customServiceUrl: string;
+  customServices: SwaggerServiceOption[];
+  isFetchingCustomServices: boolean;
+  hasFetchedCustomServices: boolean;
   isFavorite: (url: string) => boolean;
   onUrlBlur: () => void;
   onUrlSelectChange: (v: string) => void;
@@ -273,20 +212,18 @@ const emit = defineEmits<{
   (e: "parse"): void;
   (e: "format"): void;
   (e: "generate"): void;
+  (e: "update:customDomain", value: string): void;
+  (e: "update:customConfigPath", value: string): void;
+  (e: "update:customServiceUrl", value: string): void;
+  (e: "fetchCustomServices"): void;
+  (e: "loadCustomDocument"): void;
   (e: "historyParse", item: JsonParseHistoryItem): void;
   (e: "historyDelete", id: string): void;
   (e: "historyClear"): void;
   (e: "fileLoaded", payload: { name: string; text: string; size: number }): void;
 }>();
 
-const tabLocal = ref<DocTab>("json");
-const urlModel = computed<string>({
-  get: () => props.urlValue,
-  set: (v) => emit("update:urlValue", v),
-});
-function clearUrl() {
-  emit("update:urlValue", "");
-}
+const tabLocal = ref<DocTab>("custom");
 
 // ===== 拖拽 / 选择本地 JSON 文件 =====
 // 视觉拖拽高亮（用 ref 不用 props，避免父组件传递）

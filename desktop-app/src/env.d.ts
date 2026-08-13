@@ -14,6 +14,7 @@ declare global {
     }
     electronAPI?: {
       getOpenApiEnv: () => Promise<Record<string, string>>
+      fetchJson: (url: string) => Promise<unknown>
       selectDirectory: (defaultPath?: string) => Promise<string | null>
       saveFile: (options?: { defaultPath?: string; filters?: Electron.FileFilter[] }) => Promise<string | null>
       writeFile: (filePath: string, content: string) => Promise<{ success: boolean; path?: string; error?: string }>

@@ -31,6 +31,12 @@
           :has-loaded="!!docStore.doc"
           :url-history="urlHistory"
           :json-history="jsonHistory"
+          :custom-domain="customDomain"
+          :custom-config-path="customConfigPath"
+          :custom-service-url="customServiceUrl"
+          :custom-services="customServices"
+          :is-fetching-custom-services="isFetchingCustomServices"
+          :has-fetched-custom-services="hasFetchedCustomServices"
           :is-favorite="isFavorite"
           :on-url-blur="onUrlBlur"
           :on-url-select-change="onUrlSelectChange"
@@ -44,6 +50,11 @@
           @history-parse="onHistoryParse"
           @history-delete="deleteJsonHistoryItem"
           @history-clear="clearJsonHistory"
+          @update:custom-domain="(value) => (customDomain = value)"
+          @update:custom-config-path="(value) => (customConfigPath = value)"
+          @update:custom-service-url="(value) => (customServiceUrl = value)"
+          @fetch-custom-services="fetchCustomServices"
+          @load-custom-document="onLoadCustomDocument"
           @generate="navigateToGenerate"
         />
       </el-col>
@@ -65,7 +76,6 @@
           :tag-groups="tagGroups"
           @toggle-tag="toggleTag"
           @select-tag="(n) => (selectedTag = n)"
-          @copy-curl="copyCurl"
         />
       </el-col>
     </el-row>
@@ -101,6 +111,12 @@ const {
   tagGroups,
   urlHistory,
   jsonHistory,
+  customDomain,
+  customConfigPath,
+  customServiceUrl,
+  customServices,
+  isFetchingCustomServices,
+  hasFetchedCustomServices,
   isFavorite,
   onUrlBlur,
   onUrlSelectChange,
@@ -108,13 +124,14 @@ const {
   onUrlHistoryDel,
   toggleFavorite,
   loadFromUrl,
+  fetchCustomServices,
+  loadCustomServiceDocument,
   loadFromJson,
   loadHistoryItem,
   deleteJsonHistoryItem,
   clearJsonHistory,
   prettyJson,
   clearAll,
-  copyCurl,
   toggleTag,
 } = useDocLoader();
 
@@ -143,6 +160,12 @@ async function onLoadUrl() {
   if (ok && docStore.rawJson) {
     setEditorValue(docStore.rawJson);
   }
+}
+
+/** 从自定义 Swagger 服务列表加载用户选择的 OpenAPI 文档。 */
+async function onLoadCustomDocument() {
+  const ok = await loadCustomServiceDocument();
+  if (ok && docStore.rawJson) setEditorValue(docStore.rawJson);
 }
 
 function onLoadJson() {

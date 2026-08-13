@@ -81,7 +81,11 @@
           </div>
         </el-header>
         <el-main class="app-main">
-          <router-view :key="route.fullPath" />
+          <router-view v-slot="{ Component }">
+            <keep-alive include="DocViewer,Generate">
+              <component :is="Component" />
+            </keep-alive>
+          </router-view>
         </el-main>
       </el-container>
 

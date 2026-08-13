@@ -17,10 +17,17 @@ import { DEFAULT_API_URL } from "@/core/env";
 import { copyToClipboard } from "@/utils/clipboard";
 import { formatJson } from "@/utils/formatJson";
 import { recordError, showFriendlyError } from "@/utils/errorRecords";
+import {
+  buildSwaggerUrl,
+  DEFAULT_SWAGGER_CONFIG_PATH,
+  DEFAULT_SWAGGER_DOMAIN,
+  fetchSwaggerServices,
+  type SwaggerServiceOption,
+} from "@/core/swaggerConfig";
 import type { IEndpointInfo, IOpenAPIDocument } from "@/core/types";
 
 export type DocViewTab = "list" | "raw";
-export type DocTab = "json" | "url" | "history";
+export type DocTab = "custom" | "json" | "history" | "url";
 
 /** 当日成功解析的 OpenAPI JSON 历史记录。 */
 export interface JsonParseHistoryItem {
@@ -129,7 +136,13 @@ export function useDocLoader() {
   const friendlyErrorMsg = ref<string>("");
   // 注：JSON 编辑器内容由 DocLoaderCard 完全非受控管理（getValue/setValue），
   //     composable 不持有任何 draft 状态，避免每次按键触发响应式追踪
-  const tab = ref<DocTab>("json");
+  const tab = ref<DocTab>("custom");
+  const customDomain = ref(DEFAULT_SWAGGER_DOMAIN);
+  const customConfigPath = ref(DEFAULT_SWAGGER_CONFIG_PATH);
+  const customServices = ref<SwaggerServiceOption[]>([]);
+  const customServiceUrl = ref("");
+  const isFetchingCustomServices = ref(false);
+  const hasFetchedCustomServices = ref(false);
 
   // ===== 查看卡片本地状态 =====
   const activeTab = ref<DocViewTab>("list");
@@ -322,6 +335,46 @@ export function useDocLoader() {
     return ok;
   }
 
+  /** 测试 Swagger 配置连接，并提取服务下拉列表。 */
+  async function fetchCustomServices() {
+    if (isFetchingCustomServices.value) return;
+    isFetchingCustomServices.value = true;
+    hasFetchedCustomServices.value = false;
+    customServices.value = [];
+    customServiceUrl.value = "";
+    try {
+      customServices.value = await fetchSwaggerServices(
+        customDomain.value,
+        customConfigPath.value,
+      );
+      hasFetchedCustomServices.value = true;
+      if (customServices.value.length > 0) {
+        customServiceUrl.value = customServices.value[0].url;
+        ElMessage.success("连接成功，已获取接口文档服务。");
+      }
+    } catch (error) {
+      hasFetchedCustomServices.value = true;
+      recordError(error, "获取 Swagger 服务列表");
+      ElMessage.error("连接失败，请检查域名和配置路径后重试。");
+    } finally {
+      isFetchingCustomServices.value = false;
+    }
+  }
+
+  /** 使用自定义域名与所选服务路径加载对应的 OpenAPI 文档。 */
+  async function loadCustomServiceDocument() {
+    if (!customServiceUrl.value) return false;
+    try {
+      const url = buildSwaggerUrl(customDomain.value, customServiceUrl.value);
+      urlValue.value = url;
+      return await loadFromUrl(url);
+    } catch (error) {
+      recordError(error, "拼接 Swagger 服务地址");
+      ElMessage.error("接口地址无效，请检查域名和服务路径后重试。");
+      return false;
+    }
+  }
+
   function loadFromJson(text: string, sourceName?: string) {
     friendlyErrorMsg.value = "";
     const ok = docStore.loadFromJson(text);
@@ -451,12 +504,20 @@ export function useDocLoader() {
     isFavorite,
     // JSON 编辑
     tab,
+    customDomain,
+    customConfigPath,
+    customServices,
+    customServiceUrl,
+    isFetchingCustomServices,
+    hasFetchedCustomServices,
     prettyJson,
     loadHistoryItem,
     deleteJsonHistoryItem,
     clearJsonHistory,
     // 加载 / 解析
     loadFromUrl,
+    fetchCustomServices,
+    loadCustomServiceDocument,
     loadFromJson,
     refresh,
     copyCurl,

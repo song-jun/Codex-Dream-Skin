@@ -9,6 +9,35 @@ import { FETCH_TIMEOUT } from './env';
 
 const MAX_OPENAPI_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
+/**
+ * 从当前运行环境请求 JSON。
+ * Electron 通过主进程请求，开发版通过 Vite 代理，避免渲染进程被 CORS 拦截。
+ */
+export async function fetchJsonFromRuntime(url: string): Promise<unknown> {
+  const requestUrl = validateDocumentUrl(url);
+  if (window.electronAPI?.fetchJson) {
+    return window.electronAPI.fetchJson(requestUrl);
+  }
+  if (import.meta.env.DEV) {
+    const proxyUrl = `/swagger-proxy?url=${encodeURIComponent(requestUrl)}`;
+    const response = await axios.get(proxyUrl, {
+      timeout: FETCH_TIMEOUT,
+      maxContentLength: MAX_OPENAPI_DOCUMENT_BYTES,
+      maxBodyLength: MAX_OPENAPI_DOCUMENT_BYTES,
+      responseType: 'json',
+    });
+    return response.data;
+  }
+  const response = await axios.get(requestUrl, {
+    timeout: FETCH_TIMEOUT,
+    maxContentLength: MAX_OPENAPI_DOCUMENT_BYTES,
+    maxBodyLength: MAX_OPENAPI_DOCUMENT_BYTES,
+    responseType: 'json',
+    headers: { Accept: 'application/json' },
+  });
+  return response.data;
+}
+
 function validateDocumentUrl(value: string): string {
   const parsed = new URL(value.trim());
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -65,18 +94,7 @@ export function validateOpenAPIDocument(data: unknown): data is IOpenAPIDocument
  */
 export async function fetchOpenAPIDocument(url: string): Promise<IFetchResult> {
   try {
-    const requestUrl = validateDocumentUrl(url);
-    const response = await axios.get(requestUrl, {
-      timeout: FETCH_TIMEOUT,
-      maxContentLength: MAX_OPENAPI_DOCUMENT_BYTES,
-      maxBodyLength: MAX_OPENAPI_DOCUMENT_BYTES,
-      responseType: 'json',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    const data = response.data;
+    const data = await fetchJsonFromRuntime(url);
 
     // 验证返回的数据是否为有效的 OpenAPI 文档
     if (!validateOpenAPIDocument(data)) {
