@@ -72,6 +72,7 @@
           :search-text="searchText"
           @update:search-text="(v) => (searchText = v)"
           :show-only-mine="showOnlyMine"
+          :raw-json="docStore.rawJson"
           :highlight-lines="highlightLines"
           :tag-groups="tagGroups"
           @toggle-tag="toggleTag"

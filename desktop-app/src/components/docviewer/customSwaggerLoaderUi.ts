@@ -10,4 +10,10 @@ export const customSwaggerLoaderUi = {
   loadDocument: "加载接口文档",
   generateCode: "生成代码",
   emptyServices: "未发现可用接口文档服务",
+  configAddressLabel: "Swagger 服务配置地址",
+  documentAddressLabel: "接口文档地址",
+  copyConfigAddress: "复制服务配置地址",
+  copyDocumentAddress: "复制接口文档地址",
+  configAddressCopied: "已复制服务配置地址",
+  documentAddressCopied: "已复制接口文档地址",
 } as const;

@@ -1,8 +1,16 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 
+/** Dream Skin 工作台不使用路由视图，但仍需注册根路径以避免启动时产生未匹配路由警告。 */
+const skinWorkspaceRoute = { render: () => null };
+
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
+    {
+      path: "/",
+      name: "skin-workspace",
+      component: skinWorkspaceRoute,
+    },
     {
       path: "/api-workbench",
       redirect: "/api-workbench/doc",

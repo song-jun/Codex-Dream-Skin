@@ -106,6 +106,18 @@
         />
       </div>
       <div v-show="activeTab === 'raw'" class="json-scroll">
+        <div class="raw-json-actions">
+          <el-tooltip :content="docViewerUi.copyRawJson" placement="left">
+            <el-button
+              :icon="CopyDocument"
+              text
+              circle
+              :disabled="!rawJson"
+              :aria-label="docViewerUi.copyRawJson"
+              @click="copyRawJson"
+            />
+          </el-tooltip>
+        </div>
         <VirtualList
           :items="highlightLines"
           :line-height="20"
@@ -132,12 +144,14 @@ import {
 } from "@element-plus/icons-vue";
 import VirtualList from "@/components/VirtualList.vue";
 import { useEndpointCopy } from "@/composables/useEndpointCopy";
+import { docViewerUi } from "@/components/docviewer/docViewerUi";
 import {
   endpointCopyOptions,
   type EndpointCopyAction,
 } from "@/components/generate/endpointCopyOptions";
 import type { IOpenAPIDocument, IEndpointInfo } from "@/core/types";
 import type { TagGroup } from "@/composables/useDocLoader";
+import { copyToClipboard } from "@/utils/clipboard";
 
 const props = defineProps<{
   doc: IOpenAPIDocument | null;
@@ -148,6 +162,7 @@ const props = defineProps<{
   selectedTag: string;
   searchText: string;
   showOnlyMine: boolean;
+  rawJson: string;
   highlightLines: string[];
   tagGroups: TagGroup[];
 }>();
@@ -189,6 +204,11 @@ function methodClass(method: string) {
 /** 验证复制动作，并委托共用的接口复制逻辑执行。 */
 async function onCopyCommand(endpoint: IEndpointInfo, action: EndpointCopyAction) {
   await copyEndpoint(endpoint, action);
+}
+
+/** 复制当前已加载文档的原始 JSON。 */
+function copyRawJson(): void {
+  if (props.rawJson) void copyToClipboard(props.rawJson, docViewerUi.rawJsonCopied);
 }
 </script>
 
@@ -277,9 +297,19 @@ async function onCopyCommand(endpoint: IEndpointInfo, action: EndpointCopyAction
   white-space: nowrap;
 }
 .json-scroll {
+  position: relative;
   flex: 1;
   overflow: auto;
   background: var(--bg-code, #fafbfc);
+}
+.raw-json-actions {
+  position: sticky;
+  top: 8px;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  height: 0;
+  padding-right: 10px;
 }
 .json-lineno {
   flex-shrink: 0;

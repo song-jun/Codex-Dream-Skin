@@ -32,6 +32,40 @@
         />
       </el-select>
     </el-form-item>
+    <div v-if="selectedServiceUrl" class="custom-swagger-addresses">
+      <div class="custom-swagger-address-row">
+        <div class="custom-swagger-address-content">
+          <span>{{ customSwaggerLoaderUi.configAddressLabel }}</span>
+          <code :title="configAddress">{{ configAddress }}</code>
+        </div>
+        <el-tooltip :content="customSwaggerLoaderUi.copyConfigAddress" placement="top">
+          <el-button
+            :icon="CopyDocument"
+            text
+            circle
+            :disabled="!configAddress"
+            :aria-label="customSwaggerLoaderUi.copyConfigAddress"
+            @click="copyAddress(configAddress, customSwaggerLoaderUi.configAddressCopied)"
+          />
+        </el-tooltip>
+      </div>
+      <div class="custom-swagger-address-row">
+        <div class="custom-swagger-address-content">
+          <span>{{ customSwaggerLoaderUi.documentAddressLabel }}</span>
+          <code :title="documentAddress">{{ documentAddress }}</code>
+        </div>
+        <el-tooltip :content="customSwaggerLoaderUi.copyDocumentAddress" placement="top">
+          <el-button
+            :icon="CopyDocument"
+            text
+            circle
+            :disabled="!documentAddress"
+            :aria-label="customSwaggerLoaderUi.copyDocumentAddress"
+            @click="copyAddress(documentAddress, customSwaggerLoaderUi.documentAddressCopied)"
+          />
+        </el-tooltip>
+      </div>
+    </div>
     <div class="custom-swagger-actions">
       <el-button
         type="primary"
@@ -70,11 +104,13 @@
 
 <script setup lang="ts">
 /** 自定义 Swagger 加载面板的输入、选择与动作事件定义。 */
-import { Connection, Download, MagicStick } from "@element-plus/icons-vue";
-import type { SwaggerServiceOption } from "@/core/swaggerConfig";
+import { computed } from "vue";
+import { Connection, CopyDocument, Download, MagicStick } from "@element-plus/icons-vue";
+import { buildSwaggerUrl, type SwaggerServiceOption } from "@/core/swaggerConfig";
 import { customSwaggerLoaderUi } from "@/components/docviewer/customSwaggerLoaderUi";
+import { copyToClipboard } from "@/utils/clipboard";
 
-defineProps<{
+const props = defineProps<{
   domain: string;
   configPath: string;
   selectedServiceUrl: string;
@@ -93,6 +129,23 @@ const emit = defineEmits<{
   (e: "loadDocument"): void;
   (e: "generate"): void;
 }>();
+
+/** 根据当前填写的域名与路径生成完整地址，输入未完成时不展示无效内容。 */
+function resolveAddress(path: string): string {
+  try {
+    return buildSwaggerUrl(props.domain, path);
+  } catch {
+    return "";
+  }
+}
+
+const configAddress = computed(() => resolveAddress(props.configPath));
+const documentAddress = computed(() => resolveAddress(props.selectedServiceUrl));
+
+/** 复制当前行地址，并由统一剪贴板工具反馈结果。 */
+function copyAddress(value: string, message: string): void {
+  if (value) void copyToClipboard(value, message);
+}
 </script>
 
 <style scoped lang="scss">
@@ -110,5 +163,39 @@ const emit = defineEmits<{
   .el-button + .el-button {
     margin-left: 0;
   }
+}
+.custom-swagger-addresses {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+.custom-swagger-address-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+  background: var(--el-fill-color-lighter);
+}
+.custom-swagger-address-content {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.custom-swagger-address-content span {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.custom-swagger-address-content code {
+  overflow: hidden;
+  color: var(--el-text-color-primary);
+  font-family: "Fira Code", "Consolas", monospace;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -1,6 +1,24 @@
 # Changelog
 
-<!-- changelog:base fa0b2bc7fe065195da3794f672a8f3fd0e0847e0 -->
+<!-- changelog:base 5a5433be75a25cd1185beccb4bad48019a6f076b -->
+
+## [0.1.31] - 2026-08-13
+
+### 桌面端更新
+
+- 为Vue单文件组件添加scss语法支持
+- 调整DocViewer中标签页的内边距
+- 修改DocLoaderCard的标签页标题为"Swagger 自定义"
+- 统一多个按钮组的间距样式，消除多余的左侧margin
+- 重构全局样式文件为scss嵌套写法
+- 新增自定义Swagger加载面板，支持配置域名和文档路径获取服务列表
+- 添加electronAPI的fetchJson方法，通过主进程代理解决跨域问题
+- 为API工作台页面添加路由缓存，优化DocViewer和Generate页面切换体验
+- 重构接口请求逻辑，统一使用fetchJsonFromRuntime处理跨域请求
+- 新增开发环境swagger代理插件，解决本地开发跨域问题
+- 优化接口文档复制功能，支持多种复制格式
+- 调整默认加载标签页为自定义Swagger加载页
+- 完整实现桌面端错误记录系统，新增全局错误捕获、错误记录页面与统一错误提示逻辑，同时优化多项界面布局与交互，修复部分功能逻辑并更新变更日志
 
 ## [0.1.30] - 2026-08-13
 
