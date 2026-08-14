@@ -102,6 +102,12 @@ export function parseEndpoints(doc: IOpenAPIDocument): IEndpointInfo[] {
         response = { contentType: 'application/octet-stream' };
       }
 
+      // 导出接口必须以 Blob 接收。部分 OpenAPI 文档会将导出响应错误标为 JSON，
+      // 因此这里按接口语义覆盖响应类型，确保后续所有代码生成路径都带 responseType: 'blob'。
+      if (isExportOperation(path, operation.summary, operation.description, operationId)) {
+        response = { contentType: 'application/octet-stream' };
+      }
+
       endpoints.push({
         path,
         method,
@@ -118,6 +124,14 @@ export function parseEndpoints(doc: IOpenAPIDocument): IEndpointInfo[] {
   return endpoints;
 }
 
+/**
+ * 判断接口是否属于导出场景。
+ * @param fields 路径、标题、描述与 operationId 等可用于识别导出语义的字段。
+ * @returns 命中“导出”或“export”时返回 true。
+ */
+function isExportOperation(...fields: Array<string | undefined>): boolean {
+  return fields.some((field) => /导出|export/i.test(field || ''));
+}
 
 /**
  * 选取 requestBody.content 里要用的 content-type
