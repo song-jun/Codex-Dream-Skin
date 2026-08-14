@@ -1,6 +1,37 @@
 # Changelog
 
-<!-- changelog:base 5a5433be75a25cd1185beccb4bad48019a6f076b -->
+<!-- changelog:base 52bae0b04326c99872fdf16dcd9e8a80708fe4d9 -->
+
+## [0.1.32] - 2026-08-14
+
+### 桌面端更新
+
+- 新增electronAPI.requestApi接口实现主进程转发接口请求
+- 添加开发环境/api-proxy代理处理跨域请求
+- 新增AuthFailureReason类型并扩展登录/校验结果
+- 重构认证逻辑统一使用运行时请求通道
+- 优化登录错误提示，按错误类型返回友好提示
+- 添加Swagger域名自动同步到API基础URL功能
+- 新增预览Tab配置文件，统一管理Tab的key、标签和复制提示文本
+- 将预览Tab类型抽象为CodePreviewTab类型，替换硬编码的tab值
+- 新增simple和minimal两种预览模式，自动生成简化版代码
+- 重构复制逻辑，根据Tab动态获取复制提示文本
+- 调整EndpointTree的布局样式，适配新增的状态标签容器
+- add i18n texts for snapshot comparison UI
+- add baseline snapshot tracking for diff calculation
+- display current compared snapshot in doc viewer header
+- show previous snapshot reference in snapshot list
+- optimize local file snapshot baseline matching
+- 新增接口快照页面与路由，支持管理本地/远程接口基线
+- 实现接口差异对比逻辑，识别新增/缺失接口
+- 为文档加载页和代码生成页新增差异筛选与展示功能
+- 新增多语言文案与工具类函数支持快照功能
+- 优化文档加载卡片的文件名展示
+- 新增自定义Swagger加载面板，支持配置地址并复制
+- 添加electron主进程代理fetchJson接口解决跨域问题
+- 为文档查看器新增原始JSON复制功能
+- 新增根路由避免启动路由警告，添加CSP头
+- 完善文档查看器相关文案与样式优化
 
 ## [0.1.31] - 2026-08-13
 

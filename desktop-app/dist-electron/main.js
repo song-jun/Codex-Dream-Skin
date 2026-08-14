@@ -23,6 +23,8 @@ const apiAllowedRoots = new Set();
 const apiEnvFileName = 'api-workbench.env';
 const apiTokenFileName = 'api-workbench-token.enc';
 const maxApiFetchBytes = 10 * 1024 * 1024;
+const allowedApiRequestMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+const allowedApiRequestHeaders = new Set(['accept', 'authorization', 'content-type']);
 /** 主进程代理 API 文档请求，避免渲染进程的跨域限制。 */
 async function fetchApiJson(value) {
     if (typeof value !== 'string')
@@ -44,6 +46,61 @@ async function fetchApiJson(value) {
     if (body.byteLength > maxApiFetchBytes)
         throw new Error('API 文档响应过大。');
     return JSON.parse(new TextDecoder().decode(body));
+}
+/**
+ * 通过主进程转发 API Workbench 的接口调用，避免渲染进程受到 CORS 限制。
+ * @param value 来自 preload 的未受信任请求参数
+ * @returns 保留状态码及响应体的接口响应
+ */
+async function requestApi(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        throw new Error('接口请求参数无效。');
+    const payload = value;
+    if (typeof payload.url !== 'string' || typeof payload.method !== 'string')
+        throw new Error('接口请求参数无效。');
+    const requestUrl = new URL(payload.url.trim());
+    if (!['http:', 'https:'].includes(requestUrl.protocol) || requestUrl.username || requestUrl.password) {
+        throw new Error('接口地址无效。');
+    }
+    const method = payload.method.toUpperCase();
+    if (!allowedApiRequestMethods.has(method))
+        throw new Error('不支持的接口请求方法。');
+    if (payload.body !== undefined && typeof payload.body !== 'string')
+        throw new Error('接口请求体无效。');
+    const headers = {};
+    if (payload.headers !== undefined) {
+        if (!payload.headers || typeof payload.headers !== 'object' || Array.isArray(payload.headers))
+            throw new Error('接口请求头无效。');
+        for (const [key, headerValue] of Object.entries(payload.headers)) {
+            if (!allowedApiRequestHeaders.has(key.toLowerCase()) || typeof headerValue !== 'string')
+                continue;
+            headers[key] = headerValue;
+        }
+    }
+    const configuredTimeout = typeof payload.timeout === 'number' && Number.isFinite(payload.timeout) ? payload.timeout : 30_000;
+    const timeout = Math.min(Math.max(configuredTimeout, 1_000), 120_000);
+    const response = await fetch(requestUrl, {
+        method,
+        headers,
+        body: payload.body,
+        signal: AbortSignal.timeout(timeout),
+    });
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > maxApiFetchBytes)
+        throw new Error('接口响应内容过大。');
+    const body = await response.arrayBuffer();
+    if (body.byteLength > maxApiFetchBytes)
+        throw new Error('接口响应内容过大。');
+    const text = new TextDecoder().decode(body);
+    const contentType = response.headers.get('content-type') || '';
+    let data = text;
+    if (contentType.includes('application/json') && text) {
+        try {
+            data = JSON.parse(text);
+        }
+        catch { /* 非法 JSON 保留原始文本 */ }
+    }
+    return { statusCode: response.status, data };
 }
 function normalizeApiPath(value) {
     return path.resolve(value);
@@ -984,6 +1041,7 @@ app.whenReady().then(async () => {
     ipcMain.handle('open-state-folder', async () => { await shell.openPath(stateRoot()); return true; });
     ipcMain.handle('env:getOpenApi', () => Object.fromEntries(readApiEnv().map(({ key, value }) => [key, value])));
     ipcMain.handle('api:fetchJson', (_event, url) => fetchApiJson(url));
+    ipcMain.handle('api:request', (_event, request) => requestApi(request));
     ipcMain.handle('dialog:selectDirectory', async (_event, defaultPath) => {
         if (!mainWindow)
             return null;
