@@ -96,7 +96,11 @@ import typescript from "highlight.js/lib/languages/typescript";
 import "highlight.js/styles/atom-one-light.css";
 import { useDocStore } from "@/stores/doc";
 import { useExportStore } from "@/stores/export";
-import type { IGeneratedCode } from "@/core/types";
+import type { IEndpointInfo, IGeneratedCode } from "@/core/types";
+import {
+  createCodePreviewVariants,
+  type CodePreviewTab,
+} from "@/core/codePreview";
 import { generateCode, generateCodeForMultipleEndpoints } from "@/core/generator";
 import { showFriendlyError } from "@/utils/errorRecords";
 import { inferUrlPrefixFromApiUrl, DEFAULT_URL_PREFIX } from "@/core/env";
@@ -107,6 +111,7 @@ import { useExport } from "@/composables/useExport";
 import EndpointTree from "@/components/generate/EndpointTree.vue";
 import PreviewPanel from "@/components/generate/PreviewPanel.vue";
 import UrlPrefixDialog from "@/components/generate/UrlPrefixDialog.vue";
+import { previewTabOptions } from "@/components/generate/previewTabs";
 
 hljs.registerLanguage("typescript", typescript);
 
@@ -131,8 +136,8 @@ onBeforeUnmount(() => {
     _searchTimer = null;
   }
 });
-const selectedEndpoints = ref<any[]>([]);
-const previewTab = ref<"type" | "index">("type");
+const selectedEndpoints = ref<IEndpointInfo[]>([]);
+const previewTab = ref<CodePreviewTab>("type");
 const expandedTags = ref<Record<string, boolean>>({});
 const selectAll = ref(false);
 const generatedCode = ref<IGeneratedCode | null>(null);
@@ -165,12 +170,10 @@ const { isSaving, onSave, onSaveAll } = useExport({
   urlPrefix,
 });
 
-// ===== 预览（type.ts / index.ts） =====
+// ===== 预览（标准产物与派生简版） =====
+const codePreviewVariants = computed(() => createCodePreviewVariants(generatedCode.value));
 const currentCode = computed(() => {
-  if (!generatedCode.value) return "";
-  return previewTab.value === "type"
-    ? generatedCode.value.typeFile
-    : generatedCode.value.indexFile;
+  return codePreviewVariants.value[previewTab.value];
 });
 
 const currentCodeLines = computed(() => {
@@ -184,10 +187,11 @@ const currentCodeLines = computed(() => {
 });
 
 // ===== 复制（整段 / 单 tab） =====
-async function copyFile(which: "type" | "index") {
-  if (!generatedCode.value) return;
-  const content = which === "type" ? generatedCode.value.typeFile : generatedCode.value.indexFile;
-  await copyToClipboard(content, `已复制 ${which}.ts 到剪贴板`);
+async function copyFile(which: CodePreviewTab) {
+  const content = codePreviewVariants.value[which];
+  if (!content) return;
+  const label = previewTabOptions.find((option) => option.key === which)?.copySuccessLabel ?? which;
+  await copyToClipboard(content, `已复制 ${label} 到剪贴板`);
 }
 async function onCopy() {
   if (!currentCode.value) return;

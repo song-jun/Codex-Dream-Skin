@@ -43,22 +43,12 @@
       </el-button>
     </div>
 
-    <el-tabs :model-value="tab" class="preview-tabs" @update:model-value="(v: any) => $emit('update:tab', v)">
-      <el-tab-pane name="type">
+    <el-tabs :model-value="tab" class="preview-tabs" @update:model-value="(v: string | number) => $emit('update:tab', v as CodePreviewTab)">
+      <el-tab-pane v-for="option in previewTabOptions" :key="option.key" :name="option.key">
         <template #label>
           <span class="tab-label">
-            <span>type.ts</span>
-            <el-button size="small" link type="primary" :disabled="!generatedCode" class="tab-copy" @click.stop="$emit('copy-file', 'type')">
-              <el-icon><CopyDocument /></el-icon><span>复制</span>
-            </el-button>
-          </span>
-        </template>
-      </el-tab-pane>
-      <el-tab-pane name="index">
-        <template #label>
-          <span class="tab-label">
-            <span>index.ts</span>
-            <el-button size="small" link type="primary" :disabled="!generatedCode" class="tab-copy" @click.stop="$emit('copy-file', 'index')">
+            <span>{{ option.label }}</span>
+            <el-button size="small" link type="primary" :disabled="!generatedCode" class="tab-copy" @click.stop="$emit('copy-file', option.key)">
               <el-icon><CopyDocument /></el-icon><span>复制</span>
             </el-button>
           </span>
@@ -81,6 +71,8 @@
 import { CopyDocument, Document, Files, Folder, Check, MagicStick } from "@element-plus/icons-vue";
 import VirtualList from "@/components/VirtualList.vue";
 import type { IGeneratedCode } from "@/core/types";
+import type { CodePreviewTab } from "@/core/codePreview";
+import { previewTabOptions } from "./previewTabs";
 
 defineProps<{
   generatedCode: IGeneratedCode | null;
@@ -94,7 +86,7 @@ defineProps<{
   endpointsLength: number;
   currentCode: string;
   currentCodeLines: string[];
-  tab: "type" | "index";
+  tab: CodePreviewTab;
 }>();
 
 defineEmits<{
@@ -102,8 +94,8 @@ defineEmits<{
   (e: "save"): void;
   (e: "save-all"): void;
   (e: "copy"): void;
-  (e: "copy-file", which: "type" | "index"): void;
-  (e: "update:tab", v: "type" | "index"): void;
+  (e: "copy-file", which: CodePreviewTab): void;
+  (e: "update:tab", v: CodePreviewTab): void;
 }>();
 </script>
 

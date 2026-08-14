@@ -81,8 +81,10 @@
               >
                 <span :class="methodClass(ep.method)">{{ ep.method.toUpperCase() }}</span>
                 <span class="ep-summary">{{ ep.summary || ep.path }}</span>
-                <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
-                <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
+                <span class="endpoint-status">
+                  <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
+                  <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
+                </span>
                 <el-dropdown
                   trigger="hover"
                   @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)"
@@ -111,8 +113,10 @@
                   <input type="checkbox" class="ep-checkbox" :checked="isSelected(ep)" @change="toggleSelect(ep)" />
                   <span :class="methodClass(ep.method)">{{ ep.method.toUpperCase() }}</span>
                   <span class="ep-summary">{{ ep.summary || ep.path }}</span>
-                  <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
-                  <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
+                  <span class="endpoint-status">
+                    <el-tag v-if="isNewEndpoint(ep)" size="small" type="success">{{ docViewerUi.newEndpoint }}</el-tag>
+                    <el-tag v-if="isMissingEndpoint(ep)" size="small" type="danger">{{ docViewerUi.missingEndpoint }}</el-tag>
+                  </span>
                   <el-dropdown
                     trigger="hover"
                     @command="(action: EndpointCopyAction) => void onCopyCommand(ep, action)"
@@ -313,13 +317,14 @@ async function onCopyCommand(ep: IEndpointInfo, action: unknown) {
 .tag-name { flex: 1; font-weight: 500; font-size: 13px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag-endpoints { padding: 6px 12px 8px; background: #fff; }
 .endpoint-vlist-wrap { height: 240px; border: 1px solid var(--border-light, #f1f5f9); border-radius: 4px; }
-.endpoint-row-v { display: grid; grid-template-columns: 14px 48px minmax(0, 1fr) max-content max-content; align-items: center; gap: 8px; width: 100%; cursor: pointer; }
+.endpoint-row-v { display: grid; grid-template-columns: 14px 48px minmax(0, 1fr) minmax(40px, max-content) 52px; align-items: center; gap: 8px; width: 100%; cursor: pointer; }
 .endpoint-row-v:hover { background: #f8fafc; }
 .ep-checkbox { flex-shrink: 0; width: 14px; height: 14px; cursor: pointer; }
 .ep-copy { min-width: 52px; margin: 0; font-size: 12px; }
 .endpoint-item { display: flex !important; align-items: center; gap: 8px; margin-bottom: 4px; white-space: normal; height: auto !important; padding: 4px 0; width: 100%; }
-.endpoint-item :deep(.el-checkbox__label) { display: grid; grid-template-columns: 48px minmax(0, 1fr) max-content max-content; align-items: center; width: auto; min-width: 0; flex: 1; gap: 8px; white-space: normal; }
+.endpoint-item :deep(.el-checkbox__label) { display: grid; grid-template-columns: 48px minmax(0, 1fr) minmax(40px, max-content) 52px; align-items: center; width: auto; min-width: 0; flex: 1; gap: 8px; white-space: normal; }
 .endpoint-item :deep(.el-checkbox__label > .el-dropdown) { justify-self: end; }
+.endpoint-status { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 40px; gap: 4px; }
 .method-tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; color: #fff; min-width: 48px; text-align: center; flex-shrink: 0; }
 /* .method-get/post/put/patch/delete 颜色统一在 styles/main.css 中定义（设计系统） */
 .method-head, .method-options { background: #6b7280; }
