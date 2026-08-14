@@ -32,6 +32,22 @@
         />
       </el-select>
     </el-form-item>
+    <el-form-item :label="customSwaggerLoaderUi.snapshotLabel">
+      <el-select
+        :model-value="selectedSnapshotKey"
+        class="custom-swagger-service"
+        clearable
+        :placeholder="customSwaggerLoaderUi.snapshotPlaceholder"
+        @update:model-value="emit('update:selectedSnapshotKey', $event)"
+      >
+        <el-option
+          v-for="snapshot in snapshots"
+          :key="snapshot.key"
+          :label="snapshot.key"
+          :value="snapshot.key"
+        />
+      </el-select>
+    </el-form-item>
     <div v-if="selectedServiceUrl" class="custom-swagger-addresses">
       <div class="custom-swagger-address-row">
         <div class="custom-swagger-address-content">
@@ -77,7 +93,6 @@
       </el-button>
       <el-button
         type="primary"
-        plain
         :disabled="!selectedServiceUrl"
         :loading="isLoadingDocument"
         @click="emit('loadDocument')"
@@ -107,6 +122,7 @@
 import { computed } from "vue";
 import { Connection, CopyDocument, Download, MagicStick } from "@element-plus/icons-vue";
 import { buildSwaggerUrl, type SwaggerServiceOption } from "@/core/swaggerConfig";
+import type { EndpointSnapshotRecord } from "@/core/endpointDiff";
 import { customSwaggerLoaderUi } from "@/components/docviewer/customSwaggerLoaderUi";
 import { copyToClipboard } from "@/utils/clipboard";
 
@@ -114,7 +130,9 @@ const props = defineProps<{
   domain: string;
   configPath: string;
   selectedServiceUrl: string;
+  selectedSnapshotKey: string;
   services: SwaggerServiceOption[];
+  snapshots: EndpointSnapshotRecord[];
   isFetching: boolean;
   isLoadingDocument: boolean;
   hasFetched: boolean;
@@ -125,6 +143,7 @@ const emit = defineEmits<{
   (e: "update:domain", value: string): void;
   (e: "update:configPath", value: string): void;
   (e: "update:selectedServiceUrl", value: string): void;
+  (e: "update:selectedSnapshotKey", value: string): void;
   (e: "fetchServices"): void;
   (e: "loadDocument"): void;
   (e: "generate"): void;

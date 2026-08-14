@@ -295,6 +295,32 @@ export function getEndpointSnapshotDocument(key: string): IOpenAPIDocument | nul
 }
 
 /**
+ * 使用指定快照计算当前接口差异，但不更新任何快照数据。
+ * @param baselineKey 用户选择的对比快照键。
+ * @param endpoints 当前成功解析出的接口列表。
+ * @returns 差异结果；指定快照不存在时返回 null。
+ */
+export function compareEndpointSnapshot(
+  baselineKey: string,
+  endpoints: IEndpointInfo[],
+): EndpointDiff | null {
+  const baseline = loadEndpointSnapshots()[baselineKey];
+  if (!baseline) return null;
+
+  const currentKeys = new Set(endpoints.map(getEndpointKey));
+  const baselineByKey = new Map(baseline.endpoints.map((item) => [item.key, item]));
+  const newKeys = [...currentKeys].filter((key) => !baselineByKey.has(key));
+  const missingItems = baseline.endpoints.filter((item) => !currentKeys.has(item.key));
+
+  return {
+    newKeys,
+    missingKeys: missingItems.map((item) => item.key),
+    missingEndpoints: missingItems.map(toMissingEndpoint),
+    baselineKey,
+  };
+}
+
+/**
  * 写入本次成功加载的接口基线，并返回相对上次加载新增的接口标识。
  * @param serviceUrl 当前接口文档的完整地址。
  * @param endpoints 本次文档中解析出的接口。

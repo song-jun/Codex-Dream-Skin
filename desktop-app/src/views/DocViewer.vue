@@ -35,7 +35,9 @@
           :custom-domain="customDomain"
           :custom-config-path="customConfigPath"
           :custom-service-url="customServiceUrl"
+          :custom-snapshot-key="customSnapshotKey"
           :custom-services="customServices"
+          :custom-snapshot-options="customSnapshotOptions"
           :is-fetching-custom-services="isFetchingCustomServices"
           :has-fetched-custom-services="hasFetchedCustomServices"
           :is-favorite="isFavorite"
@@ -54,6 +56,7 @@
           @update:custom-domain="(value) => (customDomain = value)"
           @update:custom-config-path="(value) => (customConfigPath = value)"
           @update:custom-service-url="(value) => (customServiceUrl = value)"
+          @update:custom-snapshot-key="(value) => (customSnapshotKey = value)"
           @fetch-custom-services="fetchCustomServices"
           @load-custom-document="onLoadCustomDocument"
           @generate="navigateToGenerate"
@@ -134,7 +137,9 @@ const {
   customDomain,
   customConfigPath,
   customServiceUrl,
+  customSnapshotKey,
   customServices,
+  customSnapshotOptions,
   isFetchingCustomServices,
   hasFetchedCustomServices,
   isFavorite,

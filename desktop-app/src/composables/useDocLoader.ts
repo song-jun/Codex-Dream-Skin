@@ -16,7 +16,12 @@ import { useDocStore } from "@/stores/doc";
 import { useConfigStore } from "@/stores/config";
 import { DEFAULT_API_URL } from "@/core/env";
 import { copyToClipboard } from "@/utils/clipboard";
-import { updateEndpointSnapshot } from "@/core/endpointDiff";
+import {
+  compareEndpointSnapshot,
+  listEndpointSnapshots,
+  updateEndpointSnapshot,
+  type EndpointSnapshotRecord,
+} from "@/core/endpointDiff";
 import { formatJson } from "@/utils/formatJson";
 import { recordError, showFriendlyError } from "@/utils/errorRecords";
 import {
@@ -181,6 +186,8 @@ export function useDocLoader() {
   const customConfigPath = ref(DEFAULT_SWAGGER_CONFIG_PATH);
   const customServices = ref<SwaggerServiceOption[]>([]);
   const customServiceUrl = ref("");
+  const customSnapshotKey = ref("");
+  const customSnapshotOptions = ref<EndpointSnapshotRecord[]>(listEndpointSnapshots());
   const isFetchingCustomServices = ref(false);
   const hasFetchedCustomServices = ref(false);
 
@@ -190,6 +197,11 @@ export function useDocLoader() {
 
   // 单向同步：Swagger 域名变更覆盖 API 基础 URL，设置页改 API 基础 URL 不会反向影响 Swagger。
   watch(customDomain, (domain) => syncSwaggerDomainToBaseUrl(domain, true));
+
+  // 切换服务时不沿用上一服务的对比基线，避免产生误导性的跨服务差异。
+  watch(customServiceUrl, () => {
+    customSnapshotKey.value = "";
+  });
 
   // ===== 查看卡片本地状态 =====
   const activeTab = ref<DocViewTab>("list");
@@ -368,7 +380,13 @@ export function useDocLoader() {
   }
 
   // ===== 加载 / 解析 / 格式化 =====
-  async function loadFromUrl(url?: string) {
+  /**
+   * 加载远程 OpenAPI 文档，并按是否指定快照基线决定更新或只读对比。
+   * @param url 待加载的完整文档地址；未传时使用当前 URL 输入值。
+   * @param snapshotBaselineKey Swagger 自定义页选择的快照键；有值时不更新快照。
+   * @returns 文档是否加载成功。
+   */
+  async function loadFromUrl(url?: string, snapshotBaselineKey = "") {
     const u = url ?? urlValue.value;
     friendlyErrorMsg.value = "";
     const ok = await docStore.loadFromUrl(u);
@@ -376,8 +394,11 @@ export function useDocLoader() {
       friendlyErrorMsg.value = "";
       const serviceUrl = docStore.sourceUrl;
       const diff = serviceUrl && docStore.doc
-        ? updateEndpointSnapshot(serviceUrl, docStore.endpoints, docStore.doc)
+        ? snapshotBaselineKey
+          ? compareEndpointSnapshot(snapshotBaselineKey, docStore.endpoints)
+          : updateEndpointSnapshot(serviceUrl, docStore.endpoints, docStore.doc)
         : null;
+      if (!snapshotBaselineKey) customSnapshotOptions.value = listEndpointSnapshots();
       newEndpointKeys.value = diff?.newKeys ?? [];
       missingEndpointKeys.value = diff?.missingKeys ?? [];
       missingEndpoints.value = diff?.missingEndpoints ?? [];
@@ -403,8 +424,7 @@ export function useDocLoader() {
     if (isFetchingCustomServices.value) return;
     isFetchingCustomServices.value = true;
     hasFetchedCustomServices.value = false;
-    customServices.value = [];
-    customServiceUrl.value = "";
+    const selectedServiceUrl = customServiceUrl.value;
     try {
       customServices.value = await fetchSwaggerServices(
         customDomain.value,
@@ -412,7 +432,9 @@ export function useDocLoader() {
       );
       hasFetchedCustomServices.value = true;
       if (customServices.value.length > 0) {
-        customServiceUrl.value = customServices.value[0].url;
+        customServiceUrl.value = customServices.value.some((service) => service.url === selectedServiceUrl)
+          ? selectedServiceUrl
+          : customServices.value[0].url;
         ElMessage.success("连接成功，已获取接口文档服务。");
       }
     } catch (error) {
@@ -430,7 +452,7 @@ export function useDocLoader() {
     try {
       const url = buildSwaggerUrl(customDomain.value, customServiceUrl.value);
       urlValue.value = url;
-      return await loadFromUrl(url);
+      return await loadFromUrl(url, customSnapshotKey.value);
     } catch (error) {
       recordError(error, "拼接 Swagger 服务地址");
       ElMessage.error("接口地址无效，请检查域名和服务路径后重试。");
@@ -458,6 +480,7 @@ export function useDocLoader() {
       const diff = snapshotKey && docStore.doc
         ? updateEndpointSnapshot(snapshotKey, docStore.endpoints, docStore.doc, baselineKey)
         : null;
+      if (snapshotKey) customSnapshotOptions.value = listEndpointSnapshots();
       newEndpointKeys.value = diff?.newKeys ?? [];
       missingEndpointKeys.value = diff?.missingKeys ?? [];
       missingEndpoints.value = diff?.missingEndpoints ?? [];
@@ -604,6 +627,8 @@ export function useDocLoader() {
     customConfigPath,
     customServices,
     customServiceUrl,
+    customSnapshotKey,
+    customSnapshotOptions,
     isFetchingCustomServices,
     hasFetchedCustomServices,
     prettyJson,

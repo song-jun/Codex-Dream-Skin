@@ -29,7 +29,9 @@
           :domain="customDomain"
           :config-path="customConfigPath"
           :selected-service-url="customServiceUrl"
+          :selected-snapshot-key="customSnapshotKey"
           :services="customServices"
+          :snapshots="customSnapshotOptions"
           :is-fetching="isFetchingCustomServices"
           :is-loading-document="isLoading"
           :has-fetched="hasFetchedCustomServices"
@@ -37,6 +39,7 @@
           @update:domain="emit('update:customDomain', $event)"
           @update:config-path="emit('update:customConfigPath', $event)"
           @update:selected-service-url="emit('update:customServiceUrl', $event)"
+          @update:selected-snapshot-key="emit('update:customSnapshotKey', $event)"
           @fetch-services="emit('fetchCustomServices')"
           @load-document="emit('loadCustomDocument')"
           @generate="emit('generate')"
@@ -185,6 +188,7 @@ import CustomSwaggerLoaderPanel from "@/components/docviewer/CustomSwaggerLoader
 import UrlDocumentLoaderPanel from "@/components/docviewer/UrlDocumentLoaderPanel.vue";
 import type { DocTab, JsonParseHistoryItem } from "@/composables/useDocLoader";
 import type { SwaggerServiceOption } from "@/core/swaggerConfig";
+import type { EndpointSnapshotRecord } from "@/core/endpointDiff";
 import { recordError } from "@/utils/errorRecords";
 const props = defineProps<{
   urlValue: string;
@@ -200,7 +204,9 @@ const props = defineProps<{
   customDomain: string;
   customConfigPath: string;
   customServiceUrl: string;
+  customSnapshotKey: string;
   customServices: SwaggerServiceOption[];
+  customSnapshotOptions: EndpointSnapshotRecord[];
   isFetchingCustomServices: boolean;
   hasFetchedCustomServices: boolean;
   isFavorite: (url: string) => boolean;
@@ -219,6 +225,7 @@ const emit = defineEmits<{
   (e: "update:customDomain", value: string): void;
   (e: "update:customConfigPath", value: string): void;
   (e: "update:customServiceUrl", value: string): void;
+  (e: "update:customSnapshotKey", value: string): void;
   (e: "fetchCustomServices"): void;
   (e: "loadCustomDocument"): void;
   (e: "historyParse", item: JsonParseHistoryItem): void;

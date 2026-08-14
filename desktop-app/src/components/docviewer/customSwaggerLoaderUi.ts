@@ -6,6 +6,8 @@ export const customSwaggerLoaderUi = {
   configPlaceholder: "/v3/api-docs/swagger-config",
   serviceLabel: "接口文档服务",
   servicePlaceholder: "请先获取服务列表",
+  snapshotLabel: "对比快照",
+  snapshotPlaceholder: "不选择，按当前服务快照对比",
   fetchServices: "测试连接并获取服务",
   loadDocument: "加载接口文档",
   generateCode: "生成代码",

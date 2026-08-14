@@ -1,6 +1,12 @@
 # Changelog
 
-<!-- changelog:base 52bae0b04326c99872fdf16dcd9e8a80708fe4d9 -->
+<!-- changelog:base 8696dbf9d13f9da73974cac6ba188984eda6653e -->
+
+## [0.1.33] - 2026-08-14
+
+### 桌面端更新
+
+- 添加electron主进程接口转发能力，新增多组API相关功能与界面优化，更新版本号与变更日志
 
 ## [0.1.32] - 2026-08-14
 
