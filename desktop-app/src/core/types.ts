@@ -188,6 +188,19 @@ export interface ILoginCredentials {
   password: string;
 }
 
+/** 认证失败的可展示原因，用于在不泄露服务端原文的前提下给出明确提示 */
+export type AuthFailureReason =
+  | 'configuration'
+  | 'credentials'
+  | 'forbidden'
+  | 'endpoint'
+  | 'timeout'
+  | 'unavailable'
+  | 'server'
+  | 'network'
+  | 'response'
+  | 'business';
+
 /**
  * 登录响应接口
  */
@@ -198,6 +211,8 @@ export interface ILoginResponse {
   token?: string;
   /** 错误信息 */
   error?: string;
+  /** 失败原因分类 */
+  failureReason?: AuthFailureReason;
 }
 
 /**
@@ -224,6 +239,10 @@ export interface IAuthResult {
   userInfo?: IUserInfo;
   /** 错误信息 */
   error?: string;
+  /** 失败原因分类 */
+  failureReason?: AuthFailureReason;
+  /** 是否已确认 Token 无效或过期；仅此情况可清理已保存的凭证 */
+  invalidToken?: boolean;
   /** 用户主动返回上一步（非错误，区别于失败） */
   back?: boolean;
 }

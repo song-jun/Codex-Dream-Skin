@@ -141,6 +141,36 @@ export function useDocLoader() {
   } = storeToRefs(docStore);
   const configStore = useConfigStore();
 
+  /**
+   * 将有效的 Swagger 自定义域名同步为接口调用基础地址。
+   * @param domain Swagger 自定义域名。
+   * @param overwrite 是否覆盖用户已填写的 API 基础 URL。
+   * @returns 无返回值；无效或未填写的域名不会改变调用配置。
+   */
+  function syncSwaggerDomainToBaseUrl(domain: string, overwrite: boolean): void {
+    const value = domain.trim();
+    if (!value || (!overwrite && configStore.config.baseUrl.trim())) return;
+
+    try {
+      const parsed = new URL(value);
+      if (
+        (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+        parsed.username ||
+        parsed.password ||
+        parsed.search ||
+        parsed.hash
+      ) {
+        return;
+      }
+      const baseUrl = parsed.toString().replace(/\/$/, "");
+      if (configStore.config.baseUrl === baseUrl) return;
+      configStore.config.baseUrl = baseUrl;
+      configStore.save();
+    } catch {
+      // 用户输入尚未形成完整 URL 时保留上一个可用的 API 基础 URL。
+    }
+  }
+
   // ===== 加载卡片本地状态 =====
   const urlValue = ref<string>(DEFAULT_API_URL[0] || "");
   const friendlyErrorMsg = ref<string>("");
@@ -153,6 +183,13 @@ export function useDocLoader() {
   const customServiceUrl = ref("");
   const isFetchingCustomServices = ref(false);
   const hasFetchedCustomServices = ref(false);
+
+  // 先恢复用户保存的调用配置；首次未配置时使用默认 Swagger 域名。
+  configStore.load();
+  syncSwaggerDomainToBaseUrl(customDomain.value, false);
+
+  // 单向同步：Swagger 域名变更覆盖 API 基础 URL，设置页改 API 基础 URL 不会反向影响 Swagger。
+  watch(customDomain, (domain) => syncSwaggerDomainToBaseUrl(domain, true));
 
   // ===== 查看卡片本地状态 =====
   const activeTab = ref<DocViewTab>("list");

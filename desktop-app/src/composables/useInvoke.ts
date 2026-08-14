@@ -18,6 +18,7 @@ import type {
   IEndpointInfo,
   IInvokeResponse,
   IParamDisplayInfo,
+  IAuthResult,
   IUserInfo,
 } from '@/core/types';
 import { AuthManager } from '@/core/authManager';
@@ -36,6 +37,29 @@ export interface IRequestForm {
 }
 
 const TOKEN_STORAGE_KEY = 'apiWorkbench.invokeToken';
+
+/**
+ * 将认证层错误分类转换为安全、明确的用户提示。
+ * @param result 认证结果
+ * @param isTokenLogin 是否为手动输入 Token 登录
+ * @returns 不包含服务端原始信息的提示文字
+ */
+function getLoginFailureMessage(result: IAuthResult, isTokenLogin: boolean): string {
+  if (isTokenLogin && result.invalidToken) return 'Token 无效或已过期，请重新输入。';
+  const messages: Record<NonNullable<IAuthResult['failureReason']>, string> = {
+    configuration: '未配置认证服务地址，请在设置中检查 API 基础地址。',
+    credentials: '账号或密码不正确，请重新输入。',
+    forbidden: '当前账号没有登录权限，请联系管理员。',
+    endpoint: '认证服务地址或路径不正确，请检查环境变量配置。',
+    timeout: '登录请求超时，请检查网络后重试。',
+    unavailable: '无法连接认证服务，请检查服务地址和网络连接。',
+    server: '认证服务暂时不可用，请稍后重试。',
+    network: '网络异常，无法连接认证服务，请稍后重试。',
+    response: '认证服务返回异常，请检查服务配置后重试。',
+    business: '认证未通过，请检查账号、密码和账号状态。'
+  };
+  return messages[result.failureReason || 'business'];
+}
 
 /** 读取已持久化的 Token（先 IPC，再 localStorage 兜底） */
 async function readStoredToken(): Promise<string> {
@@ -282,11 +306,18 @@ export function useInvoke() {
     if (res.success) {
       userInfo.value = res.userInfo || null;
       ElMessage.success(`Token 有效，当前用户：${res.userInfo?.name || res.userInfo?.username}`);
-    } else {
-      ElMessage.warning('已保存的 Token 无效，请重新登录');
+      return;
+    }
+    if (res.invalidToken) {
+      ElMessage.warning('登录状态已过期，请重新登录');
       token.value = '';
       userInfo.value = null;
+      await persistToken(null);
+      authManager = null;
+      return;
     }
+    recordError(res.error || 'Token 自动校验失败', '自动校验已保存的 Token');
+    ElMessage.warning('暂时无法验证已保存的登录状态，已保留 Token。请检查服务地址和网络连接后重试。');
   }
 
   /**
@@ -334,7 +365,8 @@ export function useInvoke() {
         tokenInput.value = '';
         ElMessage.success('登录成功');
       } else {
-        showFriendlyError(res.error || '登录失败', '登录接口', '登录失败，请检查账号或服务状态后重试。');
+        const message = getLoginFailureMessage(res, loginTab.value === 'token');
+        showFriendlyError(res.error || '登录失败', '登录接口', message);
       }
     } finally {
       loginLoading.value = false;

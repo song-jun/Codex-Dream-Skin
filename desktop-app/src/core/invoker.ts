@@ -17,6 +17,28 @@ import { INVOKE_TIMEOUT, RESPONSE_TRUNCATE_THRESHOLD } from './env';
 
 // 注意：不要把 INVOKE_TIMEOUT / RESPONSE_TRUNCATE_THRESHOLD 缓存到 const（否则 reloadEnv 后不生效）
 
+/** 绕过渲染进程 CORS 的运行时请求参数。 */
+interface IRuntimeApiRequest {
+  /** 完整接口地址。 */
+  url: string;
+  /** HTTP 请求方法。 */
+  method: string;
+  /** 请求头。 */
+  headers: Record<string, string>;
+  /** JSON 请求体。 */
+  body?: string;
+  /** 超时时间，单位毫秒。 */
+  timeout: number;
+}
+
+/** 主进程或开发代理返回的接口响应。 */
+interface IRuntimeApiResponse {
+  /** HTTP 状态码。 */
+  statusCode: number;
+  /** 响应内容。 */
+  data: unknown;
+}
+
 // ============ ApiInvoker 类 ============
 
 /**
@@ -131,6 +153,19 @@ export class ApiInvoker {
         }
       }
 
+      const runtimeRequest = this.createRuntimeRequest(config);
+      if (window.electronAPI?.requestApi) {
+        const response = await window.electronAPI.requestApi(runtimeRequest);
+        return this.createHttpResponse(response, startTime);
+      }
+      if (import.meta.env.DEV) {
+        const response = await axios.post<unknown>('/api-proxy', runtimeRequest, {
+          timeout: this.timeout,
+          validateStatus: () => true,
+        });
+        return this.createHttpResponse({ statusCode: response.status, data: response.data }, startTime);
+      }
+
       const response = await axios(config);
       const responseTime = Date.now() - startTime;
 
@@ -162,6 +197,46 @@ export class ApiInvoker {
     }
 
     return headers;
+  }
+
+  /**
+   * 将 Axios 配置转换为可由主进程或 Vite 代理安全转发的请求参数。
+   * @param config 已包含参数和请求体的 Axios 配置
+   * @returns 运行时转发请求
+   */
+  private createRuntimeRequest(config: AxiosRequestConfig): IRuntimeApiRequest {
+    return {
+      url: axios.getUri(config),
+      method: String(config.method || 'get').toUpperCase(),
+      headers: this.buildHeaders(),
+      body: config.data === undefined ? undefined : JSON.stringify(config.data),
+      timeout: this.timeout,
+    };
+  }
+
+  /**
+   * 将主进程或开发代理响应转换为调用页统一使用的结果。
+   * @param response 代理响应
+   * @param startTime 调用开始时间戳
+   * @returns 标准化调用结果
+   */
+  private createHttpResponse(response: IRuntimeApiResponse, startTime: number): IInvokeResponse {
+    const responseTime = Date.now() - startTime;
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return {
+        success: true,
+        statusCode: response.statusCode,
+        responseTime,
+        data: response.data,
+      };
+    }
+    return {
+      success: false,
+      statusCode: response.statusCode,
+      responseTime,
+      data: response.data,
+      error: this.getHttpErrorMessage(response.statusCode),
+    };
   }
 
   /**

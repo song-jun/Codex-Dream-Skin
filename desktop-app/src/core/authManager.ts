@@ -14,6 +14,14 @@ import { PWD_ENC_KEY, OAUTH_CLIENT_CREDENTIALS } from './env';
 
 const TOKEN_STORAGE_KEY = 'apiWorkbench.invokeToken';
 
+/** 认证接口经主进程或开发代理转发后的响应。 */
+interface IAuthHttpResponse {
+  /** HTTP 状态码。 */
+  status: number;
+  /** 响应数据。 */
+  data: unknown;
+}
+
 function isDesktopRuntime(): boolean {
   return typeof window !== 'undefined' && typeof window.electronAPI?.loadToken === 'function';
 }
@@ -86,10 +94,10 @@ export class AuthManager {
   /** 验证 Token 是否有效（用用户信息接口） */
   async validateToken(token: string): Promise<IAuthResult> {
     if (!token || !token.trim()) {
-      return { success: false, error: 'Token 不能为空' };
+      return { success: false, error: 'Token 不能为空', invalidToken: true };
     }
     if (!this.authBaseUrl) {
-      return { success: false, error: 'API 基础 URL 未配置' };
+      return { success: false, error: 'API 基础 URL 未配置', failureReason: 'configuration' };
     }
     let cleanToken = token.trim();
     if (cleanToken.toLowerCase().startsWith('bearer ')) {
@@ -97,24 +105,30 @@ export class AuthManager {
     }
     try {
       const url = `${this.authBaseUrl}${this.userInfoPath}`;
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${cleanToken}` },
-        timeout: this.timeout
-      });
+      const response = await this.requestFromRuntime(url, 'GET', { Authorization: `Bearer ${cleanToken}` });
       if (response.status === 200 && response.data) {
-        const bizCode = response.data.code;
-        if (bizCode !== undefined && bizCode !== 0) {
-          const errorMsg = response.data.msg || response.data.message || '业务错误';
-          return { success: false, error: errorMsg };
+        const data = typeof response.data === 'object' && response.data !== null && !Array.isArray(response.data)
+          ? response.data as Record<string, unknown>
+          : {};
+        const bizCode = data.code;
+        if (bizCode !== undefined && bizCode !== 0 && bizCode !== '0') {
+          const errorMsg = this.getServerErrorMessage(data) || '业务错误';
+          return {
+            success: false,
+            error: errorMsg,
+            invalidToken: Number(bizCode) === 401,
+            failureReason: Number(bizCode) === 401 ? 'credentials' : 'business'
+          };
         }
-        const userInfo = this.extractUserInfo(response.data);
+        const userInfo = this.extractUserInfo(data);
         if (userInfo) {
           this.token = cleanToken;
           writeStoredToken(cleanToken);
           return { success: true, token: cleanToken, userInfo };
         }
       }
-      return { success: false, error: '无法获取用户信息' };
+      if (response.status !== 200) return this.getValidationHttpError(response.status);
+      return { success: false, error: '无法获取用户信息', failureReason: 'response' };
     } catch (error) {
       return this.handleValidationError(error);
     }
@@ -123,7 +137,7 @@ export class AuthManager {
   /** 用用户名密码登录（UI 已收集好凭证） */
   async login(credentials: ILoginCredentials): Promise<ILoginResponse> {
     if (!this.authBaseUrl) {
-      return { success: false, error: 'API 基础 URL 未配置' };
+      return { success: false, error: 'API 基础 URL 未配置', failureReason: 'configuration' };
     }
     try {
       const url = `${this.authBaseUrl}${this.loginPath}`;
@@ -137,28 +151,29 @@ export class AuthManager {
       params.append('grant_type', 'password');
       params.append('scope', 'server');
 
-      const response = await axios.post(url, params.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${OAUTH_CLIENT_CREDENTIALS}`
-        },
-        timeout: this.timeout
-      });
+      const response = await this.requestFromRuntime(url, 'POST', {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${OAUTH_CLIENT_CREDENTIALS}`
+      }, params.toString());
 
       if (response.status === 200 && response.data) {
-        const bizCode = response.data.code;
-        if (bizCode !== undefined && bizCode !== 0) {
-          const errorMsg = response.data.msg || response.data.message || '登录失败';
-          return { success: false, error: errorMsg };
+        const data = typeof response.data === 'object' && response.data !== null && !Array.isArray(response.data)
+          ? response.data as Record<string, unknown>
+          : {};
+        const bizCode = data.code;
+        if (bizCode !== undefined && bizCode !== 0 && bizCode !== '0') {
+          const errorMsg = this.getServerErrorMessage(data) || '登录失败';
+          return { success: false, error: errorMsg, failureReason: 'credentials' };
         }
-        const token = this.extractToken(response.data);
+        const token = this.extractToken(data);
         if (token) {
           this.token = token;
           writeStoredToken(token);
           return { success: true, token };
         }
       }
-      return { success: false, error: '登录失败，无法获取 Token' };
+      if (response.status !== 200) return this.getLoginHttpError(response.status, response.data);
+      return { success: false, error: '登录失败，无法获取 Token', failureReason: 'response' };
     } catch (error) {
       return this.handleLoginError(error);
     }
@@ -168,9 +183,21 @@ export class AuthManager {
   async loginAndValidate(credentials: ILoginCredentials): Promise<IAuthResult> {
     const loginRes = await this.login(credentials);
     if (!loginRes.success || !loginRes.token) {
-      return { success: false, error: loginRes.error || '登录失败' };
+      return {
+        success: false,
+        error: loginRes.error || '登录失败',
+        failureReason: loginRes.failureReason
+      };
     }
-    return this.validateToken(loginRes.token);
+    const validationRes = await this.validateToken(loginRes.token);
+    if (!validationRes.success && validationRes.invalidToken) {
+      return {
+        ...validationRes,
+        invalidToken: false,
+        failureReason: 'response'
+      };
+    }
+    return validationRes;
   }
 
   getToken(): string {
@@ -188,6 +215,72 @@ export class AuthManager {
 
   getAuthBaseUrl(): string {
     return this.authBaseUrl;
+  }
+
+  /**
+   * 在 Electron 主进程、浏览器开发代理或直接浏览器请求之间选择认证请求通道。
+   * @param url 认证接口完整地址
+   * @param method HTTP 请求方法
+   * @param headers 请求头
+   * @param body 可选请求体
+   * @returns 统一的 HTTP 响应
+   */
+  private async requestFromRuntime(
+    url: string,
+    method: 'GET' | 'POST',
+    headers: Record<string, string>,
+    body?: string,
+  ): Promise<IAuthHttpResponse> {
+    const request = { url, method, headers, body, timeout: this.timeout };
+    if (window.electronAPI?.requestApi) {
+      const response = await window.electronAPI.requestApi(request);
+      return { status: response.statusCode, data: response.data };
+    }
+    if (import.meta.env.DEV) {
+      const response = await axios.post<unknown>('/api-proxy', request, {
+        timeout: this.timeout,
+        validateStatus: () => true,
+      });
+      return { status: response.status, data: response.data };
+    }
+    const response = await axios.request<unknown>({
+      url,
+      method,
+      headers,
+      data: body,
+      timeout: this.timeout,
+      validateStatus: () => true,
+    });
+    return { status: response.status, data: response.data };
+  }
+
+  /** 根据认证校验接口的 HTTP 状态生成标准结果。 */
+  private getValidationHttpError(statusCode: number): IAuthResult {
+    if (statusCode === 401) return { success: false, error: 'Token 无效或已过期', invalidToken: true, failureReason: 'credentials' };
+    if (statusCode === 403) return { success: false, error: '权限不足', failureReason: 'forbidden' };
+    if (statusCode === 404) return { success: false, error: '用户信息接口不存在', failureReason: 'endpoint' };
+    return { success: false, error: `服务器错误 (${statusCode})`, failureReason: 'server' };
+  }
+
+  /** 从服务端响应中提取可记录的错误文本，不向界面直接暴露。 */
+  private getServerErrorMessage(data: unknown): string | undefined {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
+    const payload = data as Record<string, unknown>;
+    for (const key of ['msg', 'message', 'error', 'error_description']) {
+      const value = payload[key];
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+    return undefined;
+  }
+
+  /** 根据登录接口的 HTTP 状态生成标准结果，同时保留原始数据供错误记录使用。 */
+  private getLoginHttpError(statusCode: number, data: unknown): ILoginResponse {
+    const message = this.getServerErrorMessage(data);
+    if (statusCode === 400) return { success: false, error: message || '请求参数错误', failureReason: 'credentials' };
+    if (statusCode === 401) return { success: false, error: message || '用户名或密码错误', failureReason: 'credentials' };
+    if (statusCode === 403) return { success: false, error: message || '账号被禁用或无权限', failureReason: 'forbidden' };
+    if (statusCode === 404) return { success: false, error: '登录接口不存在', failureReason: 'endpoint' };
+    return { success: false, error: message || `服务器错误 (${statusCode})`, failureReason: 'server' };
   }
 
   private extractUserInfo(data: any): IUserInfo | null {
@@ -224,36 +317,25 @@ export class AuthManager {
     if (axios.isAxiosError(error)) {
       const e = error as AxiosError;
       if (e.response) {
-        const s = e.response.status;
-        if (s === 401) return { success: false, error: 'Token 无效或已过期' };
-        if (s === 403) return { success: false, error: '权限不足' };
-        if (s === 404) return { success: false, error: '用户信息接口不存在' };
-        return { success: false, error: `服务器错误 (${s})` };
+        return this.getValidationHttpError(e.response.status);
       }
-      if (e.code === 'ECONNABORTED') return { success: false, error: '请求超时' };
-      if (e.code === 'ECONNREFUSED') return { success: false, error: '无法连接服务器' };
-      return { success: false, error: `网络错误: ${e.message}` };
+      if (e.code === 'ECONNABORTED') return { success: false, error: '请求超时', failureReason: 'timeout' };
+      if (e.code === 'ECONNREFUSED') return { success: false, error: '无法连接服务器', failureReason: 'unavailable' };
+      return { success: false, error: `网络错误: ${e.message}`, failureReason: 'network' };
     }
-    return { success: false, error: `未知错误: ${String(error)}` };
+    return { success: false, error: `未知错误: ${String(error)}`, failureReason: 'response' };
   }
 
   private handleLoginError(error: unknown): ILoginResponse {
     if (axios.isAxiosError(error)) {
       const e = error as AxiosError;
       if (e.response) {
-        const s = e.response.status;
-        const data: any = e.response.data;
-        const msg = data?.msg || data?.message || data?.error || data?.error_description;
-        if (s === 400) return { success: false, error: msg || '请求参数错误' };
-        if (s === 401) return { success: false, error: msg || '用户名或密码错误' };
-        if (s === 403) return { success: false, error: msg || '账号被禁用或无权限' };
-        if (s === 404) return { success: false, error: '登录接口不存在' };
-        return { success: false, error: msg || `服务器错误 (${s})` };
+        return this.getLoginHttpError(e.response.status, e.response.data);
       }
-      if (e.code === 'ECONNABORTED') return { success: false, error: '请求超时' };
-      if (e.code === 'ECONNREFUSED') return { success: false, error: '无法连接服务器' };
-      return { success: false, error: `网络错误: ${e.message}` };
+      if (e.code === 'ECONNABORTED') return { success: false, error: '请求超时', failureReason: 'timeout' };
+      if (e.code === 'ECONNREFUSED') return { success: false, error: '无法连接服务器', failureReason: 'unavailable' };
+      return { success: false, error: `网络错误: ${e.message}`, failureReason: 'network' };
     }
-    return { success: false, error: `未知错误: ${String(error)}` };
+    return { success: false, error: `未知错误: ${String(error)}`, failureReason: 'response' };
   }
 }
