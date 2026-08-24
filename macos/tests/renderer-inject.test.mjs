@@ -9,6 +9,17 @@ const macosRoot = path.resolve(here, "..");
 const template = await fs.readFile(path.join(macosRoot, "assets", "renderer-inject.js"), "utf8");
 const css = await fs.readFile(path.join(macosRoot, "assets", "dream-skin.css"), "utf8");
 
+assert.match(css, /\[class~="bg-gradient-to-t"\][\s\S]{0,320}background-image:\s*none !important;/,
+  "macOS must remove bottom fade variants used by newer Codex builds.");
+assert.match(css, /main\.main-surface \.thread-scroll-container[\s\S]{0,600}transition:\s*none !important;/,
+  "macOS route surfaces must not animate a native shadow during conversation switches.");
+assert.match(css, /html\.codex-dream-skin \.composer-surface-chrome[\s\S]{0,120}box-shadow:\s*none !important;/,
+  "macOS composer must not paint an external shadow.");
+assert.match(template, /const findBottomFade = \(shellMain\)/,
+  "The macOS renderer must detect bottom fades from semantic or visual structure.");
+assert.match(template, /const BOTTOM_FADE_CLASS = "app-shell-main-content-bottom-fade"/,
+  "The macOS renderer must add the stable bottom-fade compatibility class.");
+
 assert.doesNotMatch(
   css,
   /main\.main-surface\s*>\s*header\.app-header-tint\s*\{[^}]*\b(?:position|z-index)\s*:/,
@@ -175,6 +186,7 @@ function createFixture(theme, {
   nativeShell = "light",
   analysisFixture = null,
   analysisCache = null,
+  bottomFadePresent = false,
 } = {}) {
   let fixtureShell = nativeShell;
   const nodes = new Map();
@@ -212,6 +224,14 @@ function createFixture(theme, {
     classList: createClassList(),
     getBoundingClientRect() {
       return { ...shellBox };
+    },
+    contains() { return true; },
+  };
+  const bottomFadeClasses = createClassList();
+  const bottomFadeNode = {
+    classList: bottomFadeClasses,
+    getAttribute(name) {
+      return name === "data-app-shell-main-content-bottom-fade" ? "true" : null;
     },
   };
 
@@ -257,7 +277,10 @@ function createFixture(theme, {
       if (selector === "main.main-surface" || selector === "main") return shellMain;
       return null;
     },
-    querySelectorAll() { return []; },
+    querySelectorAll(selector) {
+      if (bottomFadePresent && selector === "[data-app-shell-main-content-bottom-fade]") return [bottomFadeNode];
+      return [];
+    },
   };
   const mediaQuery = {
     matches: false,
@@ -348,6 +371,7 @@ function createFixture(theme, {
     attributes,
     body,
     bodyAttributes,
+    bottomFadeClasses,
     context,
     flushTimers,
     nodes,
@@ -377,6 +401,17 @@ assert.equal(defaults.attributes.get("data-dream-art-safe-area"), "center");
 assert.equal(defaults.attributes.get("data-dream-art-task-mode"), "ambient");
 assert.equal(defaults.attributes.get("data-dream-art-ready"), "false");
 assert.equal(defaults.rootStyle.values.get("--dream-art-position"), "50.00% 50.00%");
+
+const bottomFade = createFixture({
+  id: "bottom-fade-contract",
+  appearance: "dark",
+  art: { safeArea: "auto", taskMode: "auto" },
+}, { bottomFadePresent: true });
+vm.runInNewContext(bottomFade.payload, bottomFade.context);
+assert.equal(bottomFade.bottomFadeClasses.contains("app-shell-main-content-bottom-fade"), true);
+assert.equal(bottomFade.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+assert.equal(bottomFade.bottomFadeClasses.contains("app-shell-main-content-bottom-fade"), false);
+
 const defaultMetrics = defaults.window.__CODEX_DREAM_SKIN_STATE__.metrics;
 assert.equal(defaultMetrics.rootPasses, 1);
 assert.equal(defaultMetrics.routePasses, 1);

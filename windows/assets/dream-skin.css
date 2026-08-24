@@ -623,7 +623,7 @@ html.codex-dream-skin.dream-safe-center .dream-home>div:first-child>div:first-ch
   /* color: currentColor !important; */
 }
 
-/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、底色用 --dream-composer-bg、阴影、模糊。
+/* 输入框外壳（.composer-surface-chrome）：18px 圆角、边框、底色用 --dream-composer-bg。
    overflow:hidden 防止触底时内部内容产生小幅滚动。 */
 html.codex-dream-skin .composer-surface-chrome {
   color: var(--dream-text) !important;
@@ -633,7 +633,7 @@ html.codex-dream-skin .composer-surface-chrome {
   border-radius: 18px !important;
   background: var(--dream-composer-bg) !important;
   overflow: hidden !important;
-  box-shadow: 0 12px 34px color-mix(in oklab, var(--dream-accent) 8%, transparent) !important;
+  box-shadow: none !important;
   backdrop-filter: blur(14px) saturate(1.06) !important;
 }
 
@@ -1033,10 +1033,36 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-m
   backdrop-filter: none !important;
 }
 
+/* 兼容当前版本的底部渐隐：隐藏原生渐变，避免在 composer 两侧形成黑影。 */
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) .app-shell-main-content-bottom-fade,
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-main-content-bottom-fade] {
+  display: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  opacity: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
+
 /* 沉浸态会话滚动区底部渐变（.bg-gradient-to-t.from-token-main-surface-primary）：透明，
    避免与输入框形成假双层底栏。 */
 html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface .thread-scroll-container .bg-gradient-to-t.from-token-main-surface-primary {
   background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+/* 新版 Codex 会给底部渐隐追加构建相关 class，按稳定 class token 一并清理。 */
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface .thread-scroll-container [class~="bg-gradient-to-t"],
+html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) main.main-surface [class~="bg-gradient-to-t"] {
+  display: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transition: none !important;
 }
 
 /* 响应式 · 中等宽度（≤1120px）：首页内容宽度收窄。 */
@@ -1213,7 +1239,14 @@ html.codex-dream-skin main.main-surface,
 html.codex-dream-skin main.main-surface>header.app-header-tint,
 html.codex-dream-skin aside.app-shell-left-panel,
 html.codex-dream-skin main,
-html.codex-dream-skin main>header {
+html.codex-dream-skin main>header,
+html.codex-dream-skin main.main-surface .app-shell-main-content-frame,
+html.codex-dream-skin main.main-surface .app-shell-main-content-viewport,
+html.codex-dream-skin main.main-surface .thread-scroll-container,
+html.codex-dream-skin [class*="_ComposerLayoutRoot_"],
+html.codex-dream-skin [class*="_ComposerLayoutBody_"],
+html.codex-dream-skin .composer-surface-chrome,
+html.codex-dream-skin .dream-home-utility {
   background: transparent !important;
   border: 0 !important;
   transition: none !important;

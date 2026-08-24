@@ -34,6 +34,7 @@
   ];
   const HOME_UTILITY_CLASS = "dream-home-utility";
   const TOP_FADE_CLASS = "app-shell-main-content-top-fade";
+  const BOTTOM_FADE_CLASS = "app-shell-main-content-bottom-fade";
   const CARET_TARGETS = ".ProseMirror, [contenteditable=\"true\"], textarea, input";
   const installToken = {};
   let samplingNativeShell = false;
@@ -344,6 +345,7 @@
 
   let compatibilityReport = {
     topFade: false,
+    bottomFade: false,
     source: "not-checked",
   };
 
@@ -394,10 +396,60 @@
     return visual ? { node: visual, source: "visual" } : null;
   };
 
-  const updateCompatibilityReport = (topFade) => {
+  // Native Codex versions do not keep a stable class for the bottom fade.
+  // Identify only full-width, non-interactive gradient chrome at the viewport bottom.
+  const hasBottomFadeName = (node) => {
+    const stableMarker = node?.getAttribute?.("data-app-shell-main-content-bottom-fade");
+    if (stableMarker !== null && stableMarker !== undefined) return true;
+    const marker = [
+      nodeClassName(node),
+      node?.getAttribute?.("data-testid") ?? "",
+      node?.getAttribute?.("data-name") ?? "",
+      node?.getAttribute?.("aria-label") ?? "",
+    ].join(" ");
+    return /(?:main[-_ ]?content[-_ ]?)?bottom[-_ ]?fade/i.test(marker);
+  };
+
+  const looksLikeBottomFade = (node, shellMain) => {
+    if (!node?.getBoundingClientRect) return false;
+    try {
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = Number(window.innerHeight) || document.documentElement?.clientHeight || 0;
+      if (viewportHeight <= 0 || rect.bottom < viewportHeight - 8 || rect.height <= 0 || rect.height > 220) return false;
+      const style = getComputedStyle(node);
+      const positioned = /absolute|fixed|sticky/i.test(style.position || "");
+      const nonInteractive = style.pointerEvents === "none";
+      const gradient = /gradient|mask/i.test([
+        style.backgroundImage,
+        style.maskImage,
+        style.webkitMaskImage,
+      ].join(" "));
+      const shellWidth = shellMain?.getBoundingClientRect?.().width || 0;
+      const wideEnough = rect.width >= Math.max(320, (shellWidth || viewportHeight) * .45);
+      return positioned && nonInteractive && gradient && wideEnough;
+    } catch {
+      return false;
+    }
+  };
+
+  const findBottomFade = (shellMain) => {
+    const candidates = [
+      ...document.querySelectorAll("[data-app-shell-main-content-bottom-fade]"),
+      ...document.querySelectorAll('[class*="BottomFade"], [class*="bottom-fade"]'),
+    ].filter((node) => !shellMain?.contains || shellMain.contains(node));
+    const named = candidates.find(hasBottomFadeName);
+    if (named) return { node: named, source: "semantic" };
+
+    const descendants = shellMain?.querySelectorAll?.("*") ?? [];
+    const visual = [...descendants].slice(0, 768).find((node) => looksLikeBottomFade(node, shellMain));
+    return visual ? { node: visual, source: "visual" } : null;
+  };
+
+  const updateCompatibilityReport = (topFade, bottomFade) => {
     compatibilityReport = {
       topFade: Boolean(topFade),
-      source: topFade?.source ?? "not-found",
+      bottomFade: Boolean(bottomFade),
+      source: bottomFade?.source ?? topFade?.source ?? "not-found",
     };
     const state = window[STATE_KEY];
     if (state) state.compatibility = compatibilityReport;
@@ -506,7 +558,9 @@
     addCompatibilityClass(applicationMenu, "group/application-menu-top-bar");
     const topFade = findTopFade(shellMain);
     addCompatibilityClass(topFade?.node, TOP_FADE_CLASS);
-    updateCompatibilityReport(topFade);
+    const bottomFade = findBottomFade(shellMain);
+    addCompatibilityClass(bottomFade?.node, BOTTOM_FADE_CLASS);
+    updateCompatibilityReport(topFade, bottomFade);
 
     root.classList.add("codex-dream-skin");
     applyProfile(root);

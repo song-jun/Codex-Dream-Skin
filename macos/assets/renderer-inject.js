@@ -4,6 +4,7 @@
   const STYLE_ID = "codex-dream-skin-style";
   const CHROME_ID = "codex-dream-skin-chrome";
   const SHELL_ATTR = "data-dream-shell";
+  const BOTTOM_FADE_CLASS = "app-shell-main-content-bottom-fade";
   const CARET_TARGETS = ".ProseMirror, [contenteditable=\"true\"], textarea, input";
   const ART_ATTRS = [
     "data-dream-art-wide", "data-dream-art-safe", "data-dream-task-mode",
@@ -80,6 +81,19 @@
   if (previous?.mediaHandler && previous?.mediaQuery) {
     try { previous.mediaQuery.removeEventListener("change", previous.mediaHandler); } catch {}
   }
+  previous?.compatibilityCleanup?.();
+
+  const compatibilityNodes = [];
+  const addCompatibilityClass = (node, className) => {
+    if (!node?.classList || node.classList.contains(className)) return;
+    node.classList.add(className);
+    compatibilityNodes.push([node, className]);
+  };
+  const compatibilityCleanup = () => {
+    for (const [node, className] of compatibilityNodes.splice(0)) {
+      try { node.classList.remove(className); } catch {}
+    }
+  };
 
   const cssString = (value) => JSON.stringify(String(value ?? ""));
 
@@ -562,6 +576,54 @@
   let chromeParts = null;
   let observedShellMain = null;
   let resizeObserver = null;
+  let observedBottomFade = null;
+
+  // Native Codex versions do not keep a stable class for the bottom fade.
+  // Identify only full-width, non-interactive gradient chrome at the viewport bottom.
+  const hasBottomFadeName = (node) => {
+    const stableMarker = node?.getAttribute?.("data-app-shell-main-content-bottom-fade");
+    if (stableMarker !== null && stableMarker !== undefined) return true;
+    const marker = [
+      node?.getAttribute?.("class") ?? node?.className ?? "",
+      node?.getAttribute?.("data-testid") ?? "",
+      node?.getAttribute?.("data-name") ?? "",
+      node?.getAttribute?.("aria-label") ?? "",
+    ].join(" ");
+    return /(?:main[-_ ]?content[-_ ]?)?bottom[-_ ]?fade/i.test(marker);
+  };
+
+  const looksLikeBottomFade = (node, shellMain) => {
+    if (!node?.getBoundingClientRect) return false;
+    try {
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = Number(window.innerHeight) || document.documentElement?.clientHeight || 0;
+      if (viewportHeight <= 0 || rect.bottom < viewportHeight - 8 || rect.height <= 0 || rect.height > 220) return false;
+      const style = getComputedStyle(node);
+      const positioned = /absolute|fixed|sticky/i.test(style.position || "");
+      const nonInteractive = style.pointerEvents === "none";
+      const gradient = /gradient|mask/i.test([
+        style.backgroundImage,
+        style.maskImage,
+        style.webkitMaskImage,
+      ].join(" "));
+      const shellWidth = shellMain?.getBoundingClientRect?.().width || 0;
+      const wideEnough = rect.width >= Math.max(320, (shellWidth || viewportHeight) * .45);
+      return positioned && nonInteractive && gradient && wideEnough;
+    } catch {
+      return false;
+    }
+  };
+
+  const findBottomFade = (shellMain) => {
+    const candidates = [
+      ...document.querySelectorAll("[data-app-shell-main-content-bottom-fade]"),
+      ...document.querySelectorAll('[class*="BottomFade"], [class*="bottom-fade"]'),
+    ].filter((node) => !shellMain?.contains || shellMain.contains(node));
+    const named = candidates.find(hasBottomFadeName);
+    if (named) return named;
+    const descendants = shellMain?.querySelectorAll?.("*") ?? [];
+    return [...descendants].slice(0, 768).find((node) => looksLikeBottomFade(node, shellMain)) || null;
+  };
 
   const ensureStyle = (root) => {
     let style = document.getElementById(STYLE_ID);
@@ -615,6 +677,12 @@
     for (const candidate of homeUtilityBars) candidate.classList.add("dream-skin-home-utility");
 
     if (!shellMain || !document.body) return;
+    const bottomFade = findBottomFade(shellMain);
+    if (observedBottomFade && observedBottomFade !== bottomFade) {
+      try { observedBottomFade.classList.remove(BOTTOM_FADE_CLASS); } catch {}
+    }
+    addCompatibilityClass(bottomFade, BOTTOM_FADE_CLASS);
+    observedBottomFade = bottomFade;
     if (observedShellMain !== shellMain) {
       resizeObserver?.disconnect();
       resizeObserver?.observe(shellMain);
@@ -692,6 +760,7 @@
     document.querySelectorAll(".dream-skin-home").forEach((node) => node.classList.remove("dream-skin-home"));
     document.querySelectorAll(".dream-skin-home-shell").forEach((node) => node.classList.remove("dream-skin-home-shell"));
     document.querySelectorAll(".dream-skin-home-utility").forEach((node) => node.classList.remove("dream-skin-home-utility"));
+    compatibilityCleanup();
     document.getElementById(STYLE_ID)?.remove();
     document.getElementById(CHROME_ID)?.remove();
     state?.observer?.disconnect();
@@ -761,6 +830,7 @@
     observer,
     rootObserver,
     resizeObserver,
+    compatibilityCleanup,
     timer: null,
     scheduler,
     resizeHandler,

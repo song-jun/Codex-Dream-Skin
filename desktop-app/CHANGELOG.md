@@ -1,6 +1,13 @@
 # Changelog
 
-<!-- changelog:base 80c34be8ceb16907fb69fdf818cc5d9253a2f283 -->
+<!-- changelog:base 3496a76e40bde3c485e362cd1dd67dcf0a3e8713 -->
+
+## [0.1.36] - 2026-08-17
+
+### 桌面端更新
+
+- 统一处理导出接口响应类型为octet-stream修复OpenAPI标注错误
+- 新增接口文档快照对比功能
 
 ## [0.1.35] - 2026-08-14
 

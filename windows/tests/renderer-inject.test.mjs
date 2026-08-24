@@ -25,6 +25,14 @@ assert.doesNotMatch(css, /\[class\*="(?:MainContentTopFade|mainContentTopFade)"\
   "CSS must not depend on Codex build-hashed top-fade class names.");
 assert.match(template, /const findTopFade = \(shellMain\)/,
   "The renderer must detect top fades from semantic or visual structure.");
+assert.match(css, /\[data-app-shell-main-content-bottom-fade\]/,
+  "The skin must hide the stable compatibility marker for the native bottom fade.");
+assert.match(template, /const findBottomFade = \(shellMain\)/,
+  "The renderer must detect bottom fades from semantic or visual structure.");
+assert.match(css, /\[class~="bg-gradient-to-t"\][\s\S]{0,260}background-image:\s*none !important;/,
+  "The skin must remove bottom fade variants used by newer Codex builds.");
+assert.match(css, /main\.main-surface \.thread-scroll-container[\s\S]{0,500}transition:\s*none !important;/,
+  "Route surfaces must not animate a native shadow during conversation switches.");
 
 function createFixture({
   shellPresent,
@@ -33,6 +41,7 @@ function createFixture({
   staleSkin = false,
   homePresent = false,
   utilityPresent = false,
+  bottomFadePresent = false,
   shellAppearance = "dark",
   computedColorScheme = "",
   osAppearance = "light",
@@ -108,10 +117,15 @@ function createFixture({
   const routeClasses = new Set();
   const utilityClasses = new Set();
   const utilityNode = { classList: makeClassList(utilityClasses) };
+  const bottomFadeClasses = new Set();
+  const bottomFadeNode = {
+    classList: makeClassList(bottomFadeClasses),
+    getAttribute(name) { return name === "data-app-shell-main-content-bottom-fade" ? "true" : null; },
+  };
   const routeMain = {
     classList: makeClassList(routeClasses),
     querySelectorAll(selector) {
-      if (selector === '[class*="_homeUtilityBar_"]' && utilityPresent) return [utilityNode];
+      if (selector.includes('[class*="_homeUtilityBar_"]') && utilityPresent) return [utilityNode];
       return [];
     },
   };
@@ -170,6 +184,7 @@ function createFixture({
       return null;
     },
     querySelectorAll(selector) {
+      if (selector === "[data-app-shell-main-content-bottom-fade]" && bottomFadePresent) return [bottomFadeNode];
       if (selector === '[role="main"]') return hasMain ? [routeMain] : [];
       if (selector === ".dream-task") return routeClasses.has("dream-task") ? [routeMain] : [];
       if (selector === ".dream-home-utility") {
@@ -238,6 +253,7 @@ function createFixture({
     revokedUrls,
     routeClasses,
     utilityClasses,
+    bottomFadeClasses,
     setShellPresent(value) {
       hasMain = value;
       hasSidebar = value;
@@ -379,6 +395,13 @@ await Promise.resolve();
 assert.equal(standardArt.rootClasses.has("dream-art-standard"), true);
 assert.equal(standardArt.rootClasses.has("dream-task-ambient"), true);
 assert.equal(standardArt.rootClasses.has("dream-task-banner"), false);
+
+const bottomFade = createFixture({ shellPresent: true, bottomFadePresent: true });
+vm.runInNewContext(payload, bottomFade.context);
+assert.equal(bottomFade.bottomFadeClasses.has("app-shell-main-content-bottom-fade"), true);
+assert.equal(bottomFade.context.window.__CODEX_DREAM_SKIN_STATE__.compatibility.bottomFade, true);
+assert.equal(bottomFade.context.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+assert.equal(bottomFade.bottomFadeClasses.has("app-shell-main-content-bottom-fade"), false);
 
 const mediumWide = createFixture({
   shellPresent: true,

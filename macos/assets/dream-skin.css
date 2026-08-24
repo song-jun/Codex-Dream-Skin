@@ -1185,6 +1185,43 @@ html.codex-dream-skin[data-dream-art-wide="true"] main.main-surface
 html.codex-dream-skin[data-dream-art-wide="true"] main.main-surface
   .thread-scroll-container .bg-gradient-to-t.from-token-main-surface-primary {
   background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+/* Keep macOS aligned with Windows when Codex adds build-specific fade tokens. */
+html.codex-dream-skin:is([data-dream-art-wide="true"], [data-dream-art-aspect="wide"], [data-dream-art-aspect="ultrawide"])
+  main.main-surface .thread-scroll-container [class~="bg-gradient-to-t"],
+html.codex-dream-skin:is([data-dream-art-wide="true"], [data-dream-art-aspect="wide"], [data-dream-art-aspect="ultrawide"])
+  main.main-surface [class~="bg-gradient-to-t"],
+html.codex-dream-skin .app-shell-main-content-bottom-fade,
+html.codex-dream-skin [data-app-shell-main-content-bottom-fade] {
+  display: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transition: none !important;
+}
+
+/* Route surfaces must switch atomically so an old native shadow cannot flash. */
+html.codex-dream-skin main.main-surface,
+html.codex-dream-skin main.main-surface > header.app-header-tint,
+html.codex-dream-skin main.main-surface .app-shell-main-content-frame,
+html.codex-dream-skin main.main-surface .app-shell-main-content-viewport,
+html.codex-dream-skin main.main-surface .thread-scroll-container,
+html.codex-dream-skin [class*="_ComposerLayoutRoot_"],
+html.codex-dream-skin [class*="_ComposerLayoutBody_"],
+html.codex-dream-skin .composer-surface-chrome,
+html.codex-dream-skin .dream-skin-home-utility {
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+/* The composer is the only bottom readability surface on both platforms. */
+html.codex-dream-skin .composer-surface-chrome {
+  box-shadow: none !important;
 }
 
 /* 首页项目选择器容器：加“选择项目”标签+边框+半透明背景 */
