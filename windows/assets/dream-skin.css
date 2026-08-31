@@ -1033,6 +1033,16 @@ html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-m
   backdrop-filter: none !important;
 }
 
+/* 新对话壳层挂载到下一帧前可能还没有兼容类，先按直属结构隐藏原生顶栏底色。 */
+html.codex-dream-skin main.main-surface>header {
+  color: var(--dream-text) !important;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
+}
+
 /* 兼容当前版本的底部渐隐：隐藏原生渐变，避免在 composer 两侧形成黑影。 */
 html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) .app-shell-main-content-bottom-fade,
 html.codex-dream-skin:is(.dream-art-wide, .dream-art-standard) [data-app-shell-main-content-bottom-fade] {

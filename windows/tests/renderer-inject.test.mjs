@@ -33,6 +33,10 @@ assert.match(css, /\[class~="bg-gradient-to-t"\][\s\S]{0,260}background-image:\s
   "The skin must remove bottom fade variants used by newer Codex builds.");
 assert.match(css, /main\.main-surface \.thread-scroll-container[\s\S]{0,500}transition:\s*none !important;/,
   "Route surfaces must not animate a native shadow during conversation switches.");
+assert.match(css, /html\.codex-dream-skin main\.main-surface>header\s*\{[\s\S]{0,320}transition:\s*none !important;/,
+  "A newly mounted conversation header must stay transparent before its compatibility class is added.");
+assert.match(template, /requestAnimationFrame\(flushScheduledEnsure\)/,
+  "Route mutations must apply the skin on the next animation frame instead of a visible debounce delay.");
 
 function createFixture({
   shellPresent,

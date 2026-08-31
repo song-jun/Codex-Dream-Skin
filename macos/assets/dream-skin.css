@@ -490,6 +490,16 @@ html.codex-dream-skin main.main-surface > header.app-header-tint {
   backdrop-filter: blur(14px) saturate(108%) !important;
 }
 
+/* 新对话壳层补齐兼容类前，先隐藏直属顶栏的原生底色和过渡。 */
+html.codex-dream-skin main.main-surface > header:not(.app-header-tint) {
+  color: var(--ds-text) !important;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
+}
+
 /* 装饰层容器#codex-dream-skin-chrome(注入器覆盖层) */
 #codex-dream-skin-chrome {
   position: fixed;

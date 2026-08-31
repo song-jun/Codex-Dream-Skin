@@ -615,18 +615,33 @@
     state?.observer?.disconnect();
     if (state?.timer) clearInterval(state.timer);
     if (state?.scheduler?.timeout) clearTimeout(state.scheduler.timeout);
+    if (state?.scheduler?.frame != null && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(state.scheduler.frame);
+    }
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
     delete window[STATE_KEY];
     return true;
   };
 
-  const scheduler = { timeout: null };
-  const scheduleEnsure = () => {
+  // 路由切换时在下一帧补齐兼容类，避免等待防抖定时器期间露出原生顶栏。
+  const scheduler = { timeout: null, frame: null };
+  const flushScheduledEnsure = () => {
+    if (scheduler.frame !== null && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(scheduler.frame);
+    }
     if (scheduler.timeout) clearTimeout(scheduler.timeout);
-    scheduler.timeout = setTimeout(() => {
-      scheduler.timeout = null;
-      ensure();
-    }, 180);
+    scheduler.frame = null;
+    scheduler.timeout = null;
+    ensure();
+  };
+  const scheduleEnsure = () => {
+    if (scheduler.timeout || scheduler.frame !== null) return;
+    if (typeof requestAnimationFrame === "function") {
+      scheduler.frame = requestAnimationFrame(flushScheduledEnsure);
+      scheduler.timeout = setTimeout(flushScheduledEnsure, 96);
+    } else {
+      scheduler.timeout = setTimeout(flushScheduledEnsure, 32);
+    }
   };
   observer = new MutationObserver(() => {
     if (samplingNativeShell) return;
