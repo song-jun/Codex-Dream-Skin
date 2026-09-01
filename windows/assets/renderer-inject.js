@@ -142,7 +142,7 @@
   const existingStyle = document.getElementById(STYLE_ID);
   if (existingStyle) {
     existingStyle.textContent = cssText;
-    existingStyle.dataset.dreamVersion = "13";
+    existingStyle.dataset.dreamVersion = "14";
   }
 
   const analyzeArt = () => new Promise((resolve) => {
@@ -571,9 +571,9 @@
       style.id = STYLE_ID;
       (document.head || root).appendChild(style);
     }
-    if (style.dataset.dreamVersion !== "13") {
+    if (style.dataset.dreamVersion !== "14") {
       style.textContent = cssText;
-      style.dataset.dreamVersion = "13";
+      style.dataset.dreamVersion = "14";
     }
 
     const homeMarker = document.querySelector('[data-testid="home-icon"]') ||

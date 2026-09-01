@@ -15,6 +15,8 @@ assert.match(css, /main\.main-surface \.thread-scroll-container[\s\S]{0,600}tran
   "macOS route surfaces must not animate a native shadow during conversation switches.");
 assert.match(css, /html\.codex-dream-skin main\.main-surface > header:not\(\.app-header-tint\)[\s\S]{0,320}transition:\s*none !important;/,
   "A newly mounted macOS conversation header must stay transparent before its compatibility class is added.");
+assert.match(css, /\[data-app-shell-page-header\]\s+\[data-app-shell-header-toolbar\]\s*>\s*:first-child\s*\{[\s\S]{0,320}background:\s*transparent !important;[\s\S]{0,320}transition:\s*none !important;/,
+  "The macOS conversation title surface must not restore a solid background while a new thread mounts.");
 assert.match(css, /html\.codex-dream-skin \.composer-surface-chrome[\s\S]{0,120}box-shadow:\s*none !important;/,
   "macOS composer must not paint an external shadow.");
 assert.match(template, /const findBottomFade = \(shellMain\)/,

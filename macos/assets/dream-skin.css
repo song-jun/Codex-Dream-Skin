@@ -1234,6 +1234,19 @@ html.codex-dream-skin .composer-surface-chrome {
   box-shadow: none !important;
 }
 
+/* 新会话挂载时，Codex 会在标题工具栏首个容器补回实色和 all 过渡。
+   仅清除该稳定语义区域，保留标题按钮自身的悬停和打开状态。 */
+html.codex-dream-skin main.main-surface > header.app-header-tint,
+html.codex-dream-skin main.main-surface > header:not(.app-header-tint),
+html.codex-dream-skin main.main-surface > header [data-app-shell-page-header] [data-app-shell-header-toolbar] > :first-child {
+  background: transparent !important;
+  background-image: none !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
+}
+
 /* 首页项目选择器容器：加“选择项目”标签+边框+半透明背景 */
 .dream-skin-home div:has(> .horizontal-scroll-fade-mask .group\/project-selector) {
   position: relative;

@@ -1380,6 +1380,19 @@ html.codex-dream-skin main.main-surface>header.app-header-tint [role="button"] {
   color: var(--dream-text) !important;
 }
 
+/* 新会话挂载时，Codex 会在标题工具栏首个容器补回实色和 all 过渡。
+   仅清除该稳定语义区域，保留标题按钮自身的悬停和打开状态。 */
+html.codex-dream-skin main.main-surface>header.app-header-tint,
+html.codex-dream-skin main.main-surface>header:not(.app-header-tint),
+html.codex-dream-skin main.main-surface>header [data-app-shell-page-header] [data-app-shell-header-toolbar]>:first-child {
+  background: transparent !important;
+  background-image: none !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
+}
+
 html.codex-dream-skin.dream-art-wide:has(main.main-surface.dream-home-shell)::after {
   content: none !important;
   display: none !important;

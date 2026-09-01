@@ -35,6 +35,8 @@ assert.match(css, /main\.main-surface \.thread-scroll-container[\s\S]{0,500}tran
   "Route surfaces must not animate a native shadow during conversation switches.");
 assert.match(css, /html\.codex-dream-skin main\.main-surface>header\s*\{[\s\S]{0,320}transition:\s*none !important;/,
   "A newly mounted conversation header must stay transparent before its compatibility class is added.");
+assert.match(css, /\[data-app-shell-page-header\]\s+\[data-app-shell-header-toolbar\]>:first-child\s*\{[\s\S]{0,320}background:\s*transparent !important;[\s\S]{0,320}transition:\s*none !important;/,
+  "The conversation title surface must not restore a solid background while a new thread mounts.");
 assert.match(template, /requestAnimationFrame\(flushScheduledEnsure\)/,
   "Route mutations must apply the skin on the next animation frame instead of a visible debounce delay.");
 
