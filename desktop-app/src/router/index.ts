@@ -39,6 +39,12 @@ const router = createRouter({
       component: () => import("../views/EndpointSnapshots.vue"),
       meta: { title: "接口快照" },
     },
+    {
+      path: "/api-workbench/sprite",
+      name: "api-workbench-sprite",
+      component: () => import("../views/SpriteTool.vue"),
+      meta: { title: "雪碧图工具" },
+    },
   ],
 });
 

@@ -31,6 +31,10 @@
             <el-icon><Files /></el-icon>
             <span>接口快照</span>
           </el-menu-item>
+          <el-menu-item index="/api-workbench/sprite">
+            <el-icon><Grid /></el-icon>
+            <span>雪碧图工具</span>
+          </el-menu-item>
         </el-menu>
         <div class="sidebar-context">
           <span class="context-label">当前文档</span>
@@ -106,6 +110,7 @@ import { useExportStore } from "@/stores/export";
 import {
   Document,
   Files,
+  Grid,
   Loading,
   MagicStick,
   Monitor,
@@ -400,6 +405,10 @@ const openSettings = () => (settingsVisible.value = true);
   opacity: 0;
 }
 .app-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
   background: var(--bg-page);
 }

@@ -7,6 +7,7 @@ import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
+import { createWorker } from 'tesseract.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
@@ -527,6 +528,36 @@ function imageDataUrl(imagePath) {
     const mime = extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg';
     return `data:${mime};base64,${readFileSync(full).toString('base64')}`;
 }
+/** 返回雪碧图工具支持的图片 MIME 类型。 */
+function spriteMimeType(filePath) {
+    const extension = path.extname(filePath).toLowerCase();
+    return extension === '.png' ? 'image/png' : extension === '.jpg' || extension === '.jpeg' ? 'image/jpeg' : extension === '.svg' ? 'image/svg+xml' : null;
+}
+/** 递归收集目录内的 PNG、JPEG 和 SVG 文件。 */
+function collectSpriteFiles(directory) {
+    const files = [];
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const fullPath = path.join(directory, entry.name);
+        if (entry.isDirectory())
+            files.push(...collectSpriteFiles(fullPath));
+        else if (entry.isFile() && spriteMimeType(fullPath))
+            files.push(fullPath);
+    }
+    return files;
+}
+/** 将用户主动选择的图片读取为渲染层可预览的数据 URL。 */
+function readSpriteSelection(filePaths) {
+    return filePaths.flatMap((filePath) => {
+        const fullPath = path.resolve(filePath);
+        const mime = spriteMimeType(fullPath);
+        if (!mime || !existsSync(fullPath) || !statSync(fullPath).isFile())
+            return [];
+        const stats = statSync(fullPath);
+        if (stats.size < 1 || stats.size > 16 * 1024 * 1024)
+            return [];
+        return [{ path: fullPath, name: path.basename(fullPath), mime, dataUrl: `data:${mime};base64,${readFileSync(fullPath).toString('base64')}` }];
+    });
+}
 function execute(file, args) {
     if (isWindows) {
         return executeWindowsProcess(file, args);
@@ -1042,6 +1073,29 @@ app.whenReady().then(async () => {
     ipcMain.handle('env:getOpenApi', () => Object.fromEntries(readApiEnv().map(({ key, value }) => [key, value])));
     ipcMain.handle('api:fetchJson', (_event, url) => fetchApiJson(url));
     ipcMain.handle('api:request', (_event, request) => requestApi(request));
+    /** 在主进程执行中文 OCR，避免渲染进程 Worker 受 CSP/CDN 限制。 */
+    ipcMain.handle('sprite:recognize', async (_event, dataUrl) => {
+        if (typeof dataUrl !== 'string' || !/^data:image\/(?:png|jpeg|svg\+xml);base64,/i.test(dataUrl)) {
+            throw new Error('OCR 图片数据无效。');
+        }
+        const commaIndex = dataUrl.indexOf(',');
+        const image = Buffer.from(dataUrl.slice(commaIndex + 1), 'base64');
+        if (image.length < 1 || image.length > 32 * 1024 * 1024)
+            throw new Error('OCR 图片过大。');
+        const cachePath = path.join(app.getPath('userData'), 'tesseract-cache');
+        await fs.promises.mkdir(cachePath, { recursive: true });
+        const worker = await createWorker('chi_sim', 1, { cachePath });
+        try {
+            const result = await worker.recognize(image, {}, { tsv: true });
+            return {
+                text: result.data.text ?? '',
+                tsv: typeof result.data.tsv === 'string' ? result.data.tsv : '',
+            };
+        }
+        finally {
+            await worker.terminate();
+        }
+    });
     ipcMain.handle('dialog:selectDirectory', async (_event, defaultPath) => {
         if (!mainWindow)
             return null;
@@ -1054,6 +1108,20 @@ app.whenReady().then(async () => {
         apiAllowedRoots.add(normalizeApiPath(selectedRoot));
         saveApiAllowedRoots();
         return result.filePaths[0];
+    });
+    ipcMain.handle('dialog:selectSpriteFiles', async (_event, mode) => {
+        if (!mainWindow)
+            return [];
+        const properties = mode === 'directory' ? ['openDirectory', 'createDirectory'] : ['openFile', 'multiSelections'];
+        const result = await dialog.showOpenDialog(mainWindow, {
+            title: mode === 'directory' ? '选择图片目录' : '选择雪碧图素材',
+            properties: properties,
+            filters: mode === 'directory' ? undefined : [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'svg'] }],
+        });
+        if (result.canceled || result.filePaths.length === 0)
+            return [];
+        const files = mode === 'directory' ? collectSpriteFiles(result.filePaths[0]) : result.filePaths;
+        return readSpriteSelection(files);
     });
     ipcMain.handle('dialog:saveFile', async (_event, options = {}) => {
         if (!mainWindow)
@@ -1092,6 +1160,22 @@ app.whenReady().then(async () => {
                 return { path: item.path, success: false, error: error instanceof Error ? error.message : String(error) };
             }
         }));
+    });
+    ipcMain.handle('fs:writeBinaryFile', async (_event, filePath, base64) => {
+        try {
+            if (typeof filePath !== 'string' || typeof base64 !== 'string')
+                return { success: false, error: '导出内容无效' };
+            const safePath = normalizeApiPath(filePath);
+            if (!isApiPathAllowed(safePath))
+                return { success: false, error: '导出路径未授权' };
+            const validatedPath = validateApiWritePath(safePath);
+            await fs.promises.mkdir(path.dirname(validatedPath), { recursive: true });
+            await fs.promises.writeFile(validatedPath, Buffer.from(base64, 'base64'));
+            return { success: true, path: validatedPath };
+        }
+        catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
     });
     ipcMain.handle('env:load', () => {
         const items = readApiEnv();

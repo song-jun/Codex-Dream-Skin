@@ -16,10 +16,13 @@ declare global {
       getOpenApiEnv: () => Promise<Record<string, string>>
       fetchJson: (url: string) => Promise<unknown>
       requestApi: (request: { url: string; method: string; headers?: Record<string, string>; body?: string; timeout?: number }) => Promise<{ statusCode: number; data: unknown }>
+      recognizeSprite: (dataUrl: string) => Promise<{ text: string; tsv: string }>
       selectDirectory: (defaultPath?: string) => Promise<string | null>
+      selectSpriteFiles: (mode: 'files' | 'directory') => Promise<Array<{ path: string; name: string; mime: string; dataUrl: string }>>
       saveFile: (options?: { defaultPath?: string; filters?: Electron.FileFilter[] }) => Promise<string | null>
       writeFile: (filePath: string, content: string) => Promise<{ success: boolean; path?: string; error?: string }>
       writeFiles: (items: Array<{ path: string; content: string }>) => Promise<Array<{ path: string; success: boolean; error?: string }>>
+      writeBinaryFile: (filePath: string, base64: string) => Promise<{ success: boolean; path?: string; error?: string }>
       saveEnv: (items: Array<{ key: string; value: string; description?: string }>) => Promise<{ success: boolean; items?: Array<{ key: string; value: string; description: string }>; path?: string; error?: string }>
       loadEnv: () => Promise<{ success: boolean; items?: Array<{ key: string; value: string; description: string }>; path?: string; error?: string }>
       resetEnv: () => Promise<{ success: boolean; items?: Array<{ key: string; value: string; description: string }>; path?: string; error?: string }>
