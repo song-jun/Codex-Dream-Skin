@@ -139,7 +139,7 @@
               <p v-if="spriteOutputs.length">{{ spriteOutputs.length }} 个输出 · {{ outputFormat.toUpperCase() }} · 透明背景</p>
               <p v-else>生成后预览雪碧图尺寸与透明背景效果</p>
             </div>
-            <el-tag v-if="spriteOutputs.length" type="success">已生成</el-tag>
+            <div class="preview-heading-actions"><el-tag v-if="spriteOutputs.length" type="success">已生成</el-tag></div>
           </div>
           <div class="preview-stage" :class="{ 'has-outputs': spriteOutputs.length > 0 }">
             <div v-if="spriteOutputs.length" class="output-list">
@@ -158,7 +158,7 @@
             </div>
           </div>
           <div v-if="spriteOutputs.length" class="export-panel">
-            <div class="export-title"><span>导出文件</span><small>多个雪碧图共用一个 Markdown 文档{{ layout.packingMode === 'compact' ? '，并生成 config.js' : '' }}</small></div>
+            <div class="export-title"><span>导出文件</span><small>多个雪碧图共用一个 Markdown 文档{{ layout.packingMode === 'compact' ? '，并生成 config.js 和 SpriteIcon.vue' : '' }}</small></div>
             <el-radio-group v-model="outputFormat" size="small" @change="refreshMarkdown">
               <el-radio-button value="png">PNG</el-radio-button>
               <el-radio-button value="svg">SVG</el-radio-button>
@@ -166,9 +166,8 @@
             <el-input v-model="markdownName" size="small" placeholder="Markdown 文件名">
               <template #append>.md</template>
             </el-input>
-            <el-input v-if="layout.packingMode === 'compact'" v-model="configName" size="small" placeholder="Config 文件名">
-              <template #append>.js</template>
-            </el-input>
+            <el-input v-if="layout.packingMode === 'compact'" v-model="configName" size="small" placeholder="Config 文件名"><template #append>.js</template></el-input>
+            <el-button type="primary" :disabled="spriteOutputs.length === 0" @click="componentPreviewVisible = true">预览组件</el-button>
             <el-button type="primary" :icon="Download" :loading="exporting" @click="exportFiles">导出到指定目录</el-button>
           </div>
         </el-card>
@@ -185,15 +184,16 @@
         </el-card>
       </section>
     </div>
+    <SpriteComponentPreviewDialog v-model:visible="componentPreviewVisible" :outputs="spriteOutputs" :config-name="normalizedOutputName(configName, 'sprite-config')" :format="outputFormat" />
   </div>
 </template>
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp, Close, Delete, DocumentCopy, Download, EditPen, Folder, FolderOpened, Grid, InfoFilled, MagicStick, Picture, Refresh, Scissor, UploadFilled } from '@element-plus/icons-vue'
+import SpriteComponentPreviewDialog from '@/components/sprite/SpriteComponentPreviewDialog.vue'; import spriteIconSource from '@/components/sprite/SpriteIcon.vue?raw'
 import { DEFAULT_SPRITE_LAYOUT, SPRITE_EXTENSIONS, SPRITE_LAYOUT_TOOLTIPS } from '@/features/sprite/config'
-import { buildSprite, sliceDesignSprite } from '@/features/sprite/spriteGenerator'
-import { buildSpriteConfigModule } from '@/features/sprite/spriteConfig'
+import { buildSprite, sliceDesignSprite } from '@/features/sprite/spriteGenerator'; import { buildSpriteConfigModule } from '@/features/sprite/spriteConfig'
 import type { SpriteAsset, SpriteBuildResult, SpriteDesignMode, SpriteOutputFormat, SpriteSourceSelection } from '@/features/sprite/types'
 interface SpriteAssetGroup { id: string; sourceName: string; assets: SpriteAsset[] }
 interface SpriteOutput { id: string; name: string; sourceName: string; result: SpriteBuildResult }
@@ -202,7 +202,7 @@ const assets = ref<SpriteAsset[]>([])
 const layout = reactive({ ...DEFAULT_SPRITE_LAYOUT })
 const designMode = ref<SpriteDesignMode>('separate')
 const outputFormat = ref<SpriteOutputFormat>('png')
-const designGroups = ref<SpriteAssetGroup[]>([]); const spriteOutputs = ref<SpriteOutput[]>([])
+const designGroups = ref<SpriteAssetGroup[]>([]); const spriteOutputs = ref<SpriteOutput[]>([]); const componentPreviewVisible = ref(false)
 const markdownContent = ref('')
 const markdownName = ref('sprite-sprite'); const configName = ref('sprite-config')
 const previewUrls = computed(() => assets.value.map((asset) => asset.dataUrl))
@@ -409,6 +409,8 @@ function handleDesignModeChange() {
 function normalizedOutputName(value: string, fallback: string): string {
   return (value.trim().replace(/\.(?:png|svg)$/i, '').replace(/[\\/:*?"<>|]/g, '-') || fallback)
 }
+/** 校验多个输出的文件名，避免雪碧图互相覆盖。 */
+function validateOutputNames(): string | null { const seen = new Map<string, string>(); for (const output of spriteOutputs.value) { const name = normalizedOutputName(output.name, 'sprite-sheet'); const key = name.toLocaleLowerCase(); const previous = seen.get(key); if (previous) return `雪碧图导出名称重复：${previous} 与 ${name}，请修改后再导出。`; seen.set(key, name) } return null }
 /** 生成统一的 Markdown 文档，分别模式也只导出一个 md 文件。 */
 function outputMarkdown(output: SpriteOutput): string {
   const fileName = `${normalizedOutputName(output.name, 'sprite-sheet')}.${outputFormat.value}`
@@ -472,6 +474,7 @@ async function generateSprite() {
 /** 将所有雪碧图和一个 Markdown 导出到用户选择的目录。 */
 async function exportFiles() {
   if (spriteOutputs.value.length === 0 || !window.electronAPI) return
+  const duplicateError = validateOutputNames(); if (duplicateError) { ElMessage.error(duplicateError); return }
   const directory = await window.electronAPI.selectDirectory()
   if (!directory) return
   const separator = directory.includes('\\') ? '\\' : '/'
@@ -494,12 +497,12 @@ async function exportFiles() {
     if (layout.packingMode === 'compact') {
       const safeConfigName = configName.value.trim().replace(/\.js$/i, '').replace(/[\\/:*?"<>|]/g, '-') || 'sprite-config'
       const configPath = `${directory}${separator}${safeConfigName}.js`
-      const configResult = await window.electronAPI.writeFile(configPath, buildSpriteConfigModule(spriteOutputs.value.map((output) => ({ name: normalizedOutputName(output.name, 'sprite-sheet'), placements: output.result.placements })), outputFormat.value))
-      writeResults.push(configResult)
+      writeResults.push(await window.electronAPI.writeFile(configPath, buildSpriteConfigModule(spriteOutputs.value.map((output) => ({ name: normalizedOutputName(output.name, 'sprite-sheet'), placements: output.result.placements, width: output.result.width, height: output.result.height })), outputFormat.value)))
+      writeResults.push(await window.electronAPI.writeFile(`${directory}${separator}SpriteIcon.vue`, spriteIconSource))
     }
     const failed = writeResults.find((result) => !result.success)
     if (failed) throw new Error(failed.error || '文件写入失败。')
-    ElMessage.success(`已导出 ${spriteOutputs.value.length} 个雪碧图、1 个 Markdown${layout.packingMode === 'compact' ? ' 和 1 个 config.js' : ''}。`)
+    ElMessage.success(`已导出 ${spriteOutputs.value.length} 个雪碧图、1 个 Markdown${layout.packingMode === 'compact' ? '、1 个 config.js 和 1 个 SpriteIcon.vue' : ''}。`)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '导出失败。')
   } finally {
@@ -517,7 +520,6 @@ async function copyMarkdown() {
   }
 }
 </script>
-
 <style scoped>
 .sprite-page { min-height: 0; overflow: hidden; padding-bottom: 16px; }
 .page-kicker { color: var(--brand-primary); font-size: 11px; font-weight: 700; letter-spacing: .14em; margin-bottom: 5px; }
@@ -572,7 +574,7 @@ async function copyMarkdown() {
 .layout-form small { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 10px; }
 .cell-toggle :deep(.el-form-item__content) { min-height: 32px; align-items: center; }
 .preview-card { display: flex; min-height: 0; flex-direction: column; }
-.preview-heading { margin-bottom: 12px; }
+.preview-heading { margin-bottom: 12px; } .preview-heading-actions { display: flex; align-items: center; gap: 8px; }
 .preview-stage { display: flex; min-height: 0; flex: 1; align-items: center; justify-content: center; overflow: auto; padding: 20px; border: 1px solid var(--border-light); border-radius: 6px; background: repeating-conic-gradient(#f0f3f8 0 25%, #fff 0 50%) 50% / 16px 16px; }
 .preview-stage.has-outputs { align-items: stretch; justify-content: flex-start; }
 .preview-stage img { display: block; max-width: 100%; max-height: 420px; object-fit: contain; image-rendering: auto; }
