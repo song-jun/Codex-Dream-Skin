@@ -16,7 +16,6 @@
         <el-button type="primary" :icon="MagicStick" :loading="building" :disabled="slicing || assets.length === 0" @click="generateSprite">一键生成</el-button>
       </div>
     </header>
-
     <div class="workspace-grid">
       <section class="control-column">
         <el-card class="control-card source-card" shadow="never">
@@ -92,7 +91,6 @@
             </article>
           </div>
         </el-card>
-
         <el-card class="control-card layout-card" shadow="never">
           <div class="card-heading">
             <div>
@@ -101,7 +99,10 @@
             </div>
             <el-button text :icon="Refresh" :disabled="slicing" @click="resetLayout">一键重置</el-button>
           </div>
-          <el-form label-position="top" class="layout-form">
+          <el-form label-position="top" class="layout-form" :disabled="building || slicing">
+            <div class="form-row packing-mode-row">
+              <el-form-item><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.packingMode" placement="top" :teleported="false"><span>排列模式</span></el-tooltip></template><el-radio-group v-model="layout.packingMode"><el-radio-button value="grid">统一网格</el-radio-button><el-radio-button value="compact">紧凑自适应</el-radio-button></el-radio-group></el-form-item>
+            </div>
             <div class="form-row layout-primary-row">
               <el-form-item><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.columns" placement="top" :teleported="false"><span>每行数量</span></el-tooltip></template>
                 <el-input-number v-model="layout.columns" :min="0" :max="50" placeholder="0 为自动横排"  controls-position="right" />
@@ -116,21 +117,20 @@
                 <el-input-number v-model="layout.padding" :min="0" :max="512" controls-position="right" />
               </el-form-item>
             </div>
-            <div class="form-row layout-secondary-row">
+            <div v-if="layout.packingMode === 'grid'" class="form-row layout-secondary-row">
               <el-form-item class="cell-toggle"><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.normalizeCells" placement="top" :teleported="false"><span>统一单元格</span></el-tooltip></template>
                 <el-switch v-model="layout.normalizeCells" />
               </el-form-item>
-              <el-form-item v-if="layout.normalizeCells"><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.cellWidth" placement="top" :teleported="false"><span>单元格宽度</span></el-tooltip></template>
+              <el-form-item v-if="layout.packingMode === 'grid' && layout.normalizeCells"><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.cellWidth" placement="top" :teleported="false"><span>单元格宽度</span></el-tooltip></template>
                 <el-input-number v-model="layout.cellWidth" :min="1" :max="2048" controls-position="right" />
               </el-form-item>
-              <el-form-item v-if="layout.normalizeCells"><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.cellHeight" placement="top" :teleported="false"><span>单元格高度</span></el-tooltip></template>
+              <el-form-item v-if="layout.packingMode === 'grid' && layout.normalizeCells"><template #label><el-tooltip :content="SPRITE_LAYOUT_TOOLTIPS.cellHeight" placement="top" :teleported="false"><span>单元格高度</span></el-tooltip></template>
                 <el-input-number v-model="layout.cellHeight" :min="1" :max="2048" controls-position="right" />
               </el-form-item>
             </div>
           </el-form>
         </el-card>
       </section>
-
       <section class="preview-column">
         <el-card class="preview-card" shadow="never">
           <div class="card-heading preview-heading">
@@ -158,7 +158,7 @@
             </div>
           </div>
           <div v-if="spriteOutputs.length" class="export-panel">
-            <div class="export-title"><span>导出文件</span><small>多个雪碧图共用一个 Markdown 文档</small></div>
+            <div class="export-title"><span>导出文件</span><small>多个雪碧图共用一个 Markdown 文档{{ layout.packingMode === 'compact' ? '，并生成 config.js' : '' }}</small></div>
             <el-radio-group v-model="outputFormat" size="small" @change="refreshMarkdown">
               <el-radio-button value="png">PNG</el-radio-button>
               <el-radio-button value="svg">SVG</el-radio-button>
@@ -166,10 +166,12 @@
             <el-input v-model="markdownName" size="small" placeholder="Markdown 文件名">
               <template #append>.md</template>
             </el-input>
+            <el-input v-if="layout.packingMode === 'compact'" v-model="configName" size="small" placeholder="Config 文件名">
+              <template #append>.js</template>
+            </el-input>
             <el-button type="primary" :icon="Download" :loading="exporting" @click="exportFiles">导出到指定目录</el-button>
           </div>
         </el-card>
-
         <el-card class="markdown-card" shadow="never">
           <div class="card-heading">
             <div>
@@ -185,35 +187,24 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp, Close, Delete, DocumentCopy, Download, EditPen, Folder, FolderOpened, Grid, InfoFilled, MagicStick, Picture, Refresh, Scissor, UploadFilled } from '@element-plus/icons-vue'
 import { DEFAULT_SPRITE_LAYOUT, SPRITE_EXTENSIONS, SPRITE_LAYOUT_TOOLTIPS } from '@/features/sprite/config'
 import { buildSprite, sliceDesignSprite } from '@/features/sprite/spriteGenerator'
+import { buildSpriteConfigModule } from '@/features/sprite/spriteConfig'
 import type { SpriteAsset, SpriteBuildResult, SpriteDesignMode, SpriteOutputFormat, SpriteSourceSelection } from '@/features/sprite/types'
-interface SpriteAssetGroup {
-  id: string
-  sourceName: string
-  assets: SpriteAsset[]
-}
-interface SpriteOutput {
-  id: string
-  name: string
-  sourceName: string
-  result: SpriteBuildResult
-}
-
+interface SpriteAssetGroup { id: string; sourceName: string; assets: SpriteAsset[] }
+interface SpriteOutput { id: string; name: string; sourceName: string; result: SpriteBuildResult }
 const supportedExtensions = SPRITE_EXTENSIONS
 const assets = ref<SpriteAsset[]>([])
 const layout = reactive({ ...DEFAULT_SPRITE_LAYOUT })
 const designMode = ref<SpriteDesignMode>('separate')
 const outputFormat = ref<SpriteOutputFormat>('png')
-const designGroups = ref<SpriteAssetGroup[]>([])
-const spriteOutputs = ref<SpriteOutput[]>([])
+const designGroups = ref<SpriteAssetGroup[]>([]); const spriteOutputs = ref<SpriteOutput[]>([])
 const markdownContent = ref('')
-const markdownName = ref('sprite-sprite')
+const markdownName = ref('sprite-sprite'); const configName = ref('sprite-config')
 const previewUrls = computed(() => assets.value.map((asset) => asset.dataUrl))
 const spriteTooltipPopperOptions = {
   strategy: 'absolute' as const,
@@ -222,6 +213,9 @@ const spriteTooltipPopperOptions = {
 const building = ref(false)
 const slicing = ref(false)
 const exporting = ref(false)
+const hasGeneratedPreview = ref(false)
+let previewTimer: ReturnType<typeof setTimeout> | undefined
+watch([assets, layout], schedulePreviewUpdate, { deep: true })
 /** 将原生选择结果转换为页面素材，并按路径去重。 */
 async function appendSelections(selections: Array<{ path: string; name: string; mime: string; dataUrl: string }>) {
   const knownPaths = new Set(assets.value.map((asset) => asset.path))
@@ -304,7 +298,7 @@ async function replaceWithSlicedDesign(selections: SpriteSourceSelection[]) {
     }))
     designGroups.value = groups
     assets.value = groups.flatMap((group) => group.assets)
-    layout.columns = 6
+    layout.columns = 10
     layout.gapX = 0
     layout.gapY = 0
     layout.padding = 0
@@ -376,6 +370,7 @@ function removeAsset(index: number) {
 function clearAssets() {
   assets.value = []
   designGroups.value = []
+  hasGeneratedPreview.value = false
   invalidateBuild()
 }
 /** 让分组顺序与素材列表中的手动排序保持一致。 */
@@ -385,26 +380,31 @@ function syncGroupsFromAssets() {
     .map((group) => ({ ...group, assets: group.assets.filter((asset) => order.has(asset.id)).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)) }))
     .filter((group) => group.assets.length > 0)
 }
-
 /** 清除旧预览，避免排列或素材变化时继续显示过期结果。 */
 function invalidateBuild() {
   spriteOutputs.value = []
   markdownContent.value = ''
 }
-
+/** 素材或排列参数变化后防抖刷新右侧预览。 */
+function schedulePreviewUpdate() {
+  if (!hasGeneratedPreview.value || assets.value.length === 0 || assets.value.some((asset) => !asset.ready)) return
+  if (previewTimer) clearTimeout(previewTimer)
+  previewTimer = setTimeout(() => {
+    previewTimer = undefined
+    if (!building.value) void generateSprite()
+  }, 180)
+}
 /** 恢复默认排列参数并清除当前生成结果。 */
 function resetLayout() {
   Object.assign(layout, DEFAULT_SPRITE_LAYOUT)
   invalidateBuild()
   ElMessage.success('排列设置已重置。')
 }
-
 /** 切换设计稿输出模式后清除旧结果，要求用户按当前模式重新生成。 */
 function handleDesignModeChange() {
   invalidateBuild()
   if (!building.value && assets.value.length > 0 && assets.value.every((asset) => asset.ready)) void generateSprite()
 }
-
 /** 清理用户输入的输出文件名，避免重复追加扩展名。 */
 function normalizedOutputName(value: string, fallback: string): string {
   return (value.trim().replace(/\.(?:png|svg)$/i, '').replace(/[\\/:*?"<>|]/g, '-') || fallback)
@@ -414,7 +414,6 @@ function outputMarkdown(output: SpriteOutput): string {
   const fileName = `${normalizedOutputName(output.name, 'sprite-sheet')}.${outputFormat.value}`
   return output.result.markdown.replace(/\| [^|]+ \| [^|]+ \| \d+ \|/, (row) => row.replace(/^\| [^|]+ \|/, `| ${fileName} |`))
 }
-
 function composeMarkdown(outputs: SpriteOutput[]): string {
   if (outputs.length === 1) return outputMarkdown(outputs[0])
   return [
@@ -426,12 +425,10 @@ function composeMarkdown(outputs: SpriteOutput[]): string {
     '',
   ].join('\n')
 }
-
 /** 文件名或输出格式变化后同步 Markdown 里的文件引用。 */
 function refreshMarkdown() {
   if (spriteOutputs.value.length > 0) markdownContent.value = composeMarkdown(spriteOutputs.value)
 }
-
 /** 返回稳定且不重复的默认输出名。 */
 function createOutputName(sourceName: string, index: number, usedNames: Set<string>): string {
   const base = sourceName.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '-').trim() || `sprite-${index + 1}`
@@ -442,9 +439,9 @@ function createOutputName(sourceName: string, index: number, usedNames: Set<stri
   usedNames.add(name)
   return name
 }
-
 /** 根据当前配置生成一个或多个雪碧图和统一 Markdown。 */
 async function generateSprite() {
+  if (building.value) return
   if (assets.value.some((asset) => !asset.ready)) {
     ElMessage.warning('图片仍在读取，请稍候再生成。')
     return
@@ -464,6 +461,7 @@ async function generateSprite() {
     }
     spriteOutputs.value = outputs
     markdownContent.value = composeMarkdown(outputs)
+    hasGeneratedPreview.value = true
     ElMessage.success(outputs.length > 1 ? `已生成 ${outputs.length} 个雪碧图。` : '雪碧图已生成。')
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '雪碧图生成失败。')
@@ -471,7 +469,6 @@ async function generateSprite() {
     building.value = false
   }
 }
-
 /** 将所有雪碧图和一个 Markdown 导出到用户选择的目录。 */
 async function exportFiles() {
   if (spriteOutputs.value.length === 0 || !window.electronAPI) return
@@ -494,16 +491,21 @@ async function exportFiles() {
     }
     const markdownResult = await window.electronAPI.writeFile(markdownPath, markdownContent.value)
     writeResults.push(markdownResult)
+    if (layout.packingMode === 'compact') {
+      const safeConfigName = configName.value.trim().replace(/\.js$/i, '').replace(/[\\/:*?"<>|]/g, '-') || 'sprite-config'
+      const configPath = `${directory}${separator}${safeConfigName}.js`
+      const configResult = await window.electronAPI.writeFile(configPath, buildSpriteConfigModule(spriteOutputs.value.map((output) => ({ name: normalizedOutputName(output.name, 'sprite-sheet'), placements: output.result.placements })), outputFormat.value))
+      writeResults.push(configResult)
+    }
     const failed = writeResults.find((result) => !result.success)
     if (failed) throw new Error(failed.error || '文件写入失败。')
-    ElMessage.success(`已导出 ${spriteOutputs.value.length} 个雪碧图与 1 个 Markdown。`)
+    ElMessage.success(`已导出 ${spriteOutputs.value.length} 个雪碧图、1 个 Markdown${layout.packingMode === 'compact' ? ' 和 1 个 config.js' : ''}。`)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '导出失败。')
   } finally {
     exporting.value = false
   }
 }
-
 /** 复制当前 Markdown 内容。 */
 async function copyMarkdown() {
   if (!markdownContent.value) return

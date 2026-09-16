@@ -5,11 +5,12 @@ export const SPRITE_EXTENSIONS = ['PNG', 'JPG', 'JPEG', 'SVG'] as const
 
 /** 雪碧图工具的默认排列配置。 */
 export const DEFAULT_SPRITE_LAYOUT: SpriteLayoutOptions = {
-  columns: 0,
+  packingMode: 'grid',
+  columns: 10,
   gapX: 16,
   gapY: 16,
   padding: 24,
-  normalizeCells: false,
+  normalizeCells: true,
   cellWidth: 96,
   cellHeight: 96,
   objectFit: 'contain',
@@ -17,6 +18,7 @@ export const DEFAULT_SPRITE_LAYOUT: SpriteLayoutOptions = {
 
 /** 排列设置各字段的交互说明。 */
 export const SPRITE_LAYOUT_TOOLTIPS = {
+  packingMode: '统一网格适合按行列取图；紧凑自适应会裁掉透明边缘并记录每个图标坐标。',
   columns: '每行放置的图标数量，0 表示自动横排。',
   gapX: '相邻图标之间的水平间距，单位为像素。',
   gapY: '相邻图标之间的垂直间距，单位为像素。',

@@ -52,6 +52,8 @@ export interface SpriteSliceResult {
  * 雪碧图排列配置。
  */
 export interface SpriteLayoutOptions {
+  /** 雪碧图排列模式。 */
+  packingMode: SpritePackingMode
   /** 每行最多放置的图片数量，0 表示自动换行。 */
   columns: number
   /** 图片之间的水平间距。 */
@@ -70,6 +72,25 @@ export interface SpriteLayoutOptions {
   objectFit: 'contain' | 'center'
 }
 
+/** 雪碧图排列模式。 */
+export type SpritePackingMode = 'grid' | 'compact'
+
+/** 单个图标在雪碧图中的实际坐标。 */
+export interface SpritePlacement {
+  /** 素材序号。 */
+  index: number
+  /** 标识文字。 */
+  label: string
+  /** 左上角横坐标。 */
+  x: number
+  /** 左上角纵坐标。 */
+  y: number
+  /** 实际绘制宽度。 */
+  width: number
+  /** 实际绘制高度。 */
+  height: number
+}
+
 /**
  * 生成结果，包括图片数据和 Markdown 文档。
  */
@@ -86,6 +107,8 @@ export interface SpriteBuildResult {
   svg: string
   /** SVG 预览数据 URL。 */
   svgDataUrl: string
+  /** 每个图标在雪碧图中的实际坐标。 */
+  placements: SpritePlacement[]
   /** 标识映射 Markdown。 */
   markdown: string
 }

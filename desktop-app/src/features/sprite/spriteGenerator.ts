@@ -1,4 +1,4 @@
-import type { SpriteAsset, SpriteBuildResult, SpriteLayoutOptions, SpriteSliceResult, SpriteSourceSelection } from './types'
+import type { SpriteAsset, SpriteBuildResult, SpriteLayoutOptions, SpritePackingMode, SpritePlacement, SpriteSliceResult, SpriteSourceSelection } from './types'
 
 // ponytail: 分析先限宽，避免超大设计稿让渲染进程内存峰值过高；极限精度需求再迁移到主进程 sharp。
 const ANALYSIS_MAX_WIDTH = 1800
@@ -264,11 +264,19 @@ interface SpriteBuildMetadata {
   fileName?: string
   /** 当前输出对应的源设计稿名称。 */
   sourceName?: string
+  /** 当前输出的排列模式。 */
+  packingMode?: SpritePackingMode
+  /** 紧凑模式的实际图标坐标。 */
+  placements?: SpritePlacement[]
 }
 
 function buildMarkdown(assets: SpriteAsset[], dimensions: { width: number; height: number }, options: SpriteLayoutOptions, metadata: SpriteBuildMetadata = {}): string {
   const columns = options.columns > 0 ? Math.min(options.columns, assets.length) : Math.max(assets.length, 1)
-  const rows = assets.map((asset, index) => `| ${index} | ${asset.label || '未识别'} | ${asset.name} | ${asset.width} × ${asset.height} | ${Math.floor(index / columns)} | ${index % columns} |`).join('\n')
+  const compactPlacements = metadata.packingMode === 'compact' ? metadata.placements : undefined
+  const compact = Boolean(compactPlacements)
+  const rows = compact
+    ? compactPlacements!.map((placement) => `| ${placement.index} | ${placement.label || '未识别'} | ${assets[placement.index]?.name || ''} | ${placement.x} | ${placement.y} | ${placement.width} | ${placement.height} |`).join('\n')
+    : assets.map((asset, index) => `| ${index} | ${asset.label || '未识别'} | ${asset.name} | ${asset.width} × ${asset.height} | ${Math.floor(index / columns)} | ${index % columns} |`).join('\n')
   const sourcePath = assets[0]?.path.split('#slice-')[0] ?? ''
   const sourceName = metadata.sourceName || sourcePath.split(/[\\/]/).pop() || '未记录'
   const fileName = metadata.fileName || 'stat-sprite'
@@ -283,7 +291,7 @@ function buildMarkdown(assets: SpriteAsset[], dimensions: { width: number; heigh
     '',
     '| 雪碧图文件 | 源设计稿 | 图标数 | 雪碧图规格 | 格子尺寸 |',
     '| --- | --- | ---: | ---: | ---: |',
-    `| ${fileName} | ${sourceName} | ${assets.length} | ${dimensions.width}×${dimensions.height}px | ${options.cellWidth}×${options.cellHeight}px |`,
+    `| ${fileName} | ${sourceName} | ${assets.length} | ${dimensions.width}×${dimensions.height}px | ${compact ? '按实际尺寸紧凑排列' : `${options.cellWidth}×${options.cellHeight}px`} |`,
     '',
     '> 图标按设计稿阅读顺序切片，透明背景输出；当前页面使用高清 3x 格子时，逻辑格尺寸为 90×90px。',
     '',
@@ -291,20 +299,13 @@ function buildMarkdown(assets: SpriteAsset[], dimensions: { width: number; heigh
     '',
     '序号从 0 开始，按从左到右、从上到下排列。',
     '',
-    '| 序号 | 含义 | 切片文件 | 原始尺寸 | 所在行 | 所在列 |',
-    '| ---: | --- | --- | ---: | ---: | ---: |',
+    compact ? '| 序号 | 含义 | 切片文件 | X | Y | 宽度 | 高度 |' : '| 序号 | 含义 | 切片文件 | 原始尺寸 | 所在行 | 所在列 |',
+    compact ? '| ---: | --- | --- | ---: | ---: | ---: | ---: |' : '| ---: | --- | --- | ---: | ---: | ---: |',
     rows,
     '',
     '## 三、取图方式',
     '',
-    '```ts',
-    `const SPRITE_COLS = ${columns};`,
-    `const SPRITE_ROWS = ${spriteRows};`,
-    'const col = index % SPRITE_COLS;',
-    'const row = Math.floor(index / SPRITE_COLS);',
-    `const backgroundSize = \`\${SPRITE_COLS * ${options.cellWidth / 3}}px \${SPRITE_ROWS * ${options.cellHeight / 3}}px\`;`,
-    `const backgroundPosition = \`-\${col * ${options.cellWidth / 3}}px -\${row * ${options.cellHeight / 3}}px\`;`,
-    '```',
+    ...(compact ? ['紧凑模式使用表格中的实际坐标取图，建议直接使用导出的 config.js。', '', '```ts', 'const item = SPRITE_CONFIG.find((entry) => entry.value === index);', 'const backgroundPosition = `-${item.x}px -${item.y}px`;', '```'] : ['```ts', `const SPRITE_COLS = ${columns};`, `const SPRITE_ROWS = ${spriteRows};`, 'const col = index % SPRITE_COLS;', 'const row = Math.floor(index / SPRITE_COLS);', `const backgroundSize = \`\${SPRITE_COLS * ${options.cellWidth / 3}}px \${SPRITE_ROWS * ${options.cellHeight / 3}}px\`;`, `const backgroundPosition = \`-\${col * ${options.cellWidth / 3}}px -\${row * ${options.cellHeight / 3}}px\`;`, '```']),
     '',
     '## 四、识别说明',
     '',
@@ -335,9 +336,113 @@ function buildSvg(assets: SpriteAsset[], images: HTMLImageElement[], dimensions:
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${dimensions.width}" height="${dimensions.height}" viewBox="0 0 ${dimensions.width} ${dimensions.height}"><title>雪碧图</title>${items}</svg>`
 }
 
+/** 裁掉 PNG/SVG 渲染结果四周的透明像素，JPEG 等不透明图片保持原边界。 */
+function trimTransparentBounds(image: HTMLImageElement): { dataUrl: string; width: number; height: number } {
+  const source = document.createElement('canvas')
+  source.width = Math.max(1, image.naturalWidth)
+  source.height = Math.max(1, image.naturalHeight)
+  const sourceContext = source.getContext('2d')
+  if (!sourceContext) throw new Error('当前环境不支持 Canvas。')
+  sourceContext.drawImage(image, 0, 0)
+  const pixels = sourceContext.getImageData(0, 0, source.width, source.height)
+  let minX = source.width
+  let minY = source.height
+  let maxX = -1
+  let maxY = -1
+  for (let y = 0; y < source.height; y += 1) {
+    for (let x = 0; x < source.width; x += 1) {
+      if (pixels.data[(y * source.width + x) * 4 + 3] < 12) continue
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
+    }
+  }
+  if (maxX < 0 || maxY < 0) return { dataUrl: source.toDataURL('image/png'), width: source.width, height: source.height }
+  const width = maxX - minX + 1
+  const height = maxY - minY + 1
+  const cropped = document.createElement('canvas')
+  cropped.width = width
+  cropped.height = height
+  const croppedContext = cropped.getContext('2d')
+  if (!croppedContext) throw new Error('当前环境不支持 Canvas。')
+  croppedContext.drawImage(source, minX, minY, width, height, 0, 0, width, height)
+  return { dataUrl: cropped.toDataURL('image/png'), width, height }
+}
+
+interface CompactSpriteItem {
+  dataUrl: string
+  width: number
+  height: number
+}
+
+/** 按实际图标宽高逐行紧凑排列，并返回每个图标的坐标。 */
+function calculateCompactLayout(assets: SpriteAsset[], items: CompactSpriteItem[], options: SpriteLayoutOptions): { placements: SpritePlacement[]; width: number; height: number } {
+  const columns = options.columns > 0 ? Math.min(options.columns, items.length) : items.length
+  const placements: SpritePlacement[] = []
+  let x = options.padding
+  let y = options.padding
+  let rowHeight = 0
+  let rowCount = 0
+  items.forEach((item, index) => {
+    if (rowCount >= columns) {
+      x = options.padding
+      y += rowHeight + options.gapY
+      rowHeight = 0
+      rowCount = 0
+    }
+    placements.push({ index, label: assets[index].label || '未识别', x, y, width: item.width, height: item.height })
+    x += item.width + options.gapX
+    rowHeight = Math.max(rowHeight, item.height)
+    rowCount += 1
+  })
+  const width = placements.length === 0 ? options.padding * 2 : Math.max(...placements.map((placement) => placement.x + placement.width)) + options.padding
+  const height = placements.length === 0 ? options.padding * 2 : Math.max(...placements.map((placement) => placement.y + placement.height)) + options.padding
+  return { placements, width, height }
+}
+
+/** 生成使用裁剪后素材的紧凑 SVG。 */
+function buildCompactSvg(items: CompactSpriteItem[], placements: SpritePlacement[], width: number, height: number): string {
+  const images = items.map((item, index) => {
+    const placement = placements[index]
+    return `<image href="${escapeXml(item.dataUrl)}" x="${placement.x}" y="${placement.y}" width="${placement.width}" height="${placement.height}" preserveAspectRatio="none" />`
+  }).join('')
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><title>紧凑雪碧图</title>${images}</svg>`
+}
+
+/** 生成按实际边界裁剪的紧凑雪碧图。 */
+async function buildCompactSprite(assets: SpriteAsset[], options: SpriteLayoutOptions, metadata: SpriteBuildMetadata): Promise<SpriteBuildResult> {
+  const images = await Promise.all(assets.map((asset) => loadImage(asset.dataUrl)))
+  const items = images.map(trimTransparentBounds)
+  const compactLayout = calculateCompactLayout(assets, items, options)
+  const canvas = document.createElement('canvas')
+  canvas.width = compactLayout.width
+  canvas.height = compactLayout.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('当前环境不支持 Canvas。')
+  const croppedImages = await Promise.all(items.map((item) => loadImage(item.dataUrl)))
+  croppedImages.forEach((image, index) => {
+    const placement = compactLayout.placements[index]
+    context.drawImage(image, placement.x, placement.y, placement.width, placement.height)
+  })
+  const dataUrl = canvas.toDataURL('image/png')
+  const svg = buildCompactSvg(items, compactLayout.placements, compactLayout.width, compactLayout.height)
+  return {
+    width: compactLayout.width,
+    height: compactLayout.height,
+    dataUrl,
+    base64: dataUrlBase64(dataUrl),
+    svg,
+    svgDataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    placements: compactLayout.placements,
+    markdown: buildMarkdown(assets, compactLayout, options, { ...metadata, packingMode: 'compact', placements: compactLayout.placements }),
+  }
+}
+
 /** 生成透明背景 PNG 雪碧图与配套 Markdown。 */
 export async function buildSprite(assets: SpriteAsset[], options: SpriteLayoutOptions, metadata: SpriteBuildMetadata = {}): Promise<SpriteBuildResult> {
   if (assets.length === 0) throw new Error('请先添加至少一张图片。')
+  if (options.packingMode === 'compact') return buildCompactSprite(assets, options, metadata)
   const images = await Promise.all(assets.map((asset) => loadImage(asset.dataUrl)))
   const dimensions = calculateCanvasSize(assets, options)
   const canvas = document.createElement('canvas')
@@ -347,6 +452,7 @@ export async function buildSprite(assets: SpriteAsset[], options: SpriteLayoutOp
   if (!context) throw new Error('当前环境不支持 Canvas。')
   context.clearRect(0, 0, canvas.width, canvas.height)
 
+  const placements: SpritePlacement[] = []
   images.forEach((image, index) => {
     const column = index % dimensions.columns
     const row = Math.floor(index / dimensions.columns)
@@ -357,6 +463,7 @@ export async function buildSprite(assets: SpriteAsset[], options: SpriteLayoutOp
     const drawHeight = options.normalizeCells || options.objectFit === 'contain' ? image.naturalHeight * scale : image.naturalHeight
     const drawX = cellX + (dimensions.cellWidth - drawWidth) / 2
     const drawY = cellY + (dimensions.cellHeight - drawHeight) / 2
+    placements.push({ index, label: assets[index].label || '未识别', x: cellX, y: cellY, width: drawWidth, height: drawHeight })
     context.drawImage(image, drawX, drawY, drawWidth, drawHeight)
   })
 
@@ -369,6 +476,7 @@ export async function buildSprite(assets: SpriteAsset[], options: SpriteLayoutOp
     base64: dataUrlBase64(dataUrl),
     svg,
     svgDataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
-    markdown: buildMarkdown(assets, dimensions, options, metadata),
+    placements,
+    markdown: buildMarkdown(assets, dimensions, options, { ...metadata, packingMode: 'grid', placements }),
   }
 }
