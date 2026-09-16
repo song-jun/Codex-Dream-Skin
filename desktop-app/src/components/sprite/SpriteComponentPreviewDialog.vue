@@ -107,7 +107,7 @@ async function copySource(source: string, name: string) {
 .source-stack { display: grid; width: 100%; min-width: 0; height: min(560px, calc(100vh - 240px)); min-height: 360px; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .source-panel { display: flex; min-height: 0; flex-direction: column; overflow: hidden; }
 .source-heading { flex: 0 0 auto; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
-.source-code { flex: 1; min-height: 0; margin: 0; overflow: auto; padding: 14px; border-radius: 6px; background: #111827; color: #e5e7eb; font: 12px/1.65 'Fira Code', Consolas, monospace; white-space: pre; }
+.source-code { flex: 1; min-height: 0; margin: 0; overflow-x: hidden; overflow-y: auto; padding: 14px; border-radius: 6px; background: #111827; color: #e5e7eb; font: 12px/1.65 'Fira Code', Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .source-code :deep(.hljs) { background: transparent; color: #e5e7eb; padding: 0; }
 @media (max-width: 760px) { .component-preview-layout { grid-template-columns: 1fr; } .source-stack { height: 520px; } }
 </style>

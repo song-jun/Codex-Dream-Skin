@@ -163,10 +163,10 @@
               <el-radio-button value="png">PNG</el-radio-button>
               <el-radio-button value="svg">SVG</el-radio-button>
             </el-radio-group>
-            <el-input v-model="markdownName" size="small" placeholder="Markdown 文件名">
+            <el-input style="height: 32px" v-model="markdownName" size="small" placeholder="Markdown 文件名">
               <template #append>.md</template>
             </el-input>
-            <el-input v-if="layout.packingMode === 'compact'" v-model="configName" size="small" placeholder="Config 文件名"><template #append>.js</template></el-input>
+            <el-input style="height: 32px" v-if="layout.packingMode === 'compact'" v-model="configName" size="small" placeholder="Config 文件名"><template #append>.js</template></el-input>
             <el-button type="primary" :disabled="spriteOutputs.length === 0" @click="componentPreviewVisible = true">预览组件</el-button>
             <el-button type="primary" :icon="Download" :loading="exporting" @click="exportFiles">导出到指定目录</el-button>
           </div>
@@ -188,8 +188,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, reactive, ref, watch } from 'vue'; import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp, Close, Delete, DocumentCopy, Download, EditPen, Folder, FolderOpened, Grid, InfoFilled, MagicStick, Picture, Refresh, Scissor, UploadFilled } from '@element-plus/icons-vue'
 import SpriteComponentPreviewDialog from '@/components/sprite/SpriteComponentPreviewDialog.vue'; import spriteIconSource from '@/components/sprite/SpriteIcon.vue?raw'
 import { DEFAULT_SPRITE_LAYOUT, SPRITE_EXTENSIONS, SPRITE_LAYOUT_TOOLTIPS } from '@/features/sprite/config'
@@ -588,7 +587,7 @@ async function copyMarkdown() {
 .preview-placeholder .el-icon { color: #aab9d1; font-size: 46px; }
 .preview-placeholder strong { color: var(--text-secondary); font-size: 14px; }
 .preview-placeholder span { font-size: 12px; }
-.export-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 10px; margin-top: 14px; }
+.export-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; align-items: end; gap: 10px; margin-top: 14px; }
 .export-title { display: flex; flex-direction: column; gap: 2px; grid-column: 1 / -1; color: var(--text-primary); font-size: 12px; font-weight: 600; }
 .export-title small { color: var(--text-tertiary); font-weight: 400; }
 .export-panel .el-input { min-width: 0; }
